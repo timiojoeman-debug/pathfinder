@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { TopNav } from "@/components/top-nav";
+import { Providers } from "@/components/providers";
 
 const manrope = Manrope({
   variable: "--font-sans",
@@ -14,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PathFinder — Internship Navigation",
-  description: "AI‑powered internship navigation platform for university students.",
+  title: "PathFinder — AI Career Mentor for Internships",
+  description: "AI-powered internship navigation platform. From direction to offer — step by step.",
 };
 
 export default function RootLayout({
@@ -28,10 +29,12 @@ export default function RootLayout({
       <body
         className={`${manrope.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-[var(--background)] text-[var(--foreground)]`}
       >
-        <TopNav />
-        <main className="min-h-screen">
-          {children}
-        </main>
+        <Providers>
+          <TopNav />
+          <main className="min-h-screen">
+            {children}
+          </main>
+        </Providers>
       </body>
     </html>
   );
