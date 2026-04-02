@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PathFinder — AI-Powered Internship Navigation
+
+PathFinder guides university students through the entire internship process: defining career direction, optimizing their CV, discovering opportunities, networking strategically, preparing for interviews, and tracking applications.
+
+## Features
+
+- **Phase 1 — Career Direction** — Wizard questionnaire, direction statement, specificity score
+- **Phase 2 — CV Optimizer** — Upload PDF/DOCX, AI analysis, project ideas to close skill gaps
+- **Phase 3 — Job Discovery** — Manual internship entry, paste job descriptions, ATS keywords, compatibility score
+- **Phase 4 — Networking** — AI outreach (recruiter, hiring manager, peer), LinkedIn/Glassdoor profile analysis
+- **Phase 5 — Interview Prep** — LeetCode 75/150 tracker, STAR story builder, AI question generator
+- **Phase 6 — Application Tracker** — Kanban pipeline, consistency dashboard
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- OpenAI API key (for AI features)
+
+### Setup
+
+1. Clone and install:
+
+```bash
+cd pathfinder
+npm install
+```
+
+2. Create `.env.local` with your OpenAI key:
+
+```bash
+cp .env.example .env.local
+# Edit .env.local and add your OPENAI_API_KEY
+```
+
+3. Run the dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Start with **Dashboard** → **Direction** → **CV** → **Jobs** → **Networking** → **Interview** → **Tracker**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Demo Without API Key
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Without an OpenAI key, AI features return sensible fallbacks so you can demo the full workflow. CV parsing (PDF/DOCX) works locally; AI analysis uses mock responses.
 
-## Learn More
+## Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Frontend**: Next.js 16, React 19, Tailwind CSS
+- **Backend**: Next.js API routes
+- **Storage**: localStorage (prototype; swap for Supabase/PostgreSQL for production)
+- **AI**: OpenAI GPT (configurable via env)
+- **Parsing**: pdf-parse, mammoth (PDF/DOCX)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/
+│   ├── page.tsx          # Dashboard
+│   ├── direction/        # Phase 1
+│   ├── cv/               # Phase 2
+│   ├── jobs/             # Phase 3
+│   ├── networking/       # Phase 4
+│   ├── interview/        # Phase 5
+│   ├── tracker/          # Phase 6
+│   └── api/              # API routes
+├── components/
+│   └── top-nav.tsx
+└── lib/
+    ├── ai.ts             # OpenAI wrapper
+    └── store.ts          # localStorage helpers
+```

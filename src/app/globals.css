@@ -1,26 +1,268 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-sans: 'Manrope', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  --c-white: #ffffff;
+  --c-50: #fafafa;
+  --c-100: #f0f0f0;
+  --c-150: #e5e5e5;
+  --c-200: #d4d4d4;
+  --c-300: #a3a3a3;
+  --c-400: #737373;
+  --c-500: #525252;
+  --c-600: #404040;
+  --c-700: #2e2e2e;
+  --c-800: #1a1a1a;
+  --c-900: #0a0a0a;
+  --c-black: #000000;
+  
+  /* Next.js standard aliases mapped to the new token system */
+  --background: var(--c-white);
+  --foreground: var(--c-900);
+  --muted: var(--c-400);
+  --border: var(--c-100);
+  --accent: var(--c-900);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  border-color: var(--border);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html { 
+  scroll-behavior: smooth; 
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+canvas { display: block; }
+
+/* ─── CURSOR-TRACKING CARD ─── */
+.glow-card {
+  cursor: default;
+}
+.glow-card:hover .glow-card-inner {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+}
+.glow-card:hover .phase-icon,
+.glow-card:hover .feature-icon {
+  background: var(--c-900) !important;
+  color: #fff !important;
+  border-color: var(--c-900) !important;
+  transform: scale(1.08) rotate(-4deg);
+}
+.glow-card:hover .stat-number {
+  transform: scale(1.05);
+}
+.glow-card:hover .avatar {
+  border-radius: 12px;
+  transform: scale(1.06);
+}
+
+/* ─── BORDER BEAM ─── */
+.border-beam {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+.border-beam::before {
+  content: '';
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  top: -40px;
+  left: -40px;
+  background: radial-gradient(circle, rgba(0,0,0,0.15), transparent 60%);
+  animation: beamMove 6s linear infinite;
+}
+@keyframes beamMove {
+  0% { left: -80px; top: -40px; }
+  25% { left: calc(100% + 0px); top: -40px; }
+  50% { left: calc(100% + 0px); top: calc(100% + 0px); }
+  75% { left: -80px; top: calc(100% + 0px); }
+  100% { left: -80px; top: -40px; }
+}
+
+/* ─── NAV LINKS — animated underline ─── */
+.nav-link {
+  position: relative;
+  transition: color 0.2s ease !important;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 0; height: 1px;
+  background: var(--c-900);
+  transition: width 0.3s cubic-bezier(0.25,1,0.5,1);
+}
+.nav-link:hover { color: var(--c-900) !important; }
+.nav-link:hover::after { width: 100%; }
+
+/* ─── LOGO ─── */
+.logo-link:hover .logo-icon {
+  transform: rotate(45deg) scale(1.05);
+  border-radius: 10px;
+}
+
+/* ─── MAGNETIC BUTTON ─── */
+.mag-btn {
+  position: relative;
+  overflow: hidden;
+}
+.mag-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0);
+  transition: background 0.25s;
+}
+.btn-primary:hover {
+  background: var(--c-800) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+}
+.btn-primary:hover::before {
+  background: rgba(255,255,255,0.06);
+}
+.btn-primary:active {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+.btn-primary .btn-content {
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: transform 0.2s cubic-bezier(0.25,1,0.5,1);
+}
+.btn-primary:hover .btn-content {
+  transform: translateX(2px);
+}
+.btn-secondary:hover {
+  background: var(--c-50) !important;
+  border-color: var(--c-300) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+/* ─── ACTION ROWS ─── */
+.action-row {
+  transition: all 0.2s ease !important;
+}
+.action-row:hover {
+  background: var(--c-50) !important;
+  padding-left: 24px !important;
+}
+.action-row:hover .action-tag {
+  background: var(--c-900) !important;
+  color: #fff !important;
+  border-color: var(--c-900) !important;
+}
+.action-row:hover .action-checkbox {
+  border-color: var(--c-900) !important;
+  background: var(--c-50);
+}
+.action-row:hover .zap-icon {
+  animation: zapPulse 0.4s ease;
+}
+
+/* ─── ZAP PULSE ─── */
+@keyframes zapPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2) rotate(-8deg); }
+  100% { transform: scale(1); }
+}
+.zap-icon { transition: transform 0.2s; display: inline-flex; }
+
+/* ─── SIDEBAR ITEMS ─── */
+.sidebar-item:hover {
+  background: var(--c-50) !important;
+}
+.sidebar-item:hover .pip {
+  transform: scale(1.5);
+}
+
+/* ─── STAT CELLS in preview ─── */
+.stat-cell:hover {
+  background: var(--c-50);
+  border-color: var(--c-200) !important;
+}
+
+/* ─── NBA PREVIEW ─── */
+.nba-preview:hover {
+  border-color: var(--c-200) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+/* ─── PREVIEW FRAME ─── */
+.preview-frame {
+  transition: all 0.4s cubic-bezier(0.25,1,0.5,1);
+}
+.preview-frame:hover {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 20px 60px rgba(0,0,0,0.09) !important;
+  transform: translateY(-4px);
+}
+.preview-frame:hover .dot-btn:nth-child(1) { background: #ff5f57 !important; }
+.preview-frame:hover .dot-btn:nth-child(2) { background: #febc2e !important; }
+.preview-frame:hover .dot-btn:nth-child(3) { background: #28c840 !important; }
+
+/* ─── PROOF BADGE ─── */
+.proof-badge:hover {
+  border-color: var(--c-900) !important;
+  background: var(--c-50);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+/* ─── TAG ─── */
+.tag-badge {
+  transition: all 0.2s ease;
+}
+.tag-badge:hover {
+  border-color: var(--c-300);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+
+/* ─── CTA BOX ─── */
+.cta-box {
+  transition: all 0.4s cubic-bezier(0.25,1,0.5,1) !important;
+}
+.cta-box:hover {
+  border-color: var(--c-300) !important;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.05);
+  transform: translateY(-2px) !important;
+}
+
+/* ─── SELECTION ─── */
+::selection { background: rgba(0,0,0,0.08); color: var(--c-900); }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-200); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-300); }
+
+/* Next.js standard component overrides to match the new style */
+.input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--c-200);
+  background: var(--c-white);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--c-900);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:focus {
+  border-color: var(--c-900);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+}
+
+.input::placeholder {
+  color: var(--c-400);
 }
