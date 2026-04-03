@@ -71,6 +71,8 @@ export type Application = {
   jobUrl?: string;
   jobDescription?: string;
   atsKeywords?: string[];
+  rejectionTiming?: string;
+  appliedDate?: string;
 };
 
 export function getApplications(): Application[] {

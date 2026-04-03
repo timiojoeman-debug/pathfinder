@@ -13,10 +13,27 @@ import {
 import { MagBtn } from "@/components/ui/mag-btn";
 import { Tag, AnimBar } from "@/components/ui/typography";
 
+type AtsKeywordDetail = {
+  keyword: string;
+  foundInCV: boolean;
+  suggestedPlacement: string;
+};
+
 type AnalyzeResult = {
   matchScore: number;
   atsKeywords: string[];
+  atsKeywordsDetail?: AtsKeywordDetail[];
   auditChecklist: string[];
+};
+
+type CoverLetterResult = {
+  data: {
+    coverLetter: string;
+    assumptions: string[];
+    wordCount: number;
+    editReminder?: string;
+  };
+  nextSteps: string[];
 };
 
 export default function JobsPage() {
@@ -34,6 +51,14 @@ export default function JobsPage() {
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [addedToTracker, setAddedToTracker] = useState(false);
+
+  // Cover letter state
+  const [coverLetter, setCoverLetter] = useState<CoverLetterResult | null>(null);
+  const [coverLetterLoading, setCoverLetterLoading] = useState(false);
+  const [coverLetterCopied, setCoverLetterCopied] = useState(false);
+
+  // Visa sponsorship card state
+  const [visaDismissed, setVisaDismissed] = useState(false);
 
   const cvSummary = getCvSummary();
 
@@ -64,6 +89,8 @@ export default function JobsPage() {
     setLoading(true);
     setAnalysis(null);
     setAnalyzingId(null);
+    setCoverLetter(null);
+    setVisaDismissed(false);
     try {
       const res = await fetch("/api/jobs/analyze", {
         method: "POST",
@@ -88,6 +115,8 @@ export default function JobsPage() {
   async function analyzeFromList(internship: SavedInternship) {
     setAnalyzingId(internship.id);
     setAnalysis(null);
+    setCoverLetter(null);
+    setVisaDismissed(false);
     try {
       const res = await fetch("/api/jobs/analyze", {
         method: "POST",
@@ -141,6 +170,43 @@ export default function JobsPage() {
   function handleRemove(id: string) {
     removeInternship(id);
     loadInternships();
+  }
+
+  async function handleGenerateCoverLetter() {
+    if (!form.jobDescription.trim() || !form.company.trim()) return;
+    setCoverLetterLoading(true);
+    setCoverLetter(null);
+    setCoverLetterCopied(false);
+    try {
+      const res = await fetch("/api/cover-letter/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cvData: cvSummary || "",
+          jobDescription: form.jobDescription,
+          companyName: form.company,
+          directionStatement: "",
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to generate cover letter");
+      const data = (await res.json()) as CoverLetterResult;
+      setCoverLetter(data);
+    } catch {
+      setCoverLetter(null);
+    } finally {
+      setCoverLetterLoading(false);
+    }
+  }
+
+  async function handleCopyCoverLetter() {
+    if (!coverLetter?.data?.coverLetter) return;
+    try {
+      await navigator.clipboard.writeText(coverLetter.data.coverLetter);
+      setCoverLetterCopied(true);
+      setTimeout(() => setCoverLetterCopied(false), 2000);
+    } catch {
+      // fallback: select text
+    }
   }
 
   return (
@@ -303,6 +369,37 @@ export default function JobsPage() {
         <section className="space-y-4">
           {analysis ? (
             <>
+              {/* Visa Sponsorship Check Card */}
+              {!visaDismissed && (
+                <div className="card relative flex items-start gap-3 border-amber-500/30 bg-amber-500/5 p-4">
+                  <span className="mt-0.5 text-lg leading-none">&#9888;</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">
+                      International student?
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      Check if this company sponsors visas before applying.
+                    </p>
+                    <a
+                      href="https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block text-sm text-[var(--accent)] hover:underline"
+                    >
+                      Check UK licensed sponsor register &rarr;
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setVisaDismissed(true)}
+                    className="shrink-0 rounded p-1 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+                    aria-label="Dismiss visa check reminder"
+                  >
+                    &#10005;
+                  </button>
+                </div>
+              )}
+
               <div className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
@@ -325,16 +422,87 @@ export default function JobsPage() {
                 </div>
               </div>
 
+              {/* ATS Keyword Visualization Grid */}
               <div className="card p-4">
-                <p className="text-sm font-semibold text-[var(--foreground)]">ATS priority keywords</p>
+                <p className="text-sm font-semibold text-[var(--foreground)]">ATS keyword analysis</p>
                 <p className="mt-1 text-sm text-[var(--muted)]">
-                  Include these naturally in your CV and cover letter.
+                  How your CV matches against required keywords from the job description.
                 </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {analysis.atsKeywords.map((k) => (
-                    <Tag key={k}>{k}</Tag>
-                  ))}
-                </div>
+                {analysis.atsKeywordsDetail && analysis.atsKeywordsDetail.length > 0 ? (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="pb-2 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                            Keyword
+                          </th>
+                          <th className="pb-2 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                            Found in CV
+                          </th>
+                          <th className="pb-2 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                            Section
+                          </th>
+                          <th className="pb-2 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                            Action needed
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysis.atsKeywordsDetail.map((kw) => (
+                          <tr key={kw.keyword} className="border-b border-[var(--border)]/50">
+                            <td className="py-2.5 pr-4">
+                              <Tag>{kw.keyword}</Tag>
+                            </td>
+                            <td className="py-2.5 pr-4">
+                              {kw.foundInCV ? (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500">
+                                  <span>&#10003;</span> Yes
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-400">
+                                  <span>&#10007;</span> Missing
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 pr-4 text-xs text-[var(--muted)]">
+                              {kw.foundInCV ? kw.suggestedPlacement : "---"}
+                            </td>
+                            <td className="py-2.5 text-xs text-[var(--muted)]">
+                              {kw.foundInCV ? (
+                                <span className="text-emerald-500">No action needed</span>
+                              ) : (
+                                <span>
+                                  Add to <span className="font-medium text-[var(--foreground)]">{kw.suggestedPlacement}</span>
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="mt-3 flex items-center gap-4 text-xs text-[var(--muted)]">
+                      <span>
+                        <span className="font-medium text-emerald-500">
+                          {analysis.atsKeywordsDetail.filter((k) => k.foundInCV).length}
+                        </span>{" "}
+                        / {analysis.atsKeywordsDetail.length} keywords matched
+                      </span>
+                      <span className="h-3 w-px bg-[var(--border)]" />
+                      <span>
+                        {analysis.atsKeywordsDetail.filter((k) => !k.foundInCV).length > 0
+                          ? `${analysis.atsKeywordsDetail.filter((k) => !k.foundInCV).length} keywords to add`
+                          : "All keywords covered"}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  /* Fallback to simple tags if detail not available */
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {analysis.atsKeywords.map((k) => (
+                      <Tag key={k}>{k}</Tag>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="card p-4">
@@ -342,7 +510,7 @@ export default function JobsPage() {
                 <ul className="mt-3 space-y-2 text-sm text-[var(--muted)]">
                   {analysis.auditChecklist?.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <span className="mt-0.5 text-[var(--success)]">✓</span>
+                      <span className="mt-0.5 text-[var(--success)]">&#10003;</span>
                       {item}
                     </li>
                   ))}
@@ -357,9 +525,99 @@ export default function JobsPage() {
                 </button>
                 <Link href="/tracker" style={{textDecoration: 'none'}}>
                   <MagBtn variant="secondary" size="md">
-                    View tracker →
+                    View tracker &rarr;
                   </MagBtn>
                 </Link>
+              </div>
+
+              {/* Cover Letter Generator */}
+              <div className="card p-4">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Cover letter generator</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Generate a tailored cover letter based on your CV and this job description.
+                </p>
+
+                {!coverLetter && !coverLetterLoading && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={handleGenerateCoverLetter}
+                      disabled={!form.company.trim() || !form.jobDescription.trim()}
+                      className="bg-transparent border-0 p-0"
+                    >
+                      <MagBtn
+                        variant="primary"
+                        size="md"
+                        style={
+                          !form.company.trim() || !form.jobDescription.trim()
+                            ? { opacity: 0.5, pointerEvents: "none" }
+                            : {}
+                        }
+                      >
+                        Generate cover letter
+                      </MagBtn>
+                    </button>
+                    {!form.company.trim() && (
+                      <p className="mt-2 text-xs text-rose-400">
+                        Enter a company name above to generate a cover letter.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {coverLetterLoading && (
+                  <div className="mt-4 flex items-center gap-2 text-sm text-[var(--muted)]">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+                    Generating your cover letter...
+                  </div>
+                )}
+
+                {coverLetter?.data?.coverLetter && (
+                  <div className="mt-4 space-y-3">
+                    <div className="relative rounded-lg border border-[var(--border)] bg-[var(--background)] p-4">
+                      <button
+                        type="button"
+                        onClick={handleCopyCoverLetter}
+                        className="absolute right-3 top-3 rounded px-2 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10 border border-[var(--border)]"
+                      >
+                        {coverLetterCopied ? "Copied!" : "Copy"}
+                      </button>
+                      <pre className="whitespace-pre-wrap text-sm text-[var(--foreground)] leading-relaxed pr-16">
+                        {coverLetter.data.coverLetter}
+                      </pre>
+                    </div>
+
+                    {coverLetter.data.assumptions && coverLetter.data.assumptions.length > 0 && (
+                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                        <p className="text-xs font-semibold text-[var(--foreground)]">
+                          Assumptions made (review these)
+                        </p>
+                        <ul className="mt-1.5 space-y-1">
+                          {coverLetter.data.assumptions.map((a, i) => (
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--muted)]">
+                              <span className="mt-0.5 text-amber-500">&#8226;</span>
+                              {a}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="rounded-lg border border-[var(--accent)]/20 bg-[var(--accent)]/5 p-3">
+                      <p className="text-xs text-[var(--muted)]">
+                        <span className="font-semibold text-[var(--foreground)]">Reminder:</span>{" "}
+                        {coverLetter.data.editReminder ||
+                          "Review and personalise this before sending. AI drafts the structure \u2014 you add the authenticity."}
+                      </p>
+                    </div>
+
+                    {coverLetter.data.wordCount && (
+                      <p className="text-xs text-[var(--muted)]">
+                        Word count: {coverLetter.data.wordCount}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : (

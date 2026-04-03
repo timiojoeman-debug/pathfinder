@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useState, useCallback } from "react";
+import { FormEvent, useState, useCallback, useMemo } from "react";
 import { setCvSummary } from "@/lib/store";
 import { MagBtn } from "@/components/ui/mag-btn";
 import { Tag, AnimBar } from "@/components/ui/typography";
+import { CV_BLUEPRINT } from "@/lib/methodology";
 
 type CvAnalysis = {
   fileName: string;
@@ -28,6 +29,50 @@ type ProjectIdea = {
   talkingPoints: string[];
 };
 
+type LinkedInFeedbackItem = {
+  issue: string;
+  severity: string;
+  methodologyBasis: string;
+  explanation: string;
+  currentState: string;
+  suggestedFix: string;
+  example: string;
+};
+
+type LinkedInResult = {
+  score: number;
+  feedback: LinkedInFeedbackItem[];
+  strengths: string[];
+  nextSteps: string[];
+  data: {
+    headlineScore: number;
+    aboutScore: number;
+    suggestedHeadline: string;
+    suggestedAboutOpener: string;
+  };
+};
+
+type VagueTerm = {
+  term: string;
+  rewrite: string;
+  count: number;
+};
+
+const VAGUE_TERMS = CV_BLUEPRINT.vagueTerms.flagWords;
+
+function detectVagueTerms(text: string): VagueTerm[] {
+  const lower = text.toLowerCase();
+  const found: VagueTerm[] = [];
+  for (const { term, rewrite } of VAGUE_TERMS) {
+    const regex = new RegExp(term.toLowerCase(), "g");
+    const matches = lower.match(regex);
+    if (matches && matches.length > 0) {
+      found.push({ term, rewrite, count: matches.length });
+    }
+  }
+  return found;
+}
+
 export default function CvPage() {
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [cvText, setCvText] = useState("");
@@ -36,6 +81,20 @@ export default function CvPage() {
   const [projects, setProjects] = useState<ProjectIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [projectsLoading, setProjectsLoading] = useState(false);
+
+  // LinkedIn Quick Check state
+  const [linkedinOpen, setLinkedinOpen] = useState(false);
+  const [linkedinHeadline, setLinkedinHeadline] = useState("");
+  const [linkedinAbout, setLinkedinAbout] = useState("");
+  const [linkedinLoading, setLinkedinLoading] = useState(false);
+  const [linkedinResult, setLinkedinResult] = useState<LinkedInResult | null>(null);
+  const [linkedinError, setLinkedinError] = useState("");
+
+  // Vague terms detection from raw CV preview
+  const vagueTermsFound = useMemo<VagueTerm[]>(() => {
+    if (!analysis?.rawPreview) return [];
+    return detectVagueTerms(analysis.rawPreview);
+  }, [analysis?.rawPreview]);
 
   const handleFile = useCallback((file: File | null) => {
     if (!file) return;
@@ -121,6 +180,34 @@ export default function CvPage() {
       setProjects(data.projects ?? []);
     } finally {
       setProjectsLoading(false);
+    }
+  }
+
+  async function handleLinkedinCheck() {
+    if (!linkedinHeadline.trim() && !linkedinAbout.trim()) return;
+    setLinkedinLoading(true);
+    setLinkedinError("");
+    setLinkedinResult(null);
+    try {
+      const res = await fetch("/api/linkedin/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          headline: linkedinHeadline.trim(),
+          aboutSection: linkedinAbout.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setLinkedinError(err.error || "LinkedIn check failed");
+        return;
+      }
+      const data = (await res.json()) as LinkedInResult;
+      setLinkedinResult(data);
+    } catch {
+      setLinkedinError("Network error. Please try again.");
+    } finally {
+      setLinkedinLoading(false);
     }
   }
 
@@ -259,6 +346,32 @@ export default function CvPage() {
                 </div>
               </div>
 
+              {/* Vague Terms Detection */}
+              {vagueTermsFound.length > 0 && (
+                <div className="card space-y-3 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">Vague terms detected</p>
+                    <Tag className="bg-[var(--c-50)]">{vagueTermsFound.length} found</Tag>
+                  </div>
+                  <p className="text-sm text-[var(--muted)]">
+                    These weak phrases reduce impact. Replace them with specific, active language from the CV Blueprint methodology.
+                  </p>
+                  <div className="space-y-2">
+                    {vagueTermsFound.map((v) => (
+                      <div key={v.term} className="rounded-lg bg-[var(--background)] p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-[var(--accent)]">&ldquo;{v.term}&rdquo;</span>
+                          {v.count > 1 && (
+                            <Tag>{v.count}x</Tag>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-[var(--muted)]">{v.rewrite}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {projects.length > 0 && (
                 <div className="card space-y-3 p-4">
                   <div className="flex items-center justify-between">
@@ -317,6 +430,192 @@ export default function CvPage() {
           )}
         </section>
       </div>
+
+      {/* LinkedIn Quick Check - Collapsible Section */}
+      <section className="card p-0 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setLinkedinOpen(!linkedinOpen)}
+          className="flex w-full items-center justify-between bg-transparent border-none cursor-pointer p-5 text-left"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-lg">in</span>
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)]">LinkedIn Quick Check</p>
+              <p className="mt-0.5 text-sm text-[var(--muted)]">
+                Paste your headline and about section for instant feedback
+              </p>
+            </div>
+          </div>
+          <span
+            className="text-[var(--muted)] transition-transform duration-200"
+            style={{ transform: linkedinOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          >
+            ▼
+          </span>
+        </button>
+
+        {linkedinOpen && (
+          <div className="border-t border-[var(--border)] p-5 space-y-4">
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="li-headline" className="block text-sm font-medium text-[var(--foreground)] mb-1">
+                  Headline
+                </label>
+                <input
+                  id="li-headline"
+                  type="text"
+                  className="input w-full"
+                  placeholder='e.g. Software Developer | React & Node.js'
+                  value={linkedinHeadline}
+                  onChange={(e) => setLinkedinHeadline(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="li-about" className="block text-sm font-medium text-[var(--foreground)] mb-1">
+                  About section
+                </label>
+                <textarea
+                  id="li-about"
+                  className="input w-full h-32 resize-y"
+                  placeholder="Paste your LinkedIn about section here..."
+                  value={linkedinAbout}
+                  onChange={(e) => setLinkedinAbout(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={linkedinLoading || (!linkedinHeadline.trim() && !linkedinAbout.trim())}
+              onClick={handleLinkedinCheck}
+              className="bg-transparent border-none p-0 text-left"
+            >
+              <MagBtn
+                variant="primary"
+                size="md"
+                style={{
+                  opacity: linkedinLoading || (!linkedinHeadline.trim() && !linkedinAbout.trim()) ? 0.5 : 1,
+                }}
+              >
+                {linkedinLoading ? "Checking..." : "Check LinkedIn"}
+              </MagBtn>
+            </button>
+
+            {linkedinError && (
+              <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+                {linkedinError}
+              </div>
+            )}
+
+            {linkedinResult && (
+              <div className="space-y-4 pt-2">
+                {/* Score */}
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      LinkedIn profile score
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 min-w-[120px]">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold tracking-tight text-[var(--c-900)]">
+                        {linkedinResult.score}
+                      </span>
+                      <span className="text-sm text-[var(--muted)]">/100</span>
+                    </div>
+                    <div className="w-full mt-1">
+                      <AnimBar width={linkedinResult.score} delay={100} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-scores */}
+                {linkedinResult.data && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg bg-[var(--background)] p-3">
+                      <p className="text-xs font-semibold text-[var(--muted)]">Headline score</p>
+                      <p className="text-lg font-bold text-[var(--foreground)]">
+                        {linkedinResult.data.headlineScore}/100
+                      </p>
+                      {linkedinResult.data.suggestedHeadline && (
+                        <p className="mt-1 text-sm text-[var(--accent)]">
+                          Suggested: {linkedinResult.data.suggestedHeadline}
+                        </p>
+                      )}
+                    </div>
+                    <div className="rounded-lg bg-[var(--background)] p-3">
+                      <p className="text-xs font-semibold text-[var(--muted)]">About score</p>
+                      <p className="text-lg font-bold text-[var(--foreground)]">
+                        {linkedinResult.data.aboutScore}/100
+                      </p>
+                      {linkedinResult.data.suggestedAboutOpener && (
+                        <p className="mt-1 text-sm text-[var(--accent)]">
+                          Opener: {linkedinResult.data.suggestedAboutOpener}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Issues Found */}
+                {linkedinResult.feedback?.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">Issues found</p>
+                    {linkedinResult.feedback.map((item, i) => (
+                      <div key={i} className="rounded-lg border border-[var(--border)] p-3">
+                        <div className="flex items-center gap-2">
+                          <Tag className={
+                            item.severity === "critical"
+                              ? "bg-red-500/10 text-red-400"
+                              : item.severity === "important"
+                              ? "bg-yellow-500/10 text-yellow-400"
+                              : "bg-[var(--c-50)]"
+                          }>
+                            {item.severity}
+                          </Tag>
+                          <p className="text-sm font-medium text-[var(--foreground)]">{item.issue}</p>
+                        </div>
+                        <p className="mt-1 text-sm text-[var(--muted)]">{item.explanation}</p>
+                        {item.suggestedFix && (
+                          <p className="mt-1 text-sm text-[var(--accent)]">Fix: {item.suggestedFix}</p>
+                        )}
+                        {item.example && (
+                          <p className="mt-1 text-sm italic text-[var(--muted)]">Example: {item.example}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Strengths */}
+                {linkedinResult.strengths?.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">Strengths</p>
+                    <ul className="space-y-1 text-sm text-[var(--muted)]">
+                      {linkedinResult.strengths.map((s, i) => (
+                        <li key={i}>• {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Next Steps */}
+                {linkedinResult.nextSteps?.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">Suggestions</p>
+                    <ul className="space-y-1 text-sm text-[var(--muted)]">
+                      {linkedinResult.nextSteps.map((s, i) => (
+                        <li key={i}>• {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

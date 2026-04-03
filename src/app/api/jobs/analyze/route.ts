@@ -80,9 +80,14 @@ export async function POST(req: Request) {
       (c) => (c.passed ? c.item : `${c.item}: ${c.fix}`)
     );
 
+    const criticalKeywordsDetail = (atsResult.criticalKeywords ?? []).slice(0, 10);
+
     return NextResponse.json({
       matchScore: matchResult.matchScore ?? fallback.score,
       atsKeywords: atsKeywords.length >= 3 ? atsKeywords : fallback.keywords,
+      atsKeywordsDetail: criticalKeywordsDetail.length >= 3
+        ? criticalKeywordsDetail
+        : fallback.keywords.map((k) => ({ keyword: k, foundInCV: false, suggestedPlacement: "Skills section" })),
       auditChecklist:
         auditChecklist.length > 0
           ? auditChecklist
@@ -97,6 +102,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       matchScore: fallback.score,
       atsKeywords: fallback.keywords,
+      atsKeywordsDetail: fallback.keywords.map((k) => ({ keyword: k, foundInCV: false, suggestedPlacement: "Skills section" })),
       auditChecklist: [
         "Key skills from the listing appear in your CV/ LinkedIn",
         "At least one project matches this role's tech stack",
