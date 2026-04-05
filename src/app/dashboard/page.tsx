@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useAppStore } from "@/lib/stores";
 import { MagBtn } from "@/components/ui/mag-btn";
 import { Tag } from "@/components/ui/typography";
+import ParticleField from "@/components/dashboard/ParticleField";
+import TiltCard from "@/components/dashboard/TiltCard";
+import PhasePipeline3D from "@/components/dashboard/PhasePipeline3D";
+import GlassCard from "@/components/dashboard/GlassCard";
 
 /* ─── Helpers ─── */
 
@@ -232,15 +236,42 @@ export default function DashboardPage() {
     { num: "06", label: "Application Tracker", href: "/tracker" },
   ];
 
+  /* ─── Phase pipeline data ─── */
+  const pipelinePhases = useMemo(
+    () => {
+      const phase1Done = !!direction.statement;
+      const phase2Done = !!cv.rawText;
+      const phase3Done = totalApps > 0;
+      const phase4Done = contacts.length > 0;
+      const phase5Done = stories.length > 0;
+      // Current = first incomplete phase
+      const doneFlags = [phase1Done, phase2Done, phase3Done, phase4Done, phase5Done, false];
+      const currentIdx = doneFlags.indexOf(false);
+      return [
+        { label: "Direction", href: "/direction", completed: phase1Done, current: currentIdx === 0 },
+        { label: "CV", href: "/cv", completed: phase2Done, current: currentIdx === 1 },
+        { label: "Jobs", href: "/jobs", completed: phase3Done, current: currentIdx === 2 },
+        { label: "Networking", href: "/networking", completed: phase4Done, current: currentIdx === 3 },
+        { label: "Interview", href: "/interview", completed: phase5Done, current: currentIdx === 4 },
+        { label: "Tracker", href: "/tracker", completed: false, current: currentIdx === 5 },
+      ];
+    },
+    [direction.statement, cv.rawText, totalApps, contacts.length, stories.length]
+  );
+
   return (
-    <div
-      style={{
-        maxWidth: "960px",
-        margin: "0 auto",
-        padding: "48px 24px 96px",
-        fontFamily: "var(--font-sans)",
-      }}
-    >
+    <>
+      <ParticleField />
+      <div
+        style={{
+          maxWidth: "960px",
+          margin: "0 auto",
+          padding: "48px 24px 96px",
+          fontFamily: "var(--font-sans)",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
       {/* ─── Welcome Header ─── */}
       <div style={{ marginBottom: "48px" }}>
         <h1
@@ -278,101 +309,94 @@ export default function DashboardPage() {
       </div>
 
       {/* ─── Next Best Action ─── */}
-      <div
-        className="nba-preview"
-        style={{
-          border: "1px solid var(--c-150)",
-          borderRadius: "12px",
-          padding: "20px 24px",
-          marginBottom: "32px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "16px",
-          flexWrap: "wrap",
-          background: "var(--c-50)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          <span
-            style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "var(--c-900)",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Next best action
-          </span>
-          <Tag>{nextAction.tag}</Tag>
-        </div>
-        <Link href={nextAction.href} style={{ textDecoration: "none" }}>
-          <MagBtn variant="primary" size="sm">
-            {nextAction.label} <span aria-hidden="true">&rarr;</span>
-          </MagBtn>
-        </Link>
-      </div>
-
-      {/* ─── Weekly Application Counter ─── */}
-      <div
-        style={{
-          border: "1px solid var(--border)",
-          borderRadius: "12px",
-          padding: "20px 24px",
-          marginBottom: "32px",
-          background: "var(--background)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: weeklyWarning ? "10px" : 0 }}>
-          <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>
-            Applications this week:
-          </span>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "20px",
-              fontWeight: 700,
-              color: "var(--c-900)",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {appsThisWeek}
-          </span>
-          <span style={{ fontSize: "13px", color: "var(--muted)" }}>/ 3 target</span>
-        </div>
-        {/* Progress bar */}
+      <GlassCard style={{ marginBottom: "32px" }}>
         <div
+          className="nba-preview"
           style={{
-            height: "4px",
-            borderRadius: "2px",
-            background: "var(--c-100)",
-            overflow: "hidden",
-            marginBottom: weeklyWarning ? "12px" : 0,
+            borderRadius: "12px",
+            padding: "20px 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "16px",
+            flexWrap: "wrap",
           }}
         >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <span
+              style={{
+                fontSize: "14px",
+                fontWeight: 600,
+                color: "var(--c-900)",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              Next best action
+            </span>
+            <Tag>{nextAction.tag}</Tag>
+          </div>
+          <Link href={nextAction.href} style={{ textDecoration: "none" }}>
+            <MagBtn variant="primary" size="sm">
+              {nextAction.label} <span aria-hidden="true">&rarr;</span>
+            </MagBtn>
+          </Link>
+        </div>
+      </GlassCard>
+
+      {/* ─── Weekly Application Counter ─── */}
+      <GlassCard style={{ marginBottom: "32px" }}>
+        <div style={{ padding: "20px 24px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: weeklyWarning ? "10px" : 0 }}>
+            <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>
+              Applications this week:
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "20px",
+                fontWeight: 700,
+                color: "var(--c-900)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {appsThisWeek}
+            </span>
+            <span style={{ fontSize: "13px", color: "var(--muted)" }}>/ 3 target</span>
+          </div>
+          {/* Progress bar */}
           <div
             style={{
-              height: "100%",
+              height: "4px",
               borderRadius: "2px",
-              background: appsThisWeek > 5 ? "var(--c-400)" : "var(--c-900)",
-              width: `${Math.min((appsThisWeek / 3) * 100, 100)}%`,
-              transition: "width 0.4s ease",
-            }}
-          />
-        </div>
-        {weeklyWarning && (
-          <p
-            style={{
-              fontSize: "12.5px",
-              color: appsThisWeek > 5 ? "var(--c-500)" : "var(--muted)",
-              lineHeight: 1.5,
-              fontStyle: "italic",
+              background: "var(--c-100)",
+              overflow: "hidden",
+              marginBottom: weeklyWarning ? "12px" : 0,
             }}
           >
-            {weeklyWarning}
-          </p>
-        )}
-      </div>
+            <div
+              style={{
+                height: "100%",
+                borderRadius: "2px",
+                background: appsThisWeek > 5 ? "var(--c-400)" : "var(--c-900)",
+                width: `${Math.min((appsThisWeek / 3) * 100, 100)}%`,
+                transition: "width 0.4s ease",
+              }}
+            />
+          </div>
+          {weeklyWarning && (
+            <p
+              style={{
+                fontSize: "12.5px",
+                color: appsThisWeek > 5 ? "var(--c-500)" : "var(--muted)",
+                lineHeight: 1.5,
+                fontStyle: "italic",
+              }}
+            >
+              {weeklyWarning}
+            </p>
+          )}
+        </div>
+      </GlassCard>
 
       {/* ─── Four Pillars ─── */}
       <div
@@ -383,26 +407,34 @@ export default function DashboardPage() {
           marginBottom: "40px",
         }}
       >
-        <PillarCard number="01" title="Clarity" href="/direction">
-          <StatRow label="Direction" value={directionStatus} accent={!!direction.statement} />
-          <StatRow label="Score" value={directionScore} />
-        </PillarCard>
+        <TiltCard>
+          <PillarCard number="01" title="Clarity" href="/direction">
+            <StatRow label="Direction" value={directionStatus} accent={!!direction.statement} />
+            <StatRow label="Score" value={directionScore} />
+          </PillarCard>
+        </TiltCard>
 
-        <PillarCard number="02" title="Positioning" href="/cv">
-          <StatRow label="CV score" value={cvScore} />
-          <StatRow label="CV" value={linkedinStatus} />
-        </PillarCard>
+        <TiltCard>
+          <PillarCard number="02" title="Positioning" href="/cv">
+            <StatRow label="CV score" value={cvScore} />
+            <StatRow label="CV" value={linkedinStatus} />
+          </PillarCard>
+        </TiltCard>
 
-        <PillarCard number="03" title="Networking" href="/networking">
-          <StatRow label="Contacts" value={contacts.length} />
-          <StatRow label="Coffee chats" value={coffeeChatsDone} />
-          <StatRow label="Messages sent" value={messagesSent} />
-        </PillarCard>
+        <TiltCard>
+          <PillarCard number="03" title="Networking" href="/networking">
+            <StatRow label="Contacts" value={contacts.length} />
+            <StatRow label="Coffee chats" value={coffeeChatsDone} />
+            <StatRow label="Messages sent" value={messagesSent} />
+          </PillarCard>
+        </TiltCard>
 
-        <PillarCard number="04" title="Consistency" href="/tracker">
-          <StatRow label="This week" value={`${appsThisWeek} / 3`} accent={appsThisWeek >= 2} />
-          <StatRow label="Total apps" value={totalApps} />
-        </PillarCard>
+        <TiltCard>
+          <PillarCard number="04" title="Consistency" href="/tracker">
+            <StatRow label="This week" value={`${appsThisWeek} / 3`} accent={appsThisWeek >= 2} />
+            <StatRow label="Total apps" value={totalApps} />
+          </PillarCard>
+        </TiltCard>
       </div>
 
       {/* ─── Friday Review Prompt ─── */}
@@ -441,6 +473,9 @@ export default function DashboardPage() {
           </MagBtn>
         </div>
       )}
+
+      {/* ─── Phase Pipeline 3D ─── */}
+      <PhasePipeline3D phases={pipelinePhases} />
 
       {/* ─── Quick Links ─── */}
       <div style={{ marginBottom: "16px" }}>
@@ -503,5 +538,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

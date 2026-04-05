@@ -216,7 +216,8 @@ export default function CvPage() {
     : 72;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="page-container overflow-safe">
+      <div className="flex flex-col gap-8">
       <section>
         <p className="section-label">Phase 2</p>
         <h1 className="section-title">CV Optimizer</h1>
@@ -456,7 +457,7 @@ export default function CvPage() {
         </button>
 
         {linkedinOpen && (
-          <div className="border-t border-[var(--border)] p-5 space-y-4">
+          <div className="border-t border-[var(--border)] p-5 space-y-4 overflow-x-hidden">
             <div className="space-y-3">
               <div>
                 <label htmlFor="li-headline" className="block text-sm font-medium text-[var(--foreground)] mb-1">
@@ -616,6 +617,7 @@ export default function CvPage() {
           </div>
         )}
       </section>
+    </div>
     </div>
   );
 }

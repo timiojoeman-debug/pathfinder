@@ -28,7 +28,7 @@ export function Problem() {
       >
         <Heading sub="You're not a bad candidate. You just don't have infrastructure.">The current process doesn't work</Heading>
       </div>
-      <div className="problem-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+      <div className="problem-grid grid grid-cols-1 sm:grid-cols-3" style={{ gap: "12px" }}>
         {problems.map((p, i) => (
           <GlowCard key={i} delay={i * 100}>
             <Mono className="block mb-5 text-[28px] font-light text-[var(--c-150)]">{p.num}</Mono>
@@ -146,10 +146,8 @@ export function HowItWorks() {
         />
 
         <div
-          className="phase-grid"
+          className="phase-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(6, 1fr)",
             gap: "8px",
             position: "relative",
             zIndex: 1,
@@ -358,8 +356,8 @@ export function SocialProof() {
           // @ts-ignore
           if (ref) ref.current = el;
         }}
-        className="stats-row"
-        style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "48px" }}
+        className="stats-row grid grid-cols-1 sm:grid-cols-3"
+        style={{ gap: "12px", marginBottom: "48px" }}
       >
         {[
           { value: `${v1}×`, label: "Interview callbacks" },
@@ -388,7 +386,7 @@ export function SocialProof() {
         ))}
       </div>
 
-      <div className="testimonials-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+      <div className="testimonials-grid grid grid-cols-1 sm:grid-cols-3" style={{ gap: "12px" }}>
         {testimonials.map((t, i) => (
           <GlowCard key={i} delay={i * 100}>
             <p style={{ fontSize: "14.5px", color: "var(--c-600)", lineHeight: 1.65, marginBottom: "24px" }}>"{t.quote}"</p>

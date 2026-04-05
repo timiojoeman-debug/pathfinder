@@ -275,7 +275,8 @@ export default function NetworkingPage() {
   const hasGeneratedOutreach = !!(outreach || startupResult);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="page-container overflow-safe">
+      <div className="flex flex-col gap-8">
       {/* ===== FEATURE 1: Networking Education Card ===== */}
       {!educationDismissed && (
         <section className="card relative border-[var(--accent)] bg-[var(--accent)]/5 p-6">
@@ -338,7 +339,7 @@ export default function NetworkingPage() {
           <div className="mt-4 space-y-4">
             <div>
               <p className="text-sm font-medium text-[var(--foreground)]">Find Recruiters</p>
-              <code className="mt-1 block rounded bg-[var(--background)] p-2 text-xs text-[var(--muted)]">
+              <code className="mt-1 block rounded bg-[var(--background)] p-2 text-xs text-[var(--muted)] overflow-x-auto" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>
                 site:linkedin.com/in &quot;recruiter&quot; OR &quot;talent acquisition&quot; &quot;[COMPANY]&quot; &quot;[CITY/REGION]&quot;
               </code>
               <p className="mt-1 text-xs text-[var(--muted)]">
@@ -347,7 +348,7 @@ export default function NetworkingPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-[var(--foreground)]">Find Hiring Managers</p>
-              <code className="mt-1 block rounded bg-[var(--background)] p-2 text-xs text-[var(--muted)]">
+              <code className="mt-1 block rounded bg-[var(--background)] p-2 text-xs text-[var(--muted)] overflow-x-auto" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>
                 site:linkedin.com/in &quot;engineering manager&quot; OR &quot;team lead&quot; OR &quot;director&quot; &quot;[COMPANY]&quot; &quot;[TEAM/DOMAIN]&quot;
               </code>
               <p className="mt-1 text-xs text-[var(--muted)]">
@@ -356,7 +357,7 @@ export default function NetworkingPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-[var(--foreground)]">Find Peers / Alumni</p>
-              <code className="mt-1 block rounded bg-[var(--background)] p-2 text-xs text-[var(--muted)]">
+              <code className="mt-1 block rounded bg-[var(--background)] p-2 text-xs text-[var(--muted)] overflow-x-auto" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>
                 site:linkedin.com/in &quot;software engineer&quot; OR &quot;SWE intern&quot; &quot;[COMPANY]&quot; &quot;[YOUR UNIVERSITY]&quot;
               </code>
               <p className="mt-1 text-xs text-[var(--muted)]">
@@ -365,7 +366,7 @@ export default function NetworkingPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-[var(--foreground)]">Find Startup Founders / CTOs</p>
-              <code className="mt-1 block rounded bg-[var(--background)] p-2 text-xs text-[var(--muted)]">
+              <code className="mt-1 block rounded bg-[var(--background)] p-2 text-xs text-[var(--muted)] overflow-x-auto" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>
                 site:linkedin.com/in &quot;founder&quot; OR &quot;CTO&quot; OR &quot;co-founder&quot; &quot;[COMPANY]&quot; &quot;[INDUSTRY]&quot;
               </code>
               <p className="mt-1 text-xs text-[var(--muted)]">
@@ -538,11 +539,11 @@ export default function NetworkingPage() {
 
             <form onSubmit={handleOutreachGenerate} className="mt-4 flex flex-col gap-3">
               {/* ===== FEATURE 4: Startup founder added as 4th outreach type ===== */}
-              <div className="flex flex-wrap gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
                 {(["recruiter", "hiringManager", "peer", "startupFounder"] as const).map((t) => (
                   <label
                     key={t}
-                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 min-h-[44px] text-sm transition ${
                       outreachType === t
                         ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
                         : "border-[var(--border)]"
@@ -562,7 +563,7 @@ export default function NetworkingPage() {
                   </label>
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <input
                   className="input"
                   placeholder="Recipient name"
@@ -576,7 +577,7 @@ export default function NetworkingPage() {
                   onChange={(e) => setForm((f) => ({ ...f, senderName: e.target.value }))}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <input
                   className="input"
                   placeholder="Target role"
@@ -742,9 +743,9 @@ export default function NetworkingPage() {
               <p className="mt-1 text-xs text-[var(--muted)]">
                 The 4-step follow-up system that keeps the relationship warm without being annoying.
               </p>
-              <div className="mt-3 flex items-center gap-0 overflow-x-auto">
+              <div className="mt-3 grid grid-cols-2 gap-4 sm:flex sm:items-center sm:gap-0 sm:overflow-x-auto">
                 {FOLLOW_UP_CADENCE.map((step, i) => (
-                  <div key={step.step} className="flex items-center">
+                  <div key={step.step} className="flex flex-col items-center sm:flex-row">
                     <div className="flex flex-col items-center text-center min-w-[120px]">
                       <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
                         i === 0 ? "bg-[var(--accent)] text-white" : "bg-[var(--accent)]/15 text-[var(--accent)]"
@@ -756,7 +757,7 @@ export default function NetworkingPage() {
                       <p className="mt-1 text-[10px] text-[var(--muted)] max-w-[110px]">{step.description}</p>
                     </div>
                     {i < FOLLOW_UP_CADENCE.length - 1 && (
-                      <div className="mx-1 h-px w-6 bg-[var(--border)] shrink-0" />
+                      <div className="hidden sm:block mx-1 h-px w-6 bg-[var(--border)] shrink-0" />
                     )}
                   </div>
                 ))}
@@ -845,6 +846,7 @@ export default function NetworkingPage() {
           </aside>
         </div>
       </div>
+    </div>
     </div>
   );
 }

@@ -88,7 +88,7 @@ function ProblemRow({
           </Tag>
         </div>
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 flex-wrap gap-2">
         <a
           href={getLeetcodeUrl(p.leetcodeSlug)}
           target="_blank"
@@ -128,7 +128,7 @@ function StarRatingInput({
             key={n}
             type="button"
             onClick={() => onChange(n)}
-            className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm font-medium transition ${
+            className={`flex h-11 w-11 sm:h-8 sm:w-8 items-center justify-center rounded-md border text-sm font-medium transition ${
               n <= value
                 ? "border-[var(--accent)] bg-[var(--accent)]/20 text-[var(--accent)]"
                 : "border-[var(--border)] text-[var(--muted)]"
@@ -388,7 +388,8 @@ export default function InterviewPage() {
   const categories = leetList === "75" ? NEETCODE_75_CATEGORIES : NEETCODE_150_CATEGORIES;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="page-container overflow-safe">
+      <div className="flex flex-col gap-8">
       <section>
         <p className="section-label">Phase 5</p>
         <h1 className="section-title">Interview Preparation</h1>
@@ -397,20 +398,21 @@ export default function InterviewPage() {
         </p>
       </section>
 
-      <div className="flex gap-1 rounded-lg border border-[var(--border)] p-1">
+      <div className="flex gap-1 rounded-lg border border-[var(--border)] p-1 overflow-x-auto" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setActiveTab(t.id)}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${
+            className={`flex shrink-0 flex-1 items-center justify-center gap-2 rounded-md px-3 sm:px-4 py-2 text-sm font-medium whitespace-nowrap transition min-h-[44px] ${
               activeTab === t.id
                 ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
                 : "text-[var(--muted)] hover:bg-[var(--border)]/50"
             }`}
           >
             <span>{t.icon}</span>
-            {t.label}
+            <span className="hidden sm:inline">{t.label}</span>
+            <span className="sm:hidden">{t.label.split(" ")[0]}</span>
           </button>
         ))}
       </div>
@@ -1018,6 +1020,7 @@ export default function InterviewPage() {
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }

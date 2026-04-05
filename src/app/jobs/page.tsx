@@ -210,7 +210,8 @@ export default function JobsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="page-container overflow-safe">
+      <div className="flex flex-col gap-8">
       <section>
         <p className="section-label">Phase 3</p>
         <h1 className="section-title">Internships & Job Descriptions</h1>
@@ -231,7 +232,7 @@ export default function JobsPage() {
             </p>
 
             <form className="mt-5 flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-[var(--foreground)]">Job title</label>
                   <input
@@ -582,7 +583,7 @@ export default function JobsPage() {
                       >
                         {coverLetterCopied ? "Copied!" : "Copy"}
                       </button>
-                      <pre className="whitespace-pre-wrap text-sm text-[var(--foreground)] leading-relaxed pr-16">
+                      <pre className="whitespace-pre-wrap text-sm text-[var(--foreground)] leading-relaxed pr-16" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>
                         {coverLetter.data.coverLetter}
                       </pre>
                     </div>
@@ -638,6 +639,7 @@ export default function JobsPage() {
           for more accurate compatibility scores.
         </div>
       )}
+    </div>
     </div>
   );
 }

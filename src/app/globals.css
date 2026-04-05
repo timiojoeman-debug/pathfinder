@@ -266,3 +266,31 @@ canvas { display: block; }
 .input::placeholder {
   color: var(--c-400);
 }
+
+/* ─── PAGE CONTAINER — used by layout.tsx main or individual pages ─── */
+@layer base {
+  .page-container {
+    max-width: 1060px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 88px 24px 64px;
+  }
+  @media (min-width: 640px) {
+    .page-container {
+      padding: 88px 32px 64px;
+    }
+  }
+
+  /* Card base */
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--background);
+  }
+
+  /* Ensure no horizontal overflow */
+  .overflow-safe {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+}

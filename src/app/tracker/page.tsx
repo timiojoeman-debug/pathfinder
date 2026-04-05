@@ -200,7 +200,8 @@ export default function TrackerPage() {
   }, [applications]);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="page-container overflow-safe">
+      <div className="flex flex-col gap-8">
       <section>
         <p className="section-label">Phase 6</p>
         <h1 className="section-title">Application Pipeline & Consistency</h1>
@@ -284,104 +285,196 @@ export default function TrackerPage() {
                 ) : (
                   stageApps.map((a) => (
                     <div key={a.id} className="space-y-1">
-                      <div className="card flex flex-wrap items-center gap-3 p-3 sm:flex-nowrap">
-                        <div className="flex shrink-0 items-center gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => moveUpDown(a.id, "up", stage.id)}
-                            className="rounded p-1 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
-                            aria-label="Move up"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveUpDown(a.id, "down", stage.id)}
-                            className="rounded p-1 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
-                            aria-label="Move down"
-                          >
-                            ↓
-                          </button>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-[var(--foreground)]">{a.jobTitle}</p>
-                          <p className="text-xs text-[var(--muted)]">{a.company}</p>
-                          <p className="text-xs text-[var(--success)]">Match: {a.matchScore}%</p>
-                        </div>
-                        <select
-                          value={a.stage}
-                          onChange={(e) => moveCard(a.id, e.target.value as PipelineStageId)}
-                          className="input w-36 py-1.5 text-xs"
-                        >
-                          {PIPELINE_STAGES.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.label}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="date"
-                          value={a.reminderDate || ""}
-                          onChange={(e) => updateReminder(a.id, e.target.value)}
-                          className="input w-36 py-1.5 text-xs"
-                        />
-
-                        {/* Diagnose button for rejected/ghosted */}
-                        {isRejectionStage && !a.rejectionTiming && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDiagnosingId(diagnosingId === a.id ? null : a.id)
-                            }
-                            className="rounded bg-amber-500/15 px-2 py-1 text-xs font-medium text-amber-400 hover:bg-amber-500/25"
-                          >
-                            Diagnose
-                          </button>
-                        )}
-
-                        {removeConfirmId === a.id ? (
-                          <span className="flex items-center gap-1">
-                            <span className="text-xs text-[var(--muted)]">Remove?</span>
+                      <div className="card p-3">
+                        {/* Row 1: Title + company + match score */}
+                        <div className="flex items-start gap-3">
+                          <div className="hidden sm:flex shrink-0 items-center gap-0.5">
                             <button
                               type="button"
-                              onClick={() => removeCard(a.id)}
-                              className="rounded bg-rose-500 px-2 py-0.5 text-xs text-white hover:bg-rose-600"
+                              onClick={() => moveUpDown(a.id, "up", stage.id)}
+                              className="rounded p-1 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+                              aria-label="Move up"
                             >
-                              Yes
+                              ↑
                             </button>
                             <button
                               type="button"
-                              onClick={() => setRemoveConfirmId(null)}
-                              className="rounded px-2 py-0.5 text-xs text-[var(--muted)] hover:bg-[var(--border)]"
+                              onClick={() => moveUpDown(a.id, "down", stage.id)}
+                              className="rounded p-1 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+                              aria-label="Move down"
                             >
-                              No
+                              ↓
                             </button>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setRemoveConfirmId(a.id)}
-                            className="rounded p-1 text-[var(--muted)] hover:bg-rose-500/10 hover:text-rose-400"
-                            aria-label="Remove"
-                          >
-                            ×
-                          </button>
-                        )}
-                        {a.jobUrl && (
-                          <a
-                            href={a.jobUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-[var(--accent)] hover:underline"
-                          >
-                            Open
-                          </a>
-                        )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-[var(--foreground)]">{a.jobTitle}</p>
+                            <p className="text-xs text-[var(--muted)]">{a.company}</p>
+                            <p className="text-xs text-[var(--success)]">Match: {a.matchScore}%</p>
+                          </div>
+                          {/* Desktop-only inline controls */}
+                          <div className="hidden sm:flex items-center gap-2">
+                            <select
+                              value={a.stage}
+                              onChange={(e) => moveCard(a.id, e.target.value as PipelineStageId)}
+                              className="input w-36 py-1.5 text-xs"
+                            >
+                              {PIPELINE_STAGES.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.label}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="date"
+                              value={a.reminderDate || ""}
+                              onChange={(e) => updateReminder(a.id, e.target.value)}
+                              className="input w-36 py-1.5 text-xs"
+                            />
+                            {isRejectionStage && !a.rejectionTiming && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDiagnosingId(diagnosingId === a.id ? null : a.id)
+                                }
+                                className="rounded bg-amber-500/15 px-2 py-1 text-xs font-medium text-amber-400 hover:bg-amber-500/25"
+                              >
+                                Diagnose
+                              </button>
+                            )}
+                            {removeConfirmId === a.id ? (
+                              <span className="flex items-center gap-1">
+                                <span className="text-xs text-[var(--muted)]">Remove?</span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeCard(a.id)}
+                                  className="rounded bg-rose-500 px-2 py-0.5 text-xs text-white hover:bg-rose-600"
+                                >
+                                  Yes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setRemoveConfirmId(null)}
+                                  className="rounded px-2 py-0.5 text-xs text-[var(--muted)] hover:bg-[var(--border)]"
+                                >
+                                  No
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setRemoveConfirmId(a.id)}
+                                className="rounded p-1 text-[var(--muted)] hover:bg-rose-500/10 hover:text-rose-400"
+                                aria-label="Remove"
+                              >
+                                ×
+                              </button>
+                            )}
+                            {a.jobUrl && (
+                              <a
+                                href={a.jobUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-[var(--accent)] hover:underline"
+                              >
+                                Open
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        {/* Mobile-only stacked controls */}
+                        <div className="sm:hidden mt-3 space-y-2">
+                          <div className="grid grid-cols-1 gap-2">
+                            <select
+                              value={a.stage}
+                              onChange={(e) => moveCard(a.id, e.target.value as PipelineStageId)}
+                              className="input w-full py-2 text-xs"
+                            >
+                              {PIPELINE_STAGES.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.label}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="date"
+                              value={a.reminderDate || ""}
+                              onChange={(e) => updateReminder(a.id, e.target.value)}
+                              className="input w-full py-2 text-xs"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => moveUpDown(a.id, "up", stage.id)}
+                              className="rounded p-1.5 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+                              aria-label="Move up"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveUpDown(a.id, "down", stage.id)}
+                              className="rounded p-1.5 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+                              aria-label="Move down"
+                            >
+                              ↓
+                            </button>
+                            {isRejectionStage && !a.rejectionTiming && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDiagnosingId(diagnosingId === a.id ? null : a.id)
+                                }
+                                className="rounded bg-amber-500/15 px-2 py-1 text-xs font-medium text-amber-400 hover:bg-amber-500/25"
+                              >
+                                Diagnose
+                              </button>
+                            )}
+                            {removeConfirmId === a.id ? (
+                              <span className="flex items-center gap-1">
+                                <span className="text-xs text-[var(--muted)]">Remove?</span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeCard(a.id)}
+                                  className="rounded bg-rose-500 px-2 py-0.5 text-xs text-white hover:bg-rose-600"
+                                >
+                                  Yes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setRemoveConfirmId(null)}
+                                  className="rounded px-2 py-0.5 text-xs text-[var(--muted)] hover:bg-[var(--border)]"
+                                >
+                                  No
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setRemoveConfirmId(a.id)}
+                                className="rounded p-1 text-[var(--muted)] hover:bg-rose-500/10 hover:text-rose-400"
+                                aria-label="Remove"
+                              >
+                                ×
+                              </button>
+                            )}
+                            {a.jobUrl && (
+                              <a
+                                href={a.jobUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-[var(--accent)] hover:underline"
+                              >
+                                Open
+                              </a>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Rejection diagnosis inline form */}
                       {isRejectionStage && diagnosingId === a.id && !a.rejectionTiming && (
-                        <div className="ml-10 rounded-md border border-[var(--border)] bg-[var(--background)] p-3">
+                        <div className="ml-0 sm:ml-10 rounded-md border border-[var(--border)] bg-[var(--background)] p-3">
                           <p className="mb-2 text-xs font-medium text-[var(--foreground)]">
                             When did you hear back?
                           </p>
@@ -402,7 +495,7 @@ export default function TrackerPage() {
 
                       {/* Show stored diagnosis result */}
                       {isRejectionStage && a.rejectionTiming && (
-                        <div className="ml-10 rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2">
+                        <div className="ml-0 sm:ml-10 rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2">
                           <p className="text-xs text-blue-400">
                             <span className="font-medium">
                               {REJECTION_TIMING_OPTIONS.find(
@@ -434,6 +527,7 @@ export default function TrackerPage() {
           </p>
         </div>
       )}
+    </div>
     </div>
   );
 }
