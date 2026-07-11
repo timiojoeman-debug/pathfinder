@@ -227,6 +227,3 @@ create trigger users_updated_at before update on users for each row execute func
 create trigger profiles_updated_at before update on profiles for each row execute function update_updated_at();
 create trigger applications_updated_at before update on applications for each row execute function update_updated_at();
 create trigger leetcode_updated_at before update on leetcode_progress for each row execute function update_updated_at();
-
--- Cross-device client working-state snapshot (see migration 0002)
-alter table profiles add column if not exists client_state jsonb default '{}';

@@ -1,10 +1,12 @@
-import { createServerClient } from '@/lib/supabase/client';
+import { getServerDb } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import type { ApplicationStatus } from '@/types/database';
 
 export async function getApplications(userId: string) {
-  const db = createServerClient();
+  const db = getServerDb();
+  if (!db) return [];
   const { data, error } = await db.from('applications').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-  if (error) { console.error('getApplications error:', error); return []; }
+  if (error) { logger.error('getApplications failed', { userId, error: error.message }); return []; }
   return data || [];
 }
 
@@ -19,7 +21,8 @@ export async function createApplication(userId: string, app: {
   appliedDate?: string;
   notes?: string;
 }) {
-  const db = createServerClient();
+  const db = getServerDb();
+  if (!db) return null;
   const { data, error } = await db.from('applications').insert({
     user_id: userId,
     ...app,
@@ -27,20 +30,22 @@ export async function createApplication(userId: string, app: {
     ats_keywords: app.atsKeywords ?? [],
     applied_date: app.appliedDate || null,
   }).select().single();
-  if (error) { console.error('createApplication error:', error); return null; }
+  if (error) { logger.error('createApplication failed', { userId, error: error.message }); return null; }
   return data;
 }
 
 export async function updateApplicationStatus(userId: string, appId: string, status: ApplicationStatus) {
-  const db = createServerClient();
+  const db = getServerDb();
+  if (!db) return false;
   const { error } = await db.from('applications').update({ status }).eq('id', appId).eq('user_id', userId);
-  if (error) { console.error('updateApplicationStatus error:', error); return false; }
+  if (error) { logger.error('updateApplicationStatus failed', { userId, error: error.message }); return false; }
   return true;
 }
 
 export async function deleteApplication(userId: string, appId: string) {
-  const db = createServerClient();
+  const db = getServerDb();
+  if (!db) return false;
   const { error } = await db.from('applications').delete().eq('id', appId).eq('user_id', userId);
-  if (error) { console.error('deleteApplication error:', error); return false; }
+  if (error) { logger.error('deleteApplication failed', { userId, error: error.message }); return false; }
   return true;
 }

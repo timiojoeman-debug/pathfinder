@@ -1,14 +1,17 @@
-import { createServerClient } from '@/lib/supabase/client';
+import { getServerDb } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 
 export async function getCV(userId: string) {
-  const db = createServerClient();
+  const db = getServerDb();
+  if (!db) return null;
   const { data, error } = await db.from('cvs').select('*').eq('user_id', userId).eq('is_master', true).single();
-  if (error) { console.error('getCV error:', error); return null; }
+  if (error) { logger.error('getCV failed', { userId, error: error.message }); return null; }
   return data;
 }
 
 export async function saveParsedCV(userId: string, parsedData: Record<string, unknown>, analysisResults: Record<string, unknown>) {
-  const db = createServerClient();
+  const db = getServerDb();
+  if (!db) return false;
   // Upsert: update if master CV exists, else insert
   const existing = await getCV(userId);
   if (existing) {
@@ -16,8 +19,8 @@ export async function saveParsedCV(userId: string, parsedData: Record<string, un
       parsed_data: parsedData,
       analysis_results: analysisResults,
       updated_at: new Date().toISOString(),
-    }).eq('id', existing.id);
-    if (error) { console.error('saveParsedCV update error:', error); return false; }
+    }).eq('id', existing.id).eq('user_id', userId);
+    if (error) { logger.error('saveParsedCV update failed', { userId, error: error.message }); return false; }
   } else {
     const { error } = await db.from('cvs').insert({
       user_id: userId,
@@ -25,7 +28,7 @@ export async function saveParsedCV(userId: string, parsedData: Record<string, un
       analysis_results: analysisResults,
       is_master: true,
     });
-    if (error) { console.error('saveParsedCV insert error:', error); return false; }
+    if (error) { logger.error('saveParsedCV insert failed', { userId, error: error.message }); return false; }
   }
   return true;
 }

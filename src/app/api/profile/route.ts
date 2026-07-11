@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/client";
+import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 /**
  * Career Profile persistence. The client posts its derived profile snapshot +
@@ -22,6 +22,8 @@ interface SnapshotBody {
   weaknesses?: string[];
   cvHistory?: number[];
   events?: { type: string; phase: string; label: string; meta?: Record<string, unknown>; ts: number }[];
+  /** The full client working-state slice (localStorage cache) for cross-device restore. */
+  clientState?: Record<string, unknown>;
 }
 
 const VALID_PHASES = ["new", "direction_set", "cv_uploaded", "cv_analyzed", "applying", "networking", "interviewing"];
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
   }
 
   // No Supabase configured → local-first, report cleanly.
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  if (!isSupabaseConfigured()) {
     return NextResponse.json({ persisted: false, reason: "storage-not-configured" });
   }
 
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
         strengths: body.strengths ?? [],
         weaknesses: body.weaknesses ?? [],
         cv_analysis_history: body.cvHistory ?? [],
+        client_state: body.clientState ?? {},
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },
@@ -96,15 +99,15 @@ export async function GET() {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    return NextResponse.json({ profile: null, reason: "storage-not-configured" });
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ profile: null, clientState: null, reason: "storage-not-configured" });
   }
 
   try {
     const db = createAdminClient();
     const { data: profile } = await db
       .from("profiles")
-      .select("direction_statement, direction_score, user_phase, progress_snapshot, strengths, weaknesses, cv_analysis_history")
+      .select("direction_statement, direction_score, user_phase, progress_snapshot, strengths, weaknesses, cv_analysis_history, client_state")
       .eq("user_id", user.userId)
       .single();
     const { data: events } = await db
@@ -113,8 +116,9 @@ export async function GET() {
       .eq("user_id", user.userId)
       .order("created_at", { ascending: false })
       .limit(50);
-    return NextResponse.json({ profile: profile ?? null, events: events ?? [] });
+    const clientState = (profile?.client_state && Object.keys(profile.client_state).length) ? profile.client_state : null;
+    return NextResponse.json({ profile: profile ?? null, clientState, events: events ?? [] });
   } catch {
-    return NextResponse.json({ profile: null, reason: "read-failed" });
+    return NextResponse.json({ profile: null, clientState: null, reason: "read-failed" });
   }
 }

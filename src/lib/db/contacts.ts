@@ -1,9 +1,11 @@
-import { createServerClient } from '@/lib/supabase/client';
+import { getServerDb } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 
 export async function getContacts(userId: string) {
-  const db = createServerClient();
+  const db = getServerDb();
+  if (!db) return [];
   const { data, error } = await db.from('networking_contacts').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-  if (error) { console.error('getContacts error:', error); return []; }
+  if (error) { logger.error('getContacts failed', { userId, error: error.message }); return []; }
   return data || [];
 }
 
@@ -15,18 +17,20 @@ export async function createContact(userId: string, contact: {
   linkedin_url?: string;
   email?: string;
 }) {
-  const db = createServerClient();
+  const db = getServerDb();
+  if (!db) return null;
   const { data, error } = await db.from('networking_contacts').insert({
     user_id: userId,
     ...contact,
   }).select().single();
-  if (error) { console.error('createContact error:', error); return null; }
+  if (error) { logger.error('createContact failed', { userId, error: error.message }); return null; }
   return data;
 }
 
 export async function updateContact(userId: string, contactId: string, updates: Record<string, unknown>) {
-  const db = createServerClient();
+  const db = getServerDb();
+  if (!db) return false;
   const { error } = await db.from('networking_contacts').update(updates).eq('id', contactId).eq('user_id', userId);
-  if (error) { console.error('updateContact error:', error); return false; }
+  if (error) { logger.error('updateContact failed', { userId, error: error.message }); return false; }
   return true;
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { classifyRoute, hit, LIMITS } from '@/lib/rate-limit';
 
 const PUBLIC_API_ROUTES = [
   '/api/auth/login',
@@ -8,7 +9,7 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/logout',
   '/api/health',
   // Intel console is a logged-out surface; this route analyses request-body
-  // text only (no user-specific server data). Rate-limit before production.
+  // text only (no user-specific server data).
   '/api/intel/analyze',
 ];
 
@@ -16,10 +17,39 @@ function isPublicRoute(pathname: string): boolean {
   return PUBLIC_API_ROUTES.some(route => pathname === route);
 }
 
+/** Best-effort client IP from the standard proxy headers. */
+function clientIp(request: NextRequest): string {
+  const fwd = request.headers.get('x-forwarded-for');
+  if (fwd) return fwd.split(',')[0].trim();
+  return request.headers.get('x-real-ip') ?? 'unknown';
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (!pathname.startsWith('/api/') || isPublicRoute(pathname)) {
+  if (!pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
+  // ── Rate limiting (applies to every /api/* request, before auth) ──
+  const bucket = classifyRoute(pathname);
+  const { limit, windowMs } = LIMITS[bucket];
+  const rl = hit(`${clientIp(request)}:${bucket}`, limit, windowMs);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests — slow down and try again shortly.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(rl.retryAfter),
+          'RateLimit-Limit': String(rl.limit),
+          'RateLimit-Remaining': String(rl.remaining),
+        },
+      },
+    );
+  }
+
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 

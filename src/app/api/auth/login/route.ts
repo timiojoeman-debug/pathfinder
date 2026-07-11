@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/client';
+import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { verifyPassword, setAuthCookies } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -10,6 +11,13 @@ const loginSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Sign-in is not available yet — the database is not configured. You can still explore PathFinder without an account.' },
+        { status: 503 }
+      );
+    }
+
     const body = await req.json();
     const parsed = loginSchema.safeParse(body);
 
@@ -54,7 +62,7 @@ export async function POST(req: Request) {
       user: { id: user.id, email: user.email, role: user.role },
     });
   } catch (e) {
-    console.error('Login error:', e);
+    logger.error('Login failed', { error: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
