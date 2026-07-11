@@ -1,10 +1,38 @@
 import { createServerClient } from '@/lib/supabase/client';
+import { AIError } from '@/lib/ai';
+import { renderKnowledgeBlock, type Domain } from '@/lib/knowledge';
 import type {
   UserContext, MentorResponse, InputQuality, MentorFeedbackItem,
   UserPhase, ApplicationStatus, CVParsedData, CVAnalysisHistoryEntry
 } from '@/types/database';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+// Maps a mentor feature to a knowledge domain so the educational layer can
+// inject relevant, citation-bearing TechTalk knowledge into the prompt.
+const FEATURE_DOMAIN: Record<string, Domain> = {
+  'direction-builder': 'direction',
+  'direction-explore': 'direction',
+  'direction-score': 'direction',
+  'cv-analysis': 'cv',
+  'ats-audit': 'cv',
+  'match-score': 'cv',
+  'project-builder': 'cv',
+  'linkedin-check': 'networking',
+  'cover-letter': 'cv',
+  'outreach-recruiter': 'networking',
+  'outreach-hiring-manager': 'networking',
+  'outreach-peer': 'networking',
+  'startup-outreach': 'networking',
+  'coffee-chat-prep': 'networking',
+  'follow-up': 'networking',
+  'referral-package': 'networking',
+  'star-builder': 'interview',
+  'interview-questions': 'interview',
+  'company-briefing': 'interview',
+  'post-interview': 'interview',
+  'rejection-diagnosis': 'interview',
+};
 
 // Feature configurations
 const FEATURE_CONFIG: Record<string, { temperature: number; methodologyType: 'static' | 'rag' }> = {
@@ -244,6 +272,16 @@ function buildMentorPrompt(params: {
     contextParts.push('PREVIOUS INTERACTIONS:', previousInteractions, '');
   }
 
+  // Educational contract — PathFinder educates while executing (never a search engine).
+  contextParts.push(`EDUCATIONAL CONTRACT (apply to every piece of feedback):
+- ACTION: say exactly what to do.
+- EXPLANATION: say why, grounded in the methodology above.
+- LEARNING: name the underlying concept/principle the student should internalise.
+- SOURCE: attribute the idea to the TechTalk methodology by name; never invent stats.
+- REFLECTION: end with a question that helps the student adapt the idea to their situation.
+Teach the principle, not just the fix — the student should leave understanding why.`);
+  contextParts.push('');
+
   // Cross-phase rules
   contextParts.push(`CROSS-PHASE RULES:
 - If the student has a direction statement, reference it in your advice.
@@ -260,9 +298,14 @@ function buildMentorPrompt(params: {
 
 // Step 5: Call OpenAI
 async function callOpenAI(systemPrompt: string, userMessage: string, temperature: number): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not set');
+    throw new AIError(
+      'No OpenAI API key configured. Set OPENAI_API_KEY in .env.local.',
+      0,
+      false,
+      false
+    );
   }
 
   const res = await fetch(OPENAI_API_URL, {
@@ -283,7 +326,33 @@ async function callOpenAI(systemPrompt: string, userMessage: string, temperature
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`OpenAI API error ${res.status}: ${errText}`);
+    const status = res.status;
+
+    if (status === 401) {
+      throw new AIError('Invalid API key. Check your OPENAI_API_KEY in .env.local.', 401, false, false);
+    }
+
+    if (status === 429) {
+      const retryAfterHeader = res.headers.get('Retry-After');
+      const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : undefined;
+      throw new AIError(
+        'AI is busy. Please try again in a moment.',
+        429,
+        true,
+        true,
+        Number.isNaN(retryAfter) ? undefined : retryAfter
+      );
+    }
+
+    if (status === 413 || errText.toLowerCase().includes('context length') || errText.toLowerCase().includes('maximum context') || errText.toLowerCase().includes('too many tokens')) {
+      throw new AIError('Input too long. Try with a shorter CV or job description.', status, false);
+    }
+
+    if (status === 500 || status === 503) {
+      throw new AIError('AI service temporarily unavailable. Please try again.', status, true);
+    }
+
+    throw new AIError(`OpenAI API error ${status}: ${errText}`, status, false);
   }
 
   const data = await res.json();
@@ -365,8 +434,12 @@ export async function runMentorEngine(params: {
     userContext = await buildUserContext(userId);
   }
 
-  // Step 2: Retrieve methodology
-  const methodology = await retrieveMethodology(feature, userMessage);
+  // Step 2: Retrieve methodology, supplemented by the structured knowledge layer.
+  // The knowledge block is compressed-first and citation-bearing, so even when
+  // RAG is unavailable (static features, no DB) the mentor still teaches and cites.
+  const ragMethodology = await retrieveMethodology(feature, userMessage);
+  const knowledgeBlock = renderKnowledgeBlock(userMessage, FEATURE_DOMAIN[feature]);
+  const methodology = [ragMethodology, knowledgeBlock].filter(Boolean).join('\n\n');
 
   // Step 3: Get previous interactions
   const previousInteractions = skipContext ? '' : await getPreviousInteractions(userId, feature);
@@ -446,7 +519,7 @@ export async function runMentorLocal(params: {
   const systemPrompt = buildMentorPrompt({
     feature: params.feature,
     featureSystemPrompt: params.featurePrompt,
-    methodology: '',
+    methodology: renderKnowledgeBlock(params.userMessage, FEATURE_DOMAIN[params.feature]),
     userContext,
   });
 

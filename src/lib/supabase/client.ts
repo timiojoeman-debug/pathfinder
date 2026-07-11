@@ -6,11 +6,17 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 // Client-side Supabase client (uses anon key, respects RLS)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Server-side Supabase client (uses service role key, bypasses RLS)
-export function createServerClient() {
+// Server-side Supabase client with service role (bypasses RLS).
+// Use ONLY for admin operations: user creation, schema migrations, embedding ingestion.
+export function createAdminClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
   }
   return createClient(supabaseUrl, serviceRoleKey);
+}
+
+// Server-side client that respects RLS. Use for all user-scoped queries.
+export function createServerClient() {
+  return createClient(supabaseUrl, supabaseAnonKey);
 }

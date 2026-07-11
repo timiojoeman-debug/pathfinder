@@ -1,5 +1,7 @@
 "use client";
 
+import { useAppStore } from "@/lib/stores";
+
 const STORAGE_KEYS = {
   applications: "pathfinder-applications",
   internships: "pathfinder-internships",
@@ -85,9 +87,27 @@ export function getApplications(): Application[] {
   }
 }
 
+// Map the canonical lib/store Application shape into the app-store read-model.
+function mapAppToLocal(a: Application) {
+  return {
+    id: a.id,
+    company: a.company,
+    role: a.jobTitle,
+    jobUrl: a.jobUrl,
+    jobDescription: a.jobDescription,
+    status: a.stage,
+    matchScore: a.matchScore,
+    atsKeywords: a.atsKeywords ?? [],
+    appliedDate: a.appliedDate,
+    rejectionTiming: a.rejectionTiming,
+  };
+}
+
 export function setApplications(apps: Application[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEYS.applications, JSON.stringify(apps));
+  // Mirror into the reactive read-model the dashboard subscribes to.
+  useAppStore.setState({ applications: apps.map(mapAppToLocal) as never });
 }
 
 export function getCvSummary(): string {
@@ -98,6 +118,33 @@ export function getCvSummary(): string {
 export function setCvSummary(summary: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEYS.cvSummary, summary);
+  useAppStore.setState((s) => ({ cv: { ...s.cv, rawText: summary } }));
+}
+
+/**
+ * Push the canonical lib/store data into the app-store read-model.
+ * Called once on app load so the dashboard reflects existing data even
+ * for entities written before this session.
+ */
+export function hydrateReadModel() {
+  if (typeof window === "undefined") return;
+  const apps = getApplications();
+  const dir = getDirection();
+  const cvS = getCvSummary();
+  useAppStore.setState((s) => ({
+    applications: apps.map(mapAppToLocal) as never,
+    direction: {
+      ...s.direction,
+      statement: dir.statement ?? s.direction.statement,
+      score: dir.score ? Number(dir.score) : s.direction.score,
+      preferences: {
+        ...s.direction.preferences,
+        industry: dir.industry ?? s.direction.preferences.industry,
+        roleType: dir.roleType ?? s.direction.preferences.roleType,
+      },
+    },
+    cv: { ...s.cv, rawText: cvS || s.cv.rawText },
+  }));
 }
 
 export function getDirection(): Record<string, string> {
@@ -112,7 +159,22 @@ export function getDirection(): Record<string, string> {
 
 export function setDirection(d: Record<string, string>) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.direction, JSON.stringify(d));
+  // Merge so single-field writes (e.g. an onboarding statement/score) survive
+  // later partial updates from the direction wizard.
+  const merged = { ...getDirection(), ...d };
+  localStorage.setItem(STORAGE_KEYS.direction, JSON.stringify(merged));
+  useAppStore.setState((s) => ({
+    direction: {
+      ...s.direction,
+      statement: merged.statement ?? s.direction.statement,
+      score: merged.score ? Number(merged.score) : s.direction.score,
+      preferences: {
+        ...s.direction.preferences,
+        industry: merged.industry ?? s.direction.preferences.industry,
+        roleType: merged.roleType ?? s.direction.preferences.roleType,
+      },
+    },
+  }));
 }
 
 export type LeetcodeState = {

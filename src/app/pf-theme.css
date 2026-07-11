@@ -1,0 +1,154 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PathFinder redesign — warm-paper design system from the Claude Design
+   handoff. Tokens are scoped to .pf so the marketing landing keeps its
+   own system. Paper = data-theme "light", Night = data-theme "dark".
+   ═══════════════════════════════════════════════════════════════════ */
+
+.pf {
+  --bg: #EBE2D1;
+  --bg2: #E3D8C3;
+  --panel: #F4EEE0;
+  --panelSolid: #F7F1E4;
+  --panel2: #EEE6D5;
+  --panel3: #E7DCC8;
+  --fg: #382C20;
+  --muted: #6C5D4B;
+  --faint: #A08E77;
+  --line: rgba(56, 44, 32, .14);
+  --line2: rgba(56, 44, 32, .07);
+  --lineStrong: rgba(56, 44, 32, .26);
+  --accent: #B0673C;
+  --accentText: #8f4f2b;
+  --accentSoft: rgba(176, 103, 60, .12);
+  --strong: #6E7B3F;
+  --warn: #B0862A;
+  --risk: #B5392B;
+  --active: #3E6C86;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --rim: inset 0 1px 0 rgba(255, 255, 255, .5);
+  --scrim: rgba(30, 22, 12, .5);
+}
+
+[data-theme="dark"] .pf {
+  --bg: #221A12;
+  --bg2: #191209;
+  --panel: rgba(240, 230, 210, .04);
+  --panelSolid: #2B2115;
+  --panel2: rgba(240, 230, 210, .06);
+  --panel3: rgba(240, 230, 210, .09);
+  --fg: #ECE2CF;
+  --muted: #B6A88F;
+  --faint: #7E6F58;
+  --line: rgba(236, 226, 207, .13);
+  --line2: rgba(236, 226, 207, .06);
+  --lineStrong: rgba(236, 226, 207, .24);
+  --accent: #D2894C;
+  --accentText: #E3A469;
+  --accentSoft: rgba(210, 137, 76, .15);
+  --strong: #A7BE73;
+  --warn: #D6A94A;
+  --risk: #E0715F;
+  --active: #7FB1CE;
+  --rim: inset 0 1px 0 rgba(255, 255, 255, .06);
+  --scrim: rgba(10, 7, 3, .6);
+}
+
+/* ── Landing-only tokens (dot grid, grain, globe blending) ── */
+.pf-landing {
+  --dot: rgba(56, 44, 32, .22);
+  --accentGlow: rgba(176, 103, 60, .22);
+  --grainOpacity: .06;
+}
+[data-theme="dark"] .pf-landing {
+  --dot: rgba(236, 226, 207, .16);
+  --accentGlow: rgba(210, 137, 76, .3);
+  --grainOpacity: .05;
+}
+
+/* ── Motion ── */
+@keyframes pfUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes pfGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pfPulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+@keyframes pfSpin { to { transform: rotate(360deg); } }
+@keyframes pfScan { from { width: 0%; } to { width: 100%; } }
+@keyframes pfFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pfSlideIn { from { transform: translateX(46px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes pfFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes pfMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+.pf-anim-up { animation: pfUp .25s var(--ease) both; }
+.pf-anim-grow { transform-origin: left; animation: pfGrow .8s var(--ease) both; }
+.pf-anim-pulse { animation: pfPulse 2.4s ease-in-out infinite; }
+.pf-anim-spin { animation: pfSpin .9s linear infinite; }
+.pf-anim-scan { animation: pfScan 1.4s var(--ease) both; }
+.pf-anim-fade { animation: pfFade .25s var(--ease) both; }
+.pf-anim-slidein { animation: pfSlideIn .32s var(--ease) both; }
+
+/* ── Scroll reveal ── */
+.pf [data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity .6s var(--ease), transform .6s var(--ease);
+}
+.pf [data-reveal][data-in] {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf [data-reveal] { opacity: 1 !important; transform: none !important; }
+  .pf-anim-up, .pf-anim-grow, .pf-anim-pulse, .pf-anim-spin, .pf-anim-scan, .pf-anim-fade, .pf-anim-slidein { animation: none !important; }
+}
+
+/* ── Base ── */
+.pf {
+  background: var(--bg2);
+  color: var(--fg);
+  font-family: var(--font-sans), 'Manrope', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background .5s var(--ease), color .5s var(--ease);
+}
+.pf ::selection { background: var(--accentSoft); }
+
+.pf-mono { font-family: var(--font-mono), 'JetBrains Mono', monospace; }
+
+/* Kicker — the small uppercase mono label used across every panel */
+.pf-kicker {
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* Panel card */
+.pf-panel {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+}
+
+/* Interactive rows / links */
+.pf-hover-row { transition: background .16s var(--ease); }
+.pf-hover-row:hover { background: var(--panel2); }
+.pf-hover-border { transition: border-color .18s var(--ease); }
+.pf-hover-border:hover { border-color: var(--accent); }
+
+/* Inputs */
+.pf-input {
+  border: 1px solid var(--lineStrong);
+  border-radius: 11px;
+  background: var(--panelSolid);
+  color: var(--fg);
+  font-size: 13.5px;
+  font-family: var(--font-sans), 'Manrope', sans-serif;
+  outline: none;
+}
+.pf-input::placeholder { color: var(--faint); }
+.pf-input:focus { border-color: var(--accent); }
+
+.pf button { font-family: var(--font-sans), 'Manrope', sans-serif; }
+
+/* Scrollbars (subtle, warm) */
+.pf ::-webkit-scrollbar { width: 10px; height: 10px; }
+.pf ::-webkit-scrollbar-thumb { background: var(--panel3); border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
+.pf ::-webkit-scrollbar-track { background: transparent; }

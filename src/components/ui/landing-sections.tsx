@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useParallax, useCountUp, useReveal } from "./hooks";
 import { GlowCard } from "./glow-card";
+import { Tilt } from "./tilt";
 import { Heading, Mono, Section } from "./typography";
 import { I } from "./icons";
 import { MagBtn } from "./mag-btn";
@@ -154,31 +156,33 @@ export function HowItWorks() {
           }}
         >
           {phases.map((p, i) => (
-            <GlowCard key={i} delay={i * 70} style={{ background: "var(--c-150)" }}>
-              <div style={{ textAlign: "center" }}>
-                <div
-                  className="phase-icon"
-                  style={{
-                    width: "44px",
-                    height: "44px",
-                    borderRadius: "12px",
-                    border: "1px solid var(--c-150)",
-                    margin: "0 auto 16px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "var(--c-500)",
-                    background: "var(--c-white)",
-                    transition: "all 0.3s cubic-bezier(0.25,1,0.5,1)",
-                  }}
-                >
-                  {p.icon}
+            <Tilt key={i} max={11}>
+              <GlowCard delay={i * 70} style={{ background: "var(--c-150)", height: "100%" }}>
+                <div style={{ textAlign: "center" }}>
+                  <div
+                    className="phase-icon"
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "12px",
+                      border: "1px solid var(--c-150)",
+                      margin: "0 auto 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--c-500)",
+                      background: "var(--c-white)",
+                      transition: "all 0.3s cubic-bezier(0.25,1,0.5,1)",
+                    }}
+                  >
+                    {p.icon}
+                  </div>
+                  <Mono className="block mb-2 text-[9.5px]">Phase {i + 1}</Mono>
+                  <h3 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--c-900)", marginBottom: "5px" }}>{p.title}</h3>
+                  <p style={{ fontSize: "12px", color: "var(--c-400)", lineHeight: 1.45, margin: 0 }}>{p.desc}</p>
                 </div>
-                <Mono className="block mb-2 text-[9.5px]">Phase {i + 1}</Mono>
-                <h3 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--c-900)", marginBottom: "5px" }}>{p.title}</h3>
-                <p style={{ fontSize: "12px", color: "var(--c-400)", lineHeight: 1.45, margin: 0 }}>{p.desc}</p>
-              </div>
-            </GlowCard>
+              </GlowCard>
+            </Tilt>
           ))}
         </div>
       </div>
@@ -300,27 +304,29 @@ export function Features() {
       </div>
       <div className="features-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
         {features.map((f, i) => (
-          <GlowCard key={i} delay={i * 90}>
-            <div
-              className="feature-icon"
-              style={{
-                width: "44px",
-                height: "44px",
-                borderRadius: "12px",
-                border: "1px solid var(--c-150)",
-                marginBottom: "24px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--c-500)",
-                transition: "all 0.3s cubic-bezier(0.25,1,0.5,1)",
-              }}
-            >
-              {f.icon}
-            </div>
-            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--c-900)", marginBottom: "10px", letterSpacing: "-0.02em" }}>{f.title}</h3>
-            <p style={{ fontSize: "14px", color: "var(--c-400)", lineHeight: 1.65, margin: 0 }}>{f.desc}</p>
-          </GlowCard>
+          <Tilt key={i} max={7}>
+            <GlowCard delay={i * 90} style={{ height: "100%" }}>
+              <div
+                className="feature-icon"
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--c-150)",
+                  marginBottom: "24px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--c-500)",
+                  transition: "all 0.3s cubic-bezier(0.25,1,0.5,1)",
+                }}
+              >
+                {f.icon}
+              </div>
+              <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--c-900)", marginBottom: "10px", letterSpacing: "-0.02em" }}>{f.title}</h3>
+              <p style={{ fontSize: "14px", color: "var(--c-400)", lineHeight: 1.65, margin: 0 }}>{f.desc}</p>
+            </GlowCard>
+          </Tilt>
         ))}
       </div>
     </Section>
@@ -392,7 +398,7 @@ export function SocialProof() {
             <p style={{ fontSize: "14.5px", color: "var(--c-600)", lineHeight: 1.65, marginBottom: "24px" }}>"{t.quote}"</p>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", borderTop: "1px solid var(--c-100)", paddingTop: "18px" }}>
               <div
-                className="avatar"
+                className="avatar avatar-badge"
                 style={{
                   width: "36px",
                   height: "36px",
@@ -471,9 +477,11 @@ export function FinalCTA() {
         >
           Join the students who replaced anxiety with a system that works.
         </p>
-        <MagBtn variant="primary" size="lg">
-          Get Started <I.Arrow />
-        </MagBtn>
+        <Link href="/start" style={{ textDecoration: "none" }}>
+          <MagBtn variant="primary" size="lg">
+            Get your baseline <I.Arrow />
+          </MagBtn>
+        </Link>
         <p style={{ fontSize: "12px", color: "var(--c-300)", marginTop: "16px", fontWeight: 500 }}>
           Free during early access · No credit card
         </p>
@@ -502,6 +510,7 @@ export function Footer() {
     >
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         <div
+          className="footer-logo"
           style={{
             width: "20px",
             height: "20px",

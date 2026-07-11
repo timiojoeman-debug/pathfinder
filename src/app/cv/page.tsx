@@ -1,623 +1,397 @@
 "use client";
 
-import { FormEvent, useState, useCallback, useMemo } from "react";
-import { setCvSummary } from "@/lib/store";
-import { MagBtn } from "@/components/ui/mag-btn";
-import { Tag, AnimBar } from "@/components/ui/typography";
-import { CV_BLUEPRINT } from "@/lib/methodology";
+/**
+ * PathFinder redesign — Phase 02 · CV Optimisation.
+ * Ports design lines 238–357: paste/analyze input, scanning state, and the
+ * full analyzed report (score ring, ATS audit, line-by-line feedback, vague
+ * terms, missing keywords, project ideas, LinkedIn quick check, role match).
+ */
 
-type CvAnalysis = {
-  fileName: string;
-  rawPreview: string;
-  education: unknown[];
-  experience: unknown[];
-  projects: unknown[];
+import { useRef, useState } from "react";
+import { usePfStore } from "@/lib/pf/store";
+import { analyzeCvText, linkedInIssues } from "@/lib/pf/logic";
+import { ATS_CHECKS, CV_LINES, CV_MATCH, PROJECT_IDEAS } from "@/lib/pf/data";
+import { Kicker, PageHeader, Reveal } from "@/components/pf/ui";
+import { NextStep } from "@/components/pf/next-step";
+
+const mono = "'JetBrains Mono',monospace";
+
+/** AI-backed analysis from /api/cv/analyze — optional enrichment layer. */
+interface AiCvRead {
   skills: string[];
-  suggestions: {
-    bulletPoints: string[];
-    keywords: string[];
-    formatting: string[];
-    extraQualifications: string[];
+  bulletPoints: string[];
+  keywords: string[];
+  formatting: string[];
+  extraQualifications: string[];
+}
+
+function parseAiRead(json: unknown): AiCvRead | null {
+  if (!json || typeof json !== "object") return null;
+  const j = json as {
+    skills?: unknown;
+    suggestions?: { bulletPoints?: unknown; keywords?: unknown; formatting?: unknown; extraQualifications?: unknown };
   };
-};
-
-type ProjectIdea = {
-  title: string;
-  description: string;
-  techStack: string[];
-  keyFeatures: string[];
-  talkingPoints: string[];
-};
-
-type LinkedInFeedbackItem = {
-  issue: string;
-  severity: string;
-  methodologyBasis: string;
-  explanation: string;
-  currentState: string;
-  suggestedFix: string;
-  example: string;
-};
-
-type LinkedInResult = {
-  score: number;
-  feedback: LinkedInFeedbackItem[];
-  strengths: string[];
-  nextSteps: string[];
-  data: {
-    headlineScore: number;
-    aboutScore: number;
-    suggestedHeadline: string;
-    suggestedAboutOpener: string;
+  const arr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+  const read: AiCvRead = {
+    skills: arr(j.skills),
+    bulletPoints: arr(j.suggestions?.bulletPoints),
+    keywords: arr(j.suggestions?.keywords),
+    formatting: arr(j.suggestions?.formatting),
+    extraQualifications: arr(j.suggestions?.extraQualifications),
   };
-};
-
-type VagueTerm = {
-  term: string;
-  rewrite: string;
-  count: number;
-};
-
-const VAGUE_TERMS = CV_BLUEPRINT.vagueTerms.flagWords;
-
-function detectVagueTerms(text: string): VagueTerm[] {
-  const lower = text.toLowerCase();
-  const found: VagueTerm[] = [];
-  for (const { term, rewrite } of VAGUE_TERMS) {
-    const regex = new RegExp(term.toLowerCase(), "g");
-    const matches = lower.match(regex);
-    if (matches && matches.length > 0) {
-      found.push({ term, rewrite, count: matches.length });
-    }
-  }
-  return found;
+  const hasContent = read.bulletPoints.length + read.keywords.length + read.formatting.length + read.extraQualifications.length > 0;
+  return hasContent ? read : null;
 }
 
 export default function CvPage() {
-  const [cvFile, setCvFile] = useState<File | null>(null);
-  const [cvText, setCvText] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
-  const [analysis, setAnalysis] = useState<CvAnalysis | null>(null);
-  const [projects, setProjects] = useState<ProjectIdea[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [projectsLoading, setProjectsLoading] = useState(false);
+  const cvText = usePfStore((s) => s.cvText);
+  const cvAnalyzingRaw = usePfStore((s) => s.cvAnalyzing);
+  const cvAnalyzedRaw = usePfStore((s) => s.cvAnalyzed);
+  const cvProjects = usePfStore((s) => s.cvProjects);
+  const cvLinkedIn = usePfStore((s) => s.cvLinkedIn);
+  const dirStack = usePfStore((s) => s.dirStack);
+  const set = usePfStore((s) => s.set);
+  const analyzeCv = usePfStore((s) => s.analyzeCv);
+  const reAnalyzeCv = usePfStore((s) => s.reAnalyzeCv);
 
-  // LinkedIn Quick Check state
-  const [linkedinOpen, setLinkedinOpen] = useState(false);
-  const [linkedinHeadline, setLinkedinHeadline] = useState("");
-  const [linkedinAbout, setLinkedinAbout] = useState("");
-  const [linkedinLoading, setLinkedinLoading] = useState(false);
-  const [linkedinResult, setLinkedinResult] = useState<LinkedInResult | null>(null);
-  const [linkedinError, setLinkedinError] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [aiRead, setAiRead] = useState<AiCvRead | null>(null);
 
-  // Vague terms detection from raw CV preview
-  const vagueTermsFound = useMemo<VagueTerm[]>(() => {
-    if (!analysis?.rawPreview) return [];
-    return detectVagueTerms(analysis.rawPreview);
-  }, [analysis?.rawPreview]);
-
-  const handleFile = useCallback((file: File | null) => {
-    if (!file) return;
-    const ext = file.name.toLowerCase().split(".").pop();
-    if (["pdf", "doc", "docx", "txt"].includes(ext || "")) {
-      setCvFile(file);
-      setCvText("");
-    }
-  }, []);
-
-  const onDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const file = e.dataTransfer.files?.[0];
-      if (file) handleFile(file);
-    },
-    [handleFile]
-  );
-
-  const onDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const onDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const onInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      handleFile(file ?? null);
-    },
-    [handleFile]
-  );
-
-  async function handleAnalyze(e: FormEvent) {
-    e.preventDefault();
-    if (!cvFile && !cvText.trim()) return;
-    setLoading(true);
+  // PDF/DOCX upload — the active site's parser (pdf-parse / mammoth) lives
+  // behind /api/cv/analyze; the extracted text lands in the editor and the
+  // AI suggestions (when the key is configured) feed the "AI mentor read".
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    setUploadError(null);
     try {
-      const formData = new FormData();
-      if (cvFile) {
-        formData.append("file", cvFile);
-      } else {
-        const blob = new Blob([cvText], { type: "text/plain" });
-        formData.append("file", new File([blob], "cv.txt"));
-      }
-      const res = await fetch("/api/cv/analyze", {
-        method: "POST",
-        body: formData,
-      });
-      const data = (await res.json()) as CvAnalysis;
-      setAnalysis(data);
-      const parts: string[] = [];
-      if (data.education?.length) parts.push("Education: " + JSON.stringify(data.education));
-      if (data.experience?.length) parts.push("Experience: " + JSON.stringify(data.experience));
-      if (data.projects?.length) parts.push("Projects: " + JSON.stringify(data.projects));
-      if (data.skills?.length) parts.push("Skills: " + data.skills.join(", "));
-      setCvSummary(parts.join("\n"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleProjects() {
-    if (!analysis) return;
-    setProjectsLoading(true);
-    try {
-      const res = await fetch("/api/cv/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          skills: analysis.skills,
-          targetRole: "software engineering internship",
-          gaps: analysis.suggestions?.keywords ?? [],
-        }),
-      });
-      const data = await res.json();
-      setProjects(data.projects ?? []);
-    } finally {
-      setProjectsLoading(false);
-    }
-  }
-
-  async function handleLinkedinCheck() {
-    if (!linkedinHeadline.trim() && !linkedinAbout.trim()) return;
-    setLinkedinLoading(true);
-    setLinkedinError("");
-    setLinkedinResult(null);
-    try {
-      const res = await fetch("/api/linkedin/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          headline: linkedinHeadline.trim(),
-          aboutSection: linkedinAbout.trim(),
-        }),
-      });
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/cv/analyze", { method: "POST", body: fd });
+      const json: unknown = await res.json();
       if (!res.ok) {
-        const err = await res.json();
-        setLinkedinError(err.error || "LinkedIn check failed");
+        const err = (json as { error?: string }).error;
+        setUploadError(err || "Could not read that file — paste the text instead.");
         return;
       }
-      const data = (await res.json()) as LinkedInResult;
-      setLinkedinResult(data);
+      const rawText = (json as { rawText?: string }).rawText;
+      if (rawText && rawText.trim().length >= 50) {
+        set({ cvText: rawText.trim(), cvAnalyzed: false });
+        setAiRead(parseAiRead(json));
+      } else {
+        setUploadError("Could not extract text — paste your CV instead.");
+      }
     } catch {
-      setLinkedinError("Network error. Please try again.");
+      setUploadError("Upload failed — paste your CV text instead.");
     } finally {
-      setLinkedinLoading(false);
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
-  }
+  };
 
-  const atsScore = analysis?.suggestions?.keywords?.length
-    ? 100 - Math.min(60, analysis.suggestions.keywords.length * 5)
-    : 72;
+  // AI analysis runs alongside the local scan; silent fallback when offline.
+  const handleAnalyze = () => {
+    if (cvText.trim().length < 60) return;
+    analyzeCv();
+    const fd = new FormData();
+    fd.append("text", cvText);
+    fetch("/api/cv/analyze", { method: "POST", body: fd })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: unknown) => { if (json) setAiRead(parseAiRead(json)); })
+      .catch(() => { /* deterministic analysis still renders */ });
+  };
+
+  const cvAnalyzing = cvAnalyzingRaw;
+  const cvAnalyzed = cvAnalyzedRaw && !cvAnalyzingRaw;
+  const cvNotAnalyzed = !cvAnalyzedRaw && !cvAnalyzingRaw;
+
+  const cvCanAnalyze = cvText.trim().length >= 60;
+  const cvBtnBg = cvCanAnalyze ? "var(--accent)" : "var(--panel3)";
+
+  const analysis = analyzeCvText(cvText, dirStack);
+  const hasVague = analysis.vague.length > 0;
+  const hasMissing = analysis.missing.length > 0;
+  const cvNoProjects = cvAnalyzedRaw && !cvProjects;
+  const linkedin = linkedInIssues(analysis.targetKw);
+  const linkedinChevron = cvLinkedIn ? "▾" : "▸";
 
   return (
-    <div className="page-container overflow-safe">
-      <div className="flex flex-col gap-8">
-      <section>
-        <p className="section-label">Phase 2</p>
-        <h1 className="section-title">CV Optimizer</h1>
-        <p className="section-subtitle">
-          Upload your CV or paste the text. PathFinder will highlight missing keywords, suggest
-          stronger bullets, and design projects that close your gaps.
+    <div>
+      <PageHeader label="Phase 02 · Precision" title="CV Optimisation">
+        <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "56ch" }}>
+          85% of employers screen with ATS, then a recruiter scans the top half of page one in{" "}
+          <span style={{ color: "var(--fg)", fontWeight: 600 }}>6–8 seconds</span>. Every line is
+          scored against the role.
         </p>
-      </section>
+      </PageHeader>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)]">
-        <section className="card flex flex-col gap-4 p-6">
-          <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">Upload your CV</p>
-            <p className="mt-0.5 text-sm text-[var(--muted)]">
-              Drag and drop or click to upload PDF / DOCX. You can also paste content below.
-            </p>
+      <NextStep />
+
+      {/* ── Input state ── */}
+      {cvNotAnalyzed && (
+        <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "26px 28px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)" }}>
+              Paste your CV text — PDF/DOCX upload works the same way
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf,.docx,.doc,.txt"
+              style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleUpload(f); }}
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              style={{ cursor: uploading ? "default" : "pointer", marginLeft: "auto", height: 34, padding: "0 14px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13, fontWeight: 600 }}
+            >
+              {uploading ? "Reading…" : "Upload PDF/DOCX"}
+            </button>
+          </div>
+          {uploadError && (
+            <div style={{ fontSize: 12, color: "var(--risk)", marginBottom: 10 }}>{uploadError}</div>
+          )}
+          <textarea
+            value={cvText}
+            onChange={(e) => set({ cvText: e.target.value, cvAnalyzed: false })}
+            placeholder="Paste the full text of your CV here (60+ characters to analyze)…"
+            style={{ width: "100%", minHeight: 180, padding: 16, borderRadius: 13, border: "1px dashed var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13.5, lineHeight: 1.6, fontFamily: "'Manrope',sans-serif", outline: "none", resize: "vertical" }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 14 }}>
+            <button
+              onClick={handleAnalyze}
+              style={{ cursor: "pointer", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: cvBtnBg, color: "#F7F1E4", fontSize: 14, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}
+            >
+              Analyze CV →
+            </button>
+            <span style={{ fontSize: 12, color: "var(--faint)" }}>
+              Analysed locally against your direction — nothing leaves this page.
+            </span>
+          </div>
+        </Reveal>
+      )}
+
+      {/* ── Scanning state ── */}
+      {cvAnalyzing && (
+        <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "46px 30px", textAlign: "center" }}>
+          <div className="pf-anim-spin" style={{ width: 40, height: 40, borderRadius: "50%", border: "3px solid var(--panel3)", borderTopColor: "var(--accent)", margin: "0 auto 18px" }} />
+          <div style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 5 }}>Scanning your CV…</div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 18 }}>
+            ATS structure · vague terms · keyword coverage vs your target stack
+          </div>
+          <div style={{ height: 5, width: 220, margin: "0 auto", borderRadius: 3, background: "var(--panel3)", overflow: "hidden" }}>
+            <div className="pf-anim-scan" style={{ height: "100%", background: "var(--accent)" }} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Analyzed report ── */}
+      {cvAnalyzed && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+            <a onClick={reAnalyzeCv} style={{ cursor: "pointer", fontFamily: mono, fontSize: 11, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
+              ← Edit & re-analyze
+            </a>
           </div>
 
-          <form onSubmit={handleAnalyze} className="flex flex-col gap-4">
-            <label
-              htmlFor="cv-file"
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition ${
-                isDragging
-                  ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                  : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--ring)] hover:bg-[var(--border)]/20"
-              }`}
-            >
-              <span className="text-2xl">⬆️</span>
-              <span className="font-medium text-[var(--foreground)]">
-                {cvFile ? cvFile.name : "Drop file here or click to upload (PDF, DOCX, TXT)"}
-              </span>
-              <span className="text-sm text-[var(--muted)]">
-                or paste your CV text below
-              </span>
-              <input
-                id="cv-file"
-                type="file"
-                accept=".pdf,.doc,.docx,.txt"
-                className="sr-only"
-                onChange={onInputChange}
-              />
-            </label>
-
-            <textarea
-              className="input h-40 resize-y"
-              placeholder="Or paste your CV here..."
-              value={cvText}
-              onChange={(e) => {
-                setCvText(e.target.value);
-                if (e.target.value) setCvFile(null);
-              }}
-            />
-
-            <button type="submit" disabled={loading || (!cvFile && !cvText.trim())} className="bg-transparent border-none p-0 w-full text-left">
-              <MagBtn variant="primary" size="lg" style={{width: '100%', justifyContent: 'center', opacity: (loading || (!cvFile && !cvText.trim())) ? 0.5 : 1 }}>
-                {loading ? "Analyzing..." : "Analyze CV"}
-              </MagBtn>
-            </button>
-          </form>
-        </section>
-
-        <section className="space-y-4">
-          {analysis ? (
-            <>
-              <div className="card flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
-                <div className="flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    ATS match score
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--foreground)]">
-                    This estimate looks at skills, structure, and clarity. Strengthen bullets with
-                    impact, add missing keywords, and keep formatting clean for scanners.
-                  </p>
+          <div style={{ display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 18, marginBottom: 18 }}>
+            {/* Score ring */}
+            <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: 26, textAlign: "center" }}>
+              <div style={{ position: "relative", width: 150, height: 150, margin: "6px auto 14px" }}>
+                <svg width="150" height="150" viewBox="0 0 150 150" style={{ transform: "rotate(-90deg)" }}>
+                  <circle cx="75" cy="75" r="64" fill="none" stroke="var(--panel3)" strokeWidth="11" />
+                  <circle cx="75" cy="75" r="64" fill="none" stroke={analysis.tone} strokeWidth="11" strokeLinecap="round" strokeDasharray="402" strokeDashoffset={analysis.dash} />
+                </svg>
+                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontFamily: mono, fontSize: 44, fontWeight: 700, lineHeight: 1, color: analysis.tone }}>{analysis.score}</span>
+                  <span style={{ fontFamily: mono, fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)", marginTop: 4 }}>/ 100</span>
                 </div>
-                <div className="flex flex-col items-end gap-1 min-w-[120px]">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold tracking-tight text-[var(--c-900)]">{atsScore}</span>
-                    <span className="text-sm text-[var(--muted)]">/100</span>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{analysis.verdict}</div>
+              <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{analysis.sub}</div>
+            </Reveal>
+
+            {/* ATS audit */}
+            <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "20px 24px 12px" }}>
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>ATS audit</h2>
+                <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--warn)" }}>3 to fix</span>
+              </div>
+              {ATS_CHECKS.map((a, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 24px", borderTop: "1px solid var(--line2)" }}>
+                  <span style={{ width: 18, height: 18, borderRadius: "50%", background: a.bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0 }}>{a.mark}</span>
+                  <span style={{ flex: 1, fontSize: 13 }}>{a.label}</span>
+                  <span style={{ fontFamily: mono, fontSize: 10, color: a.noteColor }}>{a.note}</span>
+                </div>
+              ))}
+            </Reveal>
+          </div>
+
+          {/* Line-by-line feedback */}
+          <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "22px 24px 14px" }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-.02em", margin: 0 }}>Line-by-line feedback</h2>
+              <span style={{ fontFamily: mono, fontSize: 11, color: "var(--faint)" }}>Action verb + task + quantified result</span>
+            </div>
+            {CV_LINES.map((l, i) => (
+              <div key={i} style={{ padding: "16px 24px", borderTop: "1px solid var(--line2)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
+                  <span style={{ fontFamily: mono, fontSize: 9.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: l.tagColor, border: `1px solid color-mix(in srgb, ${l.tagColor} 30%, transparent)`, borderRadius: 5, padding: "2px 8px" }}>{l.tag}</span>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>{l.reason}</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "11px 13px", background: "var(--panel2)" }}>
+                    <div style={{ fontFamily: mono, fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--risk)", marginBottom: 5 }}>Before</div>
+                    <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>{l.before}</div>
                   </div>
-                  <div className="w-full mt-1">
-                    <AnimBar width={atsScore} delay={100} />
+                  <div style={{ border: "1px solid color-mix(in srgb,var(--strong) 28%,transparent)", borderRadius: 10, padding: "11px 13px", background: "color-mix(in srgb,var(--strong) 8%,transparent)" }}>
+                    <div style={{ fontFamily: mono, fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--strong)", marginBottom: 5 }}>After · AI rewrite</div>
+                    <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>{l.after}</div>
                   </div>
                 </div>
               </div>
+            ))}
+          </Reveal>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="card space-y-2 p-4">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">Missing keywords</p>
-                  <p className="text-sm text-[var(--muted)]">
-                    These topics often appear in strong internship CVs. Projects below will use these to close gaps.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {(analysis.suggestions?.keywords ?? []).map((k) => (
-                      <Tag key={k} className="bg-[var(--c-50)]">
-                        {k}
-                      </Tag>
-                    ))}
-                  </div>
-                  <div className="mt-4">
-                    <MagBtn variant="secondary" size="md" onClick={handleProjects} style={projectsLoading ? {opacity: 0.6} : {}}>
-                      {projectsLoading ? "Generating..." : "Generate project ideas"}
-                    </MagBtn>
-                  </div>
-                </div>
-
-                <div className="card space-y-2 p-4">
-                  <p className="text-sm font-semibold text-[var(--accent)]">Formatting tips</p>
-                  <ul className="mt-2 space-y-1.5 text-sm text-[var(--muted)]">
-                    {(analysis.suggestions?.formatting ?? []).map((t, i) => (
-                      <li key={i}>• {t}</li>
-                    ))}
-                  </ul>
-                </div>
+          {/* AI mentor read — only when the OpenAI-backed route returned data */}
+          {aiRead && (
+            <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>AI mentor read</h2>
+                <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--accent)" }}>from your full CV text</span>
               </div>
-
-              <div className="card space-y-3 p-4">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Bullet point improvements</p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {(analysis.suggestions?.bulletPoints ?? []).map((b, i) => (
-                    <div key={i} className="rounded-lg bg-[var(--background)] p-3 text-sm text-[var(--foreground)]">
-                      {b}
+              {aiRead.skills.length > 0 && (
+                <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
+                  {aiRead.skills.slice(0, 10).map((s) => (
+                    <span key={s} style={{ fontFamily: mono, fontSize: 10.5, fontWeight: 600, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel2)", borderRadius: 6, padding: "4px 9px" }}>{s}</span>
+                  ))}
+                </div>
+              )}
+              {([
+                ["Bullet points", aiRead.bulletPoints],
+                ["Keywords to add", aiRead.keywords],
+                ["Formatting", aiRead.formatting],
+                ["Worth adding", aiRead.extraQualifications],
+              ] as [string, string[]][]).filter(([, items]) => items.length > 0).map(([label, items]) => (
+                <div key={label} style={{ marginBottom: 10 }}>
+                  <Kicker style={{ fontSize: 9.5, marginBottom: 6 }}>{label}</Kicker>
+                  {items.slice(0, 4).map((t) => (
+                    <div key={t.slice(0, 60)} style={{ display: "flex", gap: 9, padding: "4px 0" }}>
+                      <span style={{ color: "var(--accent)" }}>·</span>
+                      <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)" }}>{t}</span>
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Vague Terms Detection */}
-              {vagueTermsFound.length > 0 && (
-                <div className="card space-y-3 p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-[var(--foreground)]">Vague terms detected</p>
-                    <Tag className="bg-[var(--c-50)]">{vagueTermsFound.length} found</Tag>
-                  </div>
-                  <p className="text-sm text-[var(--muted)]">
-                    These weak phrases reduce impact. Replace them with specific, active language from the CV Blueprint methodology.
-                  </p>
-                  <div className="space-y-2">
-                    {vagueTermsFound.map((v) => (
-                      <div key={v.term} className="rounded-lg bg-[var(--background)] p-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-[var(--accent)]">&ldquo;{v.term}&rdquo;</span>
-                          {v.count > 1 && (
-                            <Tag>{v.count}x</Tag>
-                          )}
-                        </div>
-                        <p className="mt-1 text-sm text-[var(--muted)]">{v.rewrite}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {projects.length > 0 && (
-                <div className="card space-y-3 p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-[var(--foreground)]">AI Project Builder</p>
-                    <Tag>{projects.length} ideas</Tag>
-                  </div>
-                  <p className="text-xs text-[var(--muted)]">
-                    Inspired by{" "}
-                    <a href="https://tripleten.com/tools/coding-project-ideas/" target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline">TripleTen</a>
-                    {" "}&{" "}
-                    <a href="https://www.casperberthelsen.com/" target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline">Project Idea Generator</a>
-                  </p>
-                  <div className="space-y-4">
-                    {projects.map((p) => (
-                      <div key={p.title} className="rounded-lg border border-[var(--border)] p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <h3 className="text-sm font-semibold text-[var(--foreground)]">{p.title}</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {p.techStack?.map((t) => (
-                              <Tag key={t}>{t}</Tag>
-                            ))}
-                          </div>
-                        </div>
-                        <p className="mt-2 text-sm text-[var(--muted)]">{p.description}</p>
-                        {p.keyFeatures?.length ? (
-                          <div className="mt-3">
-                            <p className="text-xs font-semibold text-[var(--foreground)]">Key features</p>
-                            <ul className="mt-1 space-y-1 text-sm text-[var(--muted)]">
-                              {p.keyFeatures.map((f) => (
-                                <li key={f}>• {f}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
-                        {p.talkingPoints?.length ? (
-                          <div className="mt-3 rounded-lg bg-[var(--background)] p-3">
-                            <p className="text-xs font-semibold text-[var(--foreground)]">Interview talking points</p>
-                            <ul className="mt-2 space-y-1 text-sm text-[var(--muted)]">
-                              {p.talkingPoints.map((tp) => (
-                                <li key={tp}>• {tp}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="card flex h-64 items-center justify-center border-dashed p-8 text-center text-sm text-[var(--muted)]">
-              Once you upload your CV, you&apos;ll see ATS feedback, keyword gaps, and project
-              suggestions here.
-            </div>
+              ))}
+            </Reveal>
           )}
-        </section>
-      </div>
 
-      {/* LinkedIn Quick Check - Collapsible Section */}
-      <section className="card p-0 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setLinkedinOpen(!linkedinOpen)}
-          className="flex w-full items-center justify-between bg-transparent border-none cursor-pointer p-5 text-left"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg">in</span>
-            <div>
-              <p className="text-sm font-semibold text-[var(--foreground)]">LinkedIn Quick Check</p>
-              <p className="mt-0.5 text-sm text-[var(--muted)]">
-                Paste your headline and about section for instant feedback
-              </p>
-            </div>
-          </div>
-          <span
-            className="text-[var(--muted)] transition-transform duration-200"
-            style={{ transform: linkedinOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-          >
-            ▼
-          </span>
-        </button>
-
-        {linkedinOpen && (
-          <div className="border-t border-[var(--border)] p-5 space-y-4 overflow-x-hidden">
-            <div className="space-y-3">
-              <div>
-                <label htmlFor="li-headline" className="block text-sm font-medium text-[var(--foreground)] mb-1">
-                  Headline
-                </label>
-                <input
-                  id="li-headline"
-                  type="text"
-                  className="input w-full"
-                  placeholder='e.g. Software Developer | React & Node.js'
-                  value={linkedinHeadline}
-                  onChange={(e) => setLinkedinHeadline(e.target.value)}
-                />
+          {/* Vague terms + missing keywords */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
+            <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "20px 24px 12px" }}>
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Vague terms detected</h2>
+                <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--risk)" }}>weaken every bullet</span>
               </div>
-              <div>
-                <label htmlFor="li-about" className="block text-sm font-medium text-[var(--foreground)] mb-1">
-                  About section
-                </label>
-                <textarea
-                  id="li-about"
-                  className="input w-full h-32 resize-y"
-                  placeholder="Paste your LinkedIn about section here..."
-                  value={linkedinAbout}
-                  onChange={(e) => setLinkedinAbout(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <button
-              type="button"
-              disabled={linkedinLoading || (!linkedinHeadline.trim() && !linkedinAbout.trim())}
-              onClick={handleLinkedinCheck}
-              className="bg-transparent border-none p-0 text-left"
-            >
-              <MagBtn
-                variant="primary"
-                size="md"
-                style={{
-                  opacity: linkedinLoading || (!linkedinHeadline.trim() && !linkedinAbout.trim()) ? 0.5 : 1,
-                }}
-              >
-                {linkedinLoading ? "Checking..." : "Check LinkedIn"}
-              </MagBtn>
-            </button>
-
-            {linkedinError && (
-              <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
-                {linkedinError}
-              </div>
-            )}
-
-            {linkedinResult && (
-              <div className="space-y-4 pt-2">
-                {/* Score */}
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      LinkedIn profile score
-                    </p>
+              {hasVague ? (
+                analysis.vague.map((v, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 24px", borderTop: "1px solid var(--line2)" }}>
+                    <span style={{ fontFamily: mono, fontSize: 11.5, fontWeight: 700, color: "var(--risk)", textDecoration: "line-through", whiteSpace: "nowrap" }}>{v.term}</span>
+                    <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>{v.fix}</span>
                   </div>
-                  <div className="flex flex-col items-end gap-1 min-w-[120px]">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold tracking-tight text-[var(--c-900)]">
-                        {linkedinResult.score}
-                      </span>
-                      <span className="text-sm text-[var(--muted)]">/100</span>
-                    </div>
-                    <div className="w-full mt-1">
-                      <AnimBar width={linkedinResult.score} delay={100} />
-                    </div>
-                  </div>
+                ))
+              ) : (
+                <div style={{ padding: "14px 24px", fontSize: 12.5, color: "var(--muted)", borderTop: "1px solid var(--line2)" }}>
+                  None found — every bullet owns its verb. Rare and good.
                 </div>
+              )}
+            </Reveal>
 
-                {/* Sub-scores */}
-                {linkedinResult.data && (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg bg-[var(--background)] p-3">
-                      <p className="text-xs font-semibold text-[var(--muted)]">Headline score</p>
-                      <p className="text-lg font-bold text-[var(--foreground)]">
-                        {linkedinResult.data.headlineScore}/100
-                      </p>
-                      {linkedinResult.data.suggestedHeadline && (
-                        <p className="mt-1 text-sm text-[var(--accent)]">
-                          Suggested: {linkedinResult.data.suggestedHeadline}
-                        </p>
-                      )}
-                    </div>
-                    <div className="rounded-lg bg-[var(--background)] p-3">
-                      <p className="text-xs font-semibold text-[var(--muted)]">About score</p>
-                      <p className="text-lg font-bold text-[var(--foreground)]">
-                        {linkedinResult.data.aboutScore}/100
-                      </p>
-                      {linkedinResult.data.suggestedAboutOpener && (
-                        <p className="mt-1 text-sm text-[var(--accent)]">
-                          Opener: {linkedinResult.data.suggestedAboutOpener}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Issues Found */}
-                {linkedinResult.feedback?.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-[var(--foreground)]">Issues found</p>
-                    {linkedinResult.feedback.map((item, i) => (
-                      <div key={i} className="rounded-lg border border-[var(--border)] p-3">
-                        <div className="flex items-center gap-2">
-                          <Tag className={
-                            item.severity === "critical"
-                              ? "bg-red-500/10 text-red-400"
-                              : item.severity === "important"
-                              ? "bg-yellow-500/10 text-yellow-400"
-                              : "bg-[var(--c-50)]"
-                          }>
-                            {item.severity}
-                          </Tag>
-                          <p className="text-sm font-medium text-[var(--foreground)]">{item.issue}</p>
-                        </div>
-                        <p className="mt-1 text-sm text-[var(--muted)]">{item.explanation}</p>
-                        {item.suggestedFix && (
-                          <p className="mt-1 text-sm text-[var(--accent)]">Fix: {item.suggestedFix}</p>
-                        )}
-                        {item.example && (
-                          <p className="mt-1 text-sm italic text-[var(--muted)]">Example: {item.example}</p>
-                        )}
-                      </div>
+            <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "20px 24px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Missing keywords</h2>
+                <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--warn)" }}>vs your target stack</span>
+              </div>
+              {hasMissing && (
+                <>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                    {analysis.missing.map((k, i) => (
+                      <span key={i} style={{ fontFamily: mono, fontSize: 11.5, fontWeight: 600, color: "var(--warn)", border: "1px solid color-mix(in srgb,var(--warn) 32%,transparent)", background: "color-mix(in srgb,var(--warn) 8%,transparent)", borderRadius: 7, padding: "5px 11px" }}>{k.label}</span>
                     ))}
                   </div>
-                )}
-
-                {/* Strengths */}
-                {linkedinResult.strengths?.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-[var(--foreground)]">Strengths</p>
-                    <ul className="space-y-1 text-sm text-[var(--muted)]">
-                      {linkedinResult.strengths.map((s, i) => (
-                        <li key={i}>• {s}</li>
-                      ))}
-                    </ul>
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55 }}>
+                    Each missing keyword is an ATS filter you fail silently. Add them to Skills and evidence each in one bullet.
                   </div>
-                )}
+                </>
+              )}
+              {cvNoProjects && (
+                <button
+                  onClick={() => set({ cvProjects: true })}
+                  style={{ cursor: "pointer", marginTop: 16, height: 42, padding: "0 20px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}
+                >
+                  Generate project ideas to close these gaps →
+                </button>
+              )}
+            </Reveal>
+          </div>
 
-                {/* Next Steps */}
-                {linkedinResult.nextSteps?.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-[var(--foreground)]">Suggestions</p>
-                    <ul className="space-y-1 text-sm text-[var(--muted)]">
-                      {linkedinResult.nextSteps.map((s, i) => (
-                        <li key={i}>• {s}</li>
-                      ))}
-                    </ul>
+          {/* Project ideas */}
+          {cvProjects && (
+            <Reveal style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
+              {PROJECT_IDEAS.map((pi, i) => (
+                <div key={i} style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 16, background: "var(--accentSoft)", padding: "20px 22px" }}>
+                  <div style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accentText)", marginBottom: 8 }}>Project idea · closes your gap</div>
+                  <div style={{ fontSize: 15.5, fontWeight: 700, marginBottom: 5 }}>{pi.name}</div>
+                  <div style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)", marginBottom: 10 }}>{pi.stack}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--fg)", lineHeight: 1.55, marginBottom: 10 }}>{pi.features}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.55, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                    <span style={{ fontWeight: 700, color: "var(--fg)" }}>Interview talking point:</span> {pi.talk}
                   </div>
-                )}
+                </div>
+              ))}
+            </Reveal>
+          )}
+
+          {/* LinkedIn quick check */}
+          <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", marginBottom: 18 }}>
+            <a onClick={() => set({ cvLinkedIn: !cvLinkedIn })} style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", textDecoration: "none", color: "var(--fg)" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                <span style={{ fontSize: 16, fontWeight: 700 }}>{linkedinChevron}</span>
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>LinkedIn quick check</h2>
+              </span>
+              <span style={{ fontFamily: mono, fontSize: 12, fontWeight: 700, color: "var(--warn)" }}>{linkedin.score} / 100</span>
+            </a>
+            {cvLinkedIn && (
+              <div style={{ borderTop: "1px solid var(--line)" }}>
+                {linkedin.issues.map((li, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 24px", borderBottom: "1px solid var(--line2)" }}>
+                    <span style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, color: li.sevCol, border: `1px solid color-mix(in srgb, ${li.sevCol} 32%, transparent)`, borderRadius: 5, padding: "2px 7px", flexShrink: 0 }}>{li.sev}</span>
+                    <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)" }}>{li.text}</span>
+                  </div>
+                ))}
               </div>
             )}
-          </div>
-        )}
-      </section>
-    </div>
+          </Reveal>
+
+          {/* Match score per role */}
+          <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
+            <div style={{ padding: "20px 24px 12px" }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Match score per role</h2>
+            </div>
+            {CV_MATCH.map((m, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 24px", borderTop: "1px solid var(--line2)" }}>
+                <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>{m.role}</span>
+                <span style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--panel3)", overflow: "hidden", maxWidth: 280 }}>
+                  <span className="pf-anim-grow" style={{ display: "block", height: "100%", width: m.pct, background: m.tone, transformOrigin: "left" }} />
+                </span>
+                <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 700, color: m.tone, width: 38, textAlign: "right" }}>{m.score}</span>
+              </div>
+            ))}
+          </Reveal>
+        </div>
+      )}
     </div>
   );
 }

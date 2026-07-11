@@ -1,575 +1,368 @@
 "use client";
 
-import { FormEvent, useRef, useEffect, useState } from "react";
-import Link from "next/link";
-import { setDirection } from "@/lib/store";
-import { TARGET_ROLES, TECH_STACK_OPTIONS, INDUSTRIES, COUNTRIES, CITIES_BY_COUNTRY } from "@/lib/constants";
-import { MagBtn } from "@/components/ui/mag-btn";
-import { Tag } from "@/components/ui/typography";
+/**
+ * Phase 01 — Career Direction. Wizard chip-builder + "Explore with AI" chat,
+ * generated direction statement with specificity meter, title variants,
+ * target roles and the HIRE framework.
+ */
 
-type DirectionResult = {
-  statement: string;
-  specificity: string;
-  suggestions: string[];
-};
+import { useEffect, useState, type CSSProperties } from "react";
+import {
+  DIR_INDUSTRY_OPTS,
+  DIR_ROLE_OPTS,
+  DIR_SETTING_OPTS,
+  DIR_SIZE_OPTS,
+  DIR_STACK_OPTS,
+  HIRE_FRAMEWORK,
+  TARGET_ROLES,
+  TITLE_VARIANTS,
+} from "@/lib/pf/data";
+import {
+  chatReplyFor,
+  directionReady,
+  directionSpecificity,
+  directionStatement,
+  directionSuggestions,
+  extractChatPatch,
+} from "@/lib/pf/logic";
+import { getProfile, usePfStore, type ChatMsg } from "@/lib/pf/store";
+import { buildMentorContext } from "@/lib/pf/orchestrator";
+import { Chip, Kicker, PageHeader, Panel, Reveal } from "@/components/pf/ui";
+import { NextStep } from "@/components/pf/next-step";
 
-type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
+/** Map the explore API's free-text preferences onto the wizard's chip values. */
+function mapApiPreferences(p: { role?: string; industry?: string } | undefined) {
+  const patch: { dirRole?: string; dirIndustry?: string } = {};
+  const role = (p?.role || "").toLowerCase();
+  if (/front/.test(role)) patch.dirRole = "Frontend";
+  else if (/back/.test(role)) patch.dirRole = "Backend";
+  else if (/data|ml|machine/.test(role)) patch.dirRole = "Data / ML";
+  else if (/full|software|swe|product/.test(role)) patch.dirRole = "Full-Stack SWE";
+  const ind = (p?.industry || "").toLowerCase();
+  if (/fintech|finance/.test(ind)) patch.dirIndustry = "Fintech";
+  else if (/travel/.test(ind)) patch.dirIndustry = "Travel Tech";
+  else if (/health/.test(ind)) patch.dirIndustry = "Healthtech";
+  else if (/dev|tool/.test(ind)) patch.dirIndustry = "Dev Tools";
+  return patch;
+}
 
-type ExploreResponse = {
-  data: {
-    response: string;
-    extractedPreferences: {
-      role: string;
-      industry: string;
-      techStack: string[];
-      location: string;
-    };
-    readyForStatement: boolean;
-    suggestedStatement: string | null;
-  };
-  nextQuestion: string;
-};
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function ModeToggle() {
+  const dirMode = usePfStore((s) => s.dirMode);
+  const set = usePfStore((s) => s.set);
+  const btn = (on: boolean): CSSProperties => ({
+    cursor: "pointer", height: 38, padding: "0 18px", borderRadius: 10, border: "1px solid var(--line)",
+    background: on ? "var(--accent)" : "var(--panel)", color: on ? "#F7F1E4" : "var(--muted)",
+    fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
+  });
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-[var(--foreground)]">{label}</label>
-      {children}
-    </div>
+    <Reveal style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+      <button onClick={() => set({ dirMode: "wizard" })} style={btn(dirMode === "wizard")}>Wizard</button>
+      <button onClick={() => set({ dirMode: "explore" })} style={btn(dirMode === "explore")}>Explore with AI</button>
+    </Reveal>
   );
 }
 
-function ModeToggle({ mode, setMode }: { mode: "wizard" | "explore"; setMode: (m: "wizard" | "explore") => void }) {
+function Wizard() {
+  const s = usePfStore();
+  const ready = directionReady(s);
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] p-1 w-full sm:w-auto">
+    <Panel style={{ padding: "26px 28px", marginBottom: 18 }}>
+      <Kicker style={{ marginBottom: 16 }}>Build your direction statement</Kicker>
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Target role</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {DIR_ROLE_OPTS.map((l) => (
+            <Chip key={l} label={l} on={s.dirRole === l} onClick={() => s.pickDirChip("dirRole", l)} />
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>
+          Tech stack <span style={{ fontWeight: 500, color: "var(--faint)" }}>(pick 3+ — these become your ATS keywords)</span>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {DIR_STACK_OPTS.map((l) => (
+            <Chip key={l} label={l} on={s.dirStack.includes(l)} onClick={() => s.toggleDirStack(l)} />
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Industry</div>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+            {DIR_INDUSTRY_OPTS.map((l) => (
+              <Chip key={l} size="sm" label={l} on={s.dirIndustry === l} onClick={() => s.pickDirChip("dirIndustry", l)} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Company size</div>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+            {DIR_SIZE_OPTS.map((l) => (
+              <Chip key={l} size="sm" label={l} on={s.dirSize === l} onClick={() => s.pickDirChip("dirSize", l)} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Work setting</div>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+            {DIR_SETTING_OPTS.map((l) => (
+              <Chip key={l} size="sm" label={l} on={s.dirSetting === l} onClick={() => s.pickDirChip("dirSetting", l)} />
+            ))}
+          </div>
+        </div>
+      </div>
+
       <button
-        type="button"
-        onClick={() => setMode("wizard")}
-        className={`flex-1 sm:flex-none rounded-md px-4 py-2 sm:py-1.5 text-sm font-medium transition min-h-[44px] sm:min-h-0 ${
-          mode === "wizard"
-            ? "bg-[var(--accent)] text-white"
-            : "text-[var(--muted)] hover:text-[var(--foreground)]"
-        }`}
+        onClick={s.generateDirection}
+        disabled={!ready}
+        style={{ cursor: ready ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 14, fontWeight: 600 }}
       >
-        Wizard
+        Generate statement →
       </button>
-      <button
-        type="button"
-        onClick={() => setMode("explore")}
-        className={`flex-1 sm:flex-none rounded-md px-4 py-2 sm:py-1.5 text-sm font-medium transition min-h-[44px] sm:min-h-0 ${
-          mode === "explore"
-            ? "bg-[var(--accent)] text-white"
-            : "text-[var(--muted)] hover:text-[var(--foreground)]"
-        }`}
-      >
-        Explore Roles
-      </button>
-    </div>
+    </Panel>
   );
 }
 
-function ExploreChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [suggestedStatement, setSuggestedStatement] = useState<string | null>(null);
-  const [extractedPrefs, setExtractedPrefs] = useState<ExploreResponse["data"]["extractedPreferences"] | null>(null);
-  const [accepted, setAccepted] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+function Explore() {
+  const s = usePfStore();
+  const [thinking, setThinking] = useState(false);
+  const chatReady = s.chatN >= 3 || (s.chatN >= 2 && !!s.dirRole && !!s.dirIndustry);
+  const statement = directionStatement(s);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, loading]);
-
-  // Send initial greeting on mount
-  useEffect(() => {
-    setMessages([
-      {
-        role: "assistant",
-        content:
-          "Hi! I'm here to help you explore career directions. Tell me about yourself -- what kind of work excites you, what technologies interest you, or what problems you'd love to solve? There are no wrong answers.",
-      },
-    ]);
-  }, []);
-
-  async function sendMessage(e: FormEvent) {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || loading) return;
-
-    const userMsg: ChatMessage = { role: "user", content: text };
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
-    setInput("");
-    setLoading(true);
-
+  // Sends via the OpenAI-backed explore route; the design's local extraction
+  // and canned replies are the silent fallback when the API is unavailable.
+  const handleSend = async () => {
+    const draft = s.chatDraft.trim();
+    if (!draft || thinking) return;
+    const localPatch = extractChatPatch(draft);
+    const history: ChatMsg[] = [...s.chat, { who: "you", text: draft }];
+    s.set({ ...localPatch, chat: history, chatDraft: "", dirGenerated: false });
+    setThinking(true);
     try {
+      // AI memory: the mentor sees the full Career Profile, so it never starts
+      // from zero and can reference prior phases naturally.
+      const context = buildMentorContext(getProfile(), usePfStore.getState().aiLog);
       const res = await fetch("/api/direction/explore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updatedMessages }),
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: context },
+            ...history.map((m) => ({ role: m.who === "you" ? "user" : "assistant", content: m.text })),
+          ],
+        }),
       });
-      const data = (await res.json()) as ExploreResponse;
-
-      const assistantContent = data.data?.response || data.nextQuestion || "Could you tell me more?";
-      const assistantMsg: ChatMessage = { role: "assistant", content: assistantContent };
-      setMessages((prev) => [...prev, assistantMsg]);
-
-      if (data.data?.extractedPreferences) {
-        setExtractedPrefs(data.data.extractedPreferences);
-      }
-      if (data.data?.readyForStatement && data.data?.suggestedStatement) {
-        setSuggestedStatement(data.data.suggestedStatement);
+      const json: unknown = res.ok ? await res.json() : null;
+      const data = (json as { data?: { response?: string; extractedPreferences?: { role?: string; industry?: string } } } | null)?.data;
+      const reply = data?.response && typeof data.response === "string" ? data.response : chatReplyFor(usePfStore.getState().chatN);
+      const apiPatch = mapApiPreferences(data?.extractedPreferences);
+      s.set({
+        ...apiPatch,
+        chat: [...history, { who: "ai", text: reply }],
+        chatN: usePfStore.getState().chatN + 1,
+      });
+      // Log the AI session so future prompts can reference it ("last time…").
+      if (data?.response) {
+        s.logAi({ phase: "direction", summary: `Explored direction: "${draft.slice(0, 60)}"`, ts: Date.now() });
       }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Sorry, something went wrong. Please try again." },
-      ]);
+      s.set({
+        chat: [...history, { who: "ai", text: chatReplyFor(usePfStore.getState().chatN) }],
+        chatN: usePfStore.getState().chatN + 1,
+      });
     } finally {
-      setLoading(false);
+      setThinking(false);
     }
-  }
-
-  function acceptDirection() {
-    if (!suggestedStatement || !extractedPrefs) return;
-    setDirection({
-      roleType: extractedPrefs.role || "",
-      techStack: extractedPrefs.techStack?.join(", ") || "",
-      industry: extractedPrefs.industry || "",
-      location: extractedPrefs.location || "",
-      companySize: "",
-      workMode: "",
-    });
-    setAccepted(true);
-  }
-
-  if (accepted) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm font-medium text-[var(--foreground)]">Your direction has been set</p>
-        <div className="card border-[var(--accent)] bg-[var(--accent)]/5 p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Career focus statement
-          </p>
-          <p className="mt-3 text-sm leading-relaxed text-[var(--foreground)]">{suggestedStatement}</p>
-        </div>
-        <div className="flex justify-between pt-1 text-sm text-[var(--muted)]">
-          <button
-            type="button"
-            className="hover:underline"
-            onClick={() => {
-              setAccepted(false);
-              setSuggestedStatement(null);
-            }}
-          >
-            Start over
-          </button>
-          <Link href="/cv" className="font-medium text-[var(--foreground)] hover:underline">
-            Next phase: CV Optimizer &rarr;
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
+  };
   return (
-    <div className="flex flex-col" style={{ minHeight: 420 }}>
-      {/* Chat messages */}
-      <div
-        ref={scrollRef}
-        className="flex-1 space-y-3 overflow-y-auto pr-1"
-        style={{ height: "calc(100vh - 300px)", minHeight: "200px", maxHeight: "500px" }}
-      >
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-[var(--accent)] text-white"
-                  : "bg-[var(--border)]/50 text-[var(--foreground)]"
-              }`}
-            >
-              {msg.content}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="rounded-xl bg-[var(--border)]/50 px-4 py-2.5 text-sm text-[var(--muted)]">
-              Thinking...
-            </div>
-          </div>
-        )}
-      </div>
+    <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
+      <Kicker style={{ marginBottom: 14 }}>Not sure yet? Talk it out — the AI extracts your preferences as you go</Kicker>
 
-      {/* Suggested statement banner */}
-      {suggestedStatement && (
-        <div className="mt-4 rounded-lg border border-[var(--accent)] bg-[var(--accent)]/5 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Suggested direction
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--foreground)]">
-            {suggestedStatement}
-          </p>
-          <div className="mt-3">
-            <MagBtn variant="primary" size="md" onClick={acceptDirection}>
-              Accept this direction
-            </MagBtn>
-          </div>
+      {s.chat.length === 0 && (
+        <div style={{ fontSize: 13.5, color: "var(--muted)", border: "1px dashed var(--lineStrong)", borderRadius: 12, padding: "16px 18px", marginBottom: 14 }}>
+          Try: <span style={{ color: "var(--fg)", fontStyle: "italic" }}>&quot;I like building interfaces but fintech sounds interesting too — and I think I&apos;d prefer a small startup.&quot;</span>
         </div>
       )}
 
-      {/* Input */}
-      <form onSubmit={sendMessage} className="mt-4 flex gap-2">
-        <input
-          type="text"
-          className="input flex-1"
-          placeholder="Describe what excites you..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={loading}
-        />
-        <MagBtn variant="primary" size="md" onClick={() => {}} style={loading ? { opacity: 0.5, pointerEvents: "none" as const } : {}}>
-          <button type="submit" disabled={loading} className="bg-transparent border-0 p-0 text-inherit font-inherit cursor-pointer">
-            Send
+      {s.chat.map((m, i) => (
+        <div key={i} style={{ display: "flex", gap: 11, marginBottom: 12 }}>
+          <span className="pf-mono" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, background: "var(--panel3)", color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>
+            {m.who}
+          </span>
+          <p style={{ fontSize: 13.5, lineHeight: 1.65, margin: "2px 0 0", color: "var(--fg)" }}>{m.text}</p>
+        </div>
+      ))}
+
+      {chatReady && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)", background: "color-mix(in srgb,var(--strong) 8%,transparent)", borderRadius: 12, padding: "13px 16px", marginBottom: 14 }}>
+          <span style={{ fontSize: 13, flex: 1 }}>
+            <span style={{ fontWeight: 700 }}>Direction drafted from this chat.</span> {statement}
+          </span>
+          <button
+            onClick={s.acceptChat}
+            style={{ cursor: "pointer", height: 36, padding: "0 16px", borderRadius: 9, border: "none", background: "var(--strong)", color: "#fff", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            Accept →
           </button>
-        </MagBtn>
-      </form>
-    </div>
+        </div>
+      )}
+
+      {thinking && (
+        <div style={{ display: "flex", gap: 11, marginBottom: 12, alignItems: "center" }}>
+          <span className="pf-mono" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, background: "var(--panel3)", color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>ai</span>
+          <span className="pf-anim-pulse" style={{ fontSize: 13.5, color: "var(--faint)" }}>thinking…</span>
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 9 }}>
+        <input
+          value={s.chatDraft}
+          onChange={(e) => s.set({ chatDraft: e.target.value })}
+          onKeyDown={(e) => { if (e.key === "Enter") void handleSend(); }}
+          placeholder="Tell the AI what pulls you in…"
+          className="pf-input"
+          style={{ flex: 1, height: 44, padding: "0 16px" }}
+        />
+        <button
+          onClick={() => void handleSend()}
+          style={{ cursor: "pointer", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13.5, fontWeight: 600 }}
+        >
+          Send
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+function GeneratedStatement() {
+  const s = usePfStore();
+  const statement = directionStatement(s);
+  const spec = directionSpecificity(s);
+  const suggestions = directionSuggestions(s);
+  const [aiVariants, setAiVariants] = useState<string[]>([]);
+
+  // Live title variants from the AI route; static design list as fallback.
+  useEffect(() => {
+    if (!s.dirRole) return;
+    const controller = new AbortController();
+    fetch("/api/direction/title-variants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: s.dirRole, techStack: s.dirStack, industry: s.dirIndustry ?? "Technology" }),
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: unknown) => {
+        const raw = (json as { variants?: { title?: string }[] } | null)?.variants;
+        const titles = Array.isArray(raw) ? raw.map((v) => v.title).filter((t): t is string => !!t).slice(0, 4) : [];
+        if (titles.length >= 2) setAiVariants(titles);
+      })
+      .catch(() => { /* static variants render */ });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.dirRole]);
+
+  const variants = aiVariants.length >= 2 ? aiVariants : TITLE_VARIANTS[s.dirRole ?? "Full-Stack SWE"] ?? TITLE_VARIANTS["Full-Stack SWE"];
+  return (
+    <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 24%,transparent)", borderRadius: 18, background: "linear-gradient(150deg,var(--accentSoft),transparent)", padding: "28px 30px", marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accentText)" }}>Your direction statement</span>
+        <span className="pf-mono" style={{ fontSize: 10, fontWeight: 700, color: spec.tone, border: `1px solid color-mix(in srgb, ${spec.tone} 30%, transparent)`, borderRadius: 6, padding: "2px 8px" }}>{spec.label}</span>
+      </div>
+      <p style={{ fontSize: 24, lineHeight: 1.35, fontWeight: 500, letterSpacing: "-.02em", margin: "0 0 18px", maxWidth: "38ch" }}>{statement}</p>
+      <Kicker style={{ fontSize: 9.5, marginBottom: 8 }}>How to sharpen it further</Kicker>
+      {suggestions.map((t) => (
+        <div key={t} style={{ display: "flex", gap: 9, padding: "6px 0" }}>
+          <span style={{ color: "var(--accent)" }}>·</span>
+          <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)" }}>{t}</span>
+        </div>
+      ))}
+      <Kicker style={{ fontSize: 9.5, margin: "16px 0 10px" }}>Search with these titles — the same role hides under different names</Kicker>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {variants.map((v) => (
+          <span
+            key={v}
+            onClick={() => s.copyVariant(v)}
+            className="pf-hover-border"
+            style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, padding: "8px 13px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--panelSolid)" }}
+          >
+            {v}
+            <span className="pf-mono" style={{ fontSize: 9.5, color: "var(--accent)" }}>{s.copiedVariant === v ? "copied ✓" : "copy"}</span>
+          </span>
+        ))}
+      </div>
+    </Reveal>
   );
 }
 
 export default function DirectionPage() {
-  const [mode, setMode] = useState<"wizard" | "explore">("wizard");
-  const [step, setStep] = useState(1);
-  const [directionForm, setDirectionForm] = useState({
-    roleType: "",
-    techStack: [] as string[],
-    industry: "",
-    country: "",
-    city: "",
-    companySize: "",
-    workMode: "",
-  });
-  const [directionResult, setDirectionResult] = useState<DirectionResult | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const progressPct = step === 1 ? 33 : step === 2 ? 66 : 100;
-
-  function toggleTechStack(tech: string) {
-    setDirectionForm((f) => ({
-      ...f,
-      techStack: f.techStack.includes(tech)
-        ? f.techStack.filter((t) => t !== tech)
-        : [...f.techStack, tech],
-    }));
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const techStackStr = directionForm.techStack.join(", ");
-      const res = await fetch("/api/direction", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          industry: directionForm.industry,
-          roleType: directionForm.roleType,
-          techStack: techStackStr,
-          location: directionForm.city && directionForm.country
-            ? `${directionForm.city}, ${directionForm.country}`
-            : directionForm.country || directionForm.city,
-          companySize: directionForm.companySize,
-          workMode: directionForm.workMode,
-        }),
-      });
-      const data = (await res.json()) as DirectionResult;
-      setDirectionResult(data);
-      setDirection({
-        ...directionForm,
-        techStack: techStackStr,
-        location: directionForm.city && directionForm.country
-          ? `${directionForm.city}, ${directionForm.country}`
-          : directionForm.country || directionForm.city,
-      });
-      setStep(3);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const dirMode = usePfStore((s) => s.dirMode);
+  const dirGenerating = usePfStore((s) => s.dirGenerating);
+  const dirGenerated = usePfStore((s) => s.dirGenerated);
 
   return (
-    <div className="page-container">
-      <div className="flex flex-col gap-8">
-        <section>
-          <p className="section-label">Phase 1</p>
-          <h1 className="section-title">Career Direction {mode === "wizard" ? "Wizard" : "Explorer"}</h1>
-          <p className="section-subtitle">
-            {mode === "wizard"
-              ? "Define what you're targeting so PathFinder can prioritise internships and projects that fit your actual goals."
-              : "Have a conversation with AI to discover and refine your career direction."}
-          </p>
-        </section>
+    <div>
+      <PageHeader label="Phase 01 · Discovery" title="Career Direction">
+        <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "52ch" }}>
+          One sentence that focuses everything downstream.{" "}
+          <span style={{ color: "var(--fg)", fontWeight: 600 }}>Industry + specific role = clear direction.</span>{" "}
+          Cap yourself at three target roles.
+        </p>
+      </PageHeader>
 
-        {/* Mode toggle */}
-        <ModeToggle mode={mode} setMode={setMode} />
+      <NextStep />
 
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="card flex-1 p-6">
-            {mode === "wizard" ? (
-              <>
-                <div className="mb-5 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--foreground)]">Profile parameters</p>
-                    <p className="mt-0.5 text-sm text-[var(--muted)]">
-                      Fill in your preferences to generate a targeted statement.
-                    </p>
-                  </div>
-                  <span className="hidden text-sm text-[var(--muted)] sm:inline">
-                    Step {step} of 3 · {progressPct}%
-                  </span>
-                </div>
-                <div className="mb-5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--accent)] transition-all duration-300"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
+      <ModeToggle />
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  {step === 1 && (
-                    <div className="space-y-5">
-                      <Field label="Target role (choose one)">
-                        <select
-                          className="input"
-                          value={directionForm.roleType}
-                          onChange={(e) =>
-                            setDirectionForm((f) => ({ ...f, roleType: e.target.value }))
-                          }
-                          required
-                        >
-                          <option value="">Select a role...</option>
-                          {TARGET_ROLES.map((role) => (
-                            <option key={role} value={role}>
-                              {role}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                      <Field label="Select your preferred tech stack (choose multiple)">
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          {TECH_STACK_OPTIONS.map((tech) => (
-                            <button
-                              key={tech}
-                              type="button"
-                              onClick={() => toggleTechStack(tech)}
-                              className={`rounded-lg border px-3 py-2 min-h-[44px] text-left text-sm font-medium transition ${
-                                directionForm.techStack.includes(tech)
-                                  ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--accent)]"
-                                  : "border-[var(--border)] text-[var(--foreground)] hover:border-[var(--accent-muted)]"
-                              }`}
-                            >
-                              {tech}
-                            </button>
-                          ))}
-                        </div>
-                        {directionForm.techStack.length > 0 && (
-                          <p className="mt-2 text-xs text-[var(--muted)]">
-                            Selected: {directionForm.techStack.join(", ")}
-                          </p>
-                        )}
-                      </Field>
-                      <div className="flex justify-end pt-1">
-                        <MagBtn variant="primary" size="md" onClick={() => setStep(2)}>
-                          Next: Preferences →
-                        </MagBtn>
-                      </div>
-                    </div>
-                  )}
+      {dirMode === "wizard" && <Wizard />}
+      {dirMode === "explore" && <Explore />}
 
-                  {step === 2 && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <Field label="Industry">
-                          <select
-                            className="input"
-                            value={directionForm.industry}
-                            onChange={(e) =>
-                              setDirectionForm((f) => ({ ...f, industry: e.target.value }))
-                            }
-                          >
-                            <option value="">Select industry...</option>
-                            {INDUSTRIES.map((ind) => (
-                              <option key={ind} value={ind}>
-                                {ind}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
-                        <Field label="Company size">
-                          <select
-                            className="input"
-                            value={directionForm.companySize}
-                            onChange={(e) =>
-                              setDirectionForm((f) => ({ ...f, companySize: e.target.value }))
-                            }
-                          >
-                            <option value="">Choose...</option>
-                            <option value="early‑stage startups">Startup (0–50)</option>
-                            <option value="scaleups">Scaleup (50–500)</option>
-                            <option value="large tech companies">Big Tech / Enterprise</option>
-                          </select>
-                        </Field>
-                        <Field label="Country">
-                          <select
-                            className="input"
-                            value={directionForm.country}
-                            onChange={(e) =>
-                              setDirectionForm((f) => ({
-                                ...f,
-                                country: e.target.value,
-                                city: "",
-                              }))
-                            }
-                          >
-                            <option value="">Select country...</option>
-                            {COUNTRIES.map((c) => (
-                              <option key={c} value={c}>
-                                {c}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
-                        <Field label="City">
-                          <select
-                            className="input"
-                            value={directionForm.city}
-                            onChange={(e) =>
-                              setDirectionForm((f) => ({ ...f, city: e.target.value }))
-                            }
-                            disabled={!directionForm.country}
-                          >
-                            <option value="">
-                              {directionForm.country ? "Select city..." : "Select country first"}
-                            </option>
-                            {(CITIES_BY_COUNTRY[directionForm.country] ?? []).map((c) => (
-                              <option key={c} value={c}>
-                                {c}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
-                        <Field label="Work setting">
-                          <select
-                            className="input"
-                            value={directionForm.workMode}
-                            onChange={(e) =>
-                              setDirectionForm((f) => ({ ...f, workMode: e.target.value }))
-                            }
-                          >
-                            <option value="">Choose...</option>
-                            <option value="remote">Remote</option>
-                            <option value="hybrid">Hybrid</option>
-                            <option value="onsite">Onsite</option>
-                          </select>
-                        </Field>
-                      </div>
-                      <div className="flex justify-between gap-2 pt-1">
-                        <MagBtn variant="secondary" size="md" onClick={() => setStep(1)}>
-                          ← Back
-                        </MagBtn>
-                        <button type="submit" disabled={loading} className="bg-transparent border-0 p-0">
-                          <MagBtn variant="primary" size="md" style={loading ? { opacity: 0.5, pointerEvents: 'none'} : {}}>
-                            {loading ? "Generating..." : "Generate statement"}
-                          </MagBtn>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {step === 3 && directionResult && (
-                    <div className="space-y-4">
-                      <p className="text-sm font-medium text-[var(--foreground)]">Your AI‑generated direction</p>
-                      <div className="card border-[var(--accent)] bg-[var(--accent)]/5 p-5">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                          Career focus statement
-                        </p>
-                        <p className="mt-3 text-sm leading-relaxed text-[var(--foreground)]">{directionResult.statement}</p>
-                        <div className="mt-4 flex items-center gap-2">
-                          <span className="text-sm text-[var(--muted)]">Specificity</span>
-                          <Tag>
-                            {directionResult.specificity}
-                          </Tag>
-                        </div>
-                      </div>
-                      {directionResult.suggestions?.length ? (
-                        <div className="card p-4">
-                          <p className="text-sm font-semibold text-[var(--foreground)]">How to sharpen it further</p>
-                          <ul className="mt-2 space-y-1.5 list-disc pl-5 text-sm text-[var(--muted)]">
-                            {directionResult.suggestions.map((s, i) => (
-                              <li key={i}>{s}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                      <div className="flex justify-between pt-1 text-sm text-[var(--muted)]">
-                        <button type="button" className="hover:underline" onClick={() => setStep(1)}>
-                          Start over
-                        </button>
-                        <Link href="/cv" className="font-medium text-[var(--foreground)] hover:underline">
-                          Next phase: CV Optimizer →
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                </form>
-              </>
-            ) : (
-              <>
-                <div className="mb-5">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">Explore roles conversationally</p>
-                  <p className="mt-0.5 text-sm text-[var(--muted)]">
-                    Chat with AI to discover your ideal career direction through free-form conversation.
-                  </p>
-                </div>
-                <ExploreChat />
-              </>
-            )}
-          </div>
-
-          <aside className="card w-full border-dashed p-5 lg:w-72">
-            <p className="text-sm font-semibold text-[var(--foreground)]">
-              {mode === "wizard" ? "Why direction first?" : "How exploring works"}
-            </p>
-            <p className="mt-2 text-sm text-[var(--muted)] leading-relaxed">
-              {mode === "wizard"
-                ? 'A clear direction lets you judge every role, project and networking message with one question: "Does this move me closer to this target?"'
-                : "Describe what you enjoy, what problems interest you, or what kind of work environment you thrive in. The AI will ask follow-up questions and suggest a career direction statement when it has enough context."}
-            </p>
-            <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
-              {mode === "wizard" ? (
-                <>
-                  <li>• Faster yes/no decisions on internship listings.</li>
-                  <li>• Stronger, more consistent narrative on your CV.</li>
-                  <li>• Sharper talking points in coffee chats and interviews.</li>
-                </>
-              ) : (
-                <>
-                  <li>• No need to know exact role titles upfront.</li>
-                  <li>• AI narrows down based on your interests and values.</li>
-                  <li>• Accept the suggested direction when it feels right.</li>
-                </>
-              )}
-            </ul>
-          </aside>
+      {dirGenerating && (
+        <div className="pf-panel" style={{ padding: 34, textAlign: "center", marginBottom: 18 }}>
+          <div className="pf-anim-spin" style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid var(--panel3)", borderTopColor: "var(--accent)", margin: "0 auto 14px" }} />
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>Composing your statement…</div>
         </div>
+      )}
+
+      {dirGenerated && !dirGenerating && <GeneratedStatement />}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 18 }}>
+        <Panel style={{ overflow: "hidden" }}>
+          <div style={{ padding: "20px 24px 12px" }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Target roles</h2>
+            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Ranked by fit to your profile</span>
+          </div>
+          {TARGET_ROLES.map((r) => (
+            <div key={r.title} style={{ display: "flex", alignItems: "center", gap: 14, padding: "15px 24px", borderTop: "1px solid var(--line2)" }}>
+              <span className="pf-mono" style={{ fontSize: 20, fontWeight: 700, color: r.tone, width: 40 }}>{r.fit}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{r.title}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{r.note}</div>
+              </div>
+              <span className="pf-mono" style={{ fontSize: 10, fontWeight: 600, color: r.tone, border: `1px solid color-mix(in srgb, ${r.tone} 30%, transparent)`, borderRadius: 6, padding: "3px 9px" }}>{r.label}</span>
+            </div>
+          ))}
+        </Panel>
+
+        <Panel style={{ padding: "20px 24px" }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>The HIRE framework</h2>
+          <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Your progress through the arc</span>
+          <div style={{ marginTop: 16 }}>
+            {HIRE_FRAMEWORK.map((h) => (
+              <div key={h.k} style={{ display: "flex", alignItems: "center", gap: 13, padding: "11px 0", borderBottom: "1px solid var(--line2)" }}>
+                <span className="pf-mono" style={{ width: 26, height: 26, borderRadius: 8, background: h.bg, color: h.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{h.k}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{h.label}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{h.note}</div>
+                </div>
+                <span className="pf-mono" style={{ fontSize: 10, fontWeight: 600, color: h.statusColor }}>{h.status}</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
       </div>
     </div>
   );

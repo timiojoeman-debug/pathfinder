@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { buildOutreachPrompt } from "@/lib/prompts";
+import { checkNaturalness } from "@/lib/ai/naturalness-check";
 
 type OutreachBody = {
   type: "recruiter" | "hiringManager" | "peer";
@@ -75,11 +76,15 @@ export async function POST(req: Request) {
       temperature: 0.3,
     });
 
+    const messageText = aiResult.message ?? FALLBACK_OUTREACH.message;
+    const naturalness = checkNaturalness(messageText, { type: 'outreach' });
+
     return NextResponse.json({
-      message: aiResult.message ?? FALLBACK_OUTREACH.message,
+      message: messageText,
       questions: aiResult.questions ?? FALLBACK_OUTREACH.questions,
       topics: aiResult.topics ?? FALLBACK_OUTREACH.topics,
       followUp: aiResult.followUp ?? FALLBACK_OUTREACH.followUp,
+      naturalness,
     });
   } catch {
     return NextResponse.json(FALLBACK_OUTREACH);

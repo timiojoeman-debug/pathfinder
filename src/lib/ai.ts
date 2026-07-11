@@ -7,54 +7,126 @@ export type AIResponse = {
   content: string;
 };
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-
-async function callOpenAI(request: AIRequest): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
-  if (!apiKey) {
-    return null;
-  }
-
-  try {
-    const res = await fetch(OPENAI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        messages: [
-          { role: "system", content: request.systemPrompt },
-          { role: "user", content: request.userPrompt },
-        ],
-      }),
-    });
-
-    if (!res.ok) {
-      console.error("OpenAI error", await res.text());
-      return null;
-    }
-
-    const data = await res.json();
-    const content =
-      data?.choices?.[0]?.message?.content ??
-      (Array.isArray(data?.choices?.[0]?.message?.content)
-        ? data.choices[0].message.content.map((p: any) => p.text).join("\n")
-        : "");
-    return typeof content === "string" ? content : String(content);
-  } catch (err) {
-    console.error("OpenAI request failed", err);
-    return null;
+export class AIError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public retryable: boolean,
+    public available: boolean = true,
+    public retryAfter?: number
+  ) {
+    super(message);
+    this.name = 'AIError';
   }
 }
 
-export async function generateWithAI(request: AIRequest, fallback: () => string): Promise<AIResponse> {
-  const aiContent = await callOpenAI(request);
-  if (aiContent) {
-    return { content: aiContent };
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
+export function isAIAvailable(): boolean {
+  return !!(process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY);
+}
+
+function handleOpenAIErrorResponse(res: Response, errText: string): never {
+  const status = res.status;
+
+  if (status === 401) {
+    throw new AIError(
+      "Invalid API key. Check your OPENAI_API_KEY in .env.local.",
+      401,
+      false,
+      false
+    );
   }
-  return { content: fallback() };
+
+  if (status === 429) {
+    const retryAfterHeader = res.headers.get("Retry-After");
+    const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : undefined;
+    throw new AIError(
+      "AI is busy. Please try again in a moment.",
+      429,
+      true,
+      true,
+      Number.isNaN(retryAfter) ? undefined : retryAfter
+    );
+  }
+
+  if (status === 413 || errText.toLowerCase().includes("context length") || errText.toLowerCase().includes("maximum context") || errText.toLowerCase().includes("too many tokens")) {
+    throw new AIError(
+      "Input too long. Try with a shorter CV or job description.",
+      status,
+      false
+    );
+  }
+
+  if (status === 500 || status === 503) {
+    throw new AIError(
+      "AI service temporarily unavailable. Please try again.",
+      status,
+      true
+    );
+  }
+
+  throw new AIError(
+    `OpenAI API error ${status}: ${errText}`,
+    status,
+    false
+  );
+}
+
+async function callOpenAI(request: AIRequest): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new AIError(
+      "No OpenAI API key configured. Set OPENAI_API_KEY in .env.local.",
+      0,
+      false,
+      false
+    );
+  }
+
+  const res = await fetch(OPENAI_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4.1-mini",
+      messages: [
+        { role: "system", content: request.systemPrompt },
+        { role: "user", content: request.userPrompt },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("OpenAI error", errText);
+    handleOpenAIErrorResponse(res, errText);
+  }
+
+  const data = await res.json();
+  const content =
+    data?.choices?.[0]?.message?.content ??
+    (Array.isArray(data?.choices?.[0]?.message?.content)
+      ? data.choices[0].message.content.map((p: any) => p.text).join("\n")
+      : "");
+  return typeof content === "string" ? content : String(content);
+}
+
+export async function generateWithAI(request: AIRequest, fallback: () => string): Promise<AIResponse> {
+  try {
+    const aiContent = await callOpenAI(request);
+    return { content: aiContent };
+  } catch (err) {
+    if (err instanceof AIError && !err.available) {
+      // Key is misconfigured — rethrow so the problem isn't hidden by a fallback
+      throw err;
+    }
+    // For other AIErrors (rate limit, server down) and unexpected errors, use fallback
+    console.error("OpenAI request failed, using fallback", err);
+    return { content: fallback() };
+  }
 }
 
 /**
@@ -68,7 +140,12 @@ export async function callAI<T = Record<string, unknown>>(params: {
 }): Promise<T> {
   const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY or NEXT_PUBLIC_OPENAI_API_KEY is not set");
+    throw new AIError(
+      "No OpenAI API key configured. Set OPENAI_API_KEY in .env.local.",
+      0,
+      false,
+      false
+    );
   }
 
   const res = await fetch(OPENAI_API_URL, {
@@ -89,7 +166,7 @@ export async function callAI<T = Record<string, unknown>>(params: {
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`OpenAI API error ${res.status}: ${errText}`);
+    handleOpenAIErrorResponse(res, errText);
   }
 
   const data = await res.json();
@@ -114,4 +191,3 @@ export async function callAI<T = Record<string, unknown>>(params: {
     );
   }
 }
-

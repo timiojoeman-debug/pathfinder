@@ -118,6 +118,25 @@ JOB DESCRIPTION:
 ${jobDescription.slice(0, 4000)}
 ---
 
+ADDITIONALLY — NON-NEGOTIABLE REQUIREMENTS:
+Scan the job description for hard requirements that cannot be met through CV tailoring or skill development in the short term. These include:
+- Minimum years of professional experience (not internships or projects)
+- Mandatory location if the role is not remote
+- Work authorisation or visa sponsorship restrictions
+- Required certifications the candidate does not hold
+- Security clearance requirements
+- Degree level requirements above what the candidate has
+
+For each non-negotiable found, return:
+{
+  requirement: string (what the job requires),
+  category: "experience" | "location" | "visa" | "certification" | "clearance" | "degree",
+  studentMeets: boolean,
+  explanation: string (why this is or isn't a blocker)
+}
+
+If the student cannot meet one or more non-negotiable requirements, include a clear warning.
+
 Respond ONLY with valid JSON:
 {
   "inputQuality": string,
@@ -136,6 +155,9 @@ Respond ONLY with valid JSON:
     "missingSkills": string[],
     "assessmentTier": string,
     "guidance": string
-  }
+  },
+  "nonNegotiables": [{ "requirement": string, "category": "experience" | "location" | "visa" | "certification" | "clearance" | "degree", "studentMeets": boolean, "explanation": string }],
+  "hasBlockers": boolean,
+  "blockerWarning": string | null
 }`;
 }

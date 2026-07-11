@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/client';
 import { hashPassword, setAuthCookies } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const { email, password } = parsed.data;
-    const db = createServerClient();
+    const db = createAdminClient();
 
     // Check if user exists
     const { data: existing } = await db

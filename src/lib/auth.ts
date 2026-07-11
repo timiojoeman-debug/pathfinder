@@ -1,7 +1,15 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'pathfinder-dev-secret-change-in-production');
+// Resolved lazily so importing this module (e.g. during `next build` page-data
+// collection) never throws — only actually signing/verifying requires the env.
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not set');
+  }
+  return new TextEncoder().encode(secret);
+}
 const TOKEN_NAME = 'pathfinder-token';
 const REFRESH_TOKEN_NAME = 'pathfinder-refresh';
 const TOKEN_EXPIRY = '24h';
@@ -18,7 +26,7 @@ export async function createToken(payload: TokenPayload): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function createRefreshToken(payload: TokenPayload): Promise<string> {
@@ -26,12 +34,12 @@ export async function createRefreshToken(payload: TokenPayload): Promise<string>
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(REFRESH_EXPIRY)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return {
       userId: payload.userId as string,
       email: payload.email as string,

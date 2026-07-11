@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callAI } from '@/lib/ai';
 import { buildStartupOutreachPrompt } from '@/lib/prompts';
+import { checkNaturalness } from '@/lib/ai/naturalness-check';
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +21,12 @@ export async function POST(req: Request) {
       temperature: 0.7,
     });
 
-    return NextResponse.json(result);
+    const messageText = typeof result === 'object' && result !== null
+      ? (result as Record<string, unknown>).message as string ?? ''
+      : '';
+    const naturalness = checkNaturalness(messageText, { type: 'outreach' });
+
+    return NextResponse.json({ ...result, naturalness });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Startup outreach failed';
     if (message.includes('non-negotiable')) {

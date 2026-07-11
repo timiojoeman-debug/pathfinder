@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -16,13 +18,17 @@
     "@tanstack/react-query": "^5.96.1",
     "@types/three": "^0.183.1",
     "@types/uuid": "^10.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "jose": "^6.2.2",
     "mammoth": "^1.12.0",
     "next": "16.1.6",
+    "next-themes": "^0.4.6",
     "openai": "^6.33.0",
     "pdf-parse": "^1.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "tailwind-merge": "^3.6.0",
     "three": "^0.183.2",
     "uuid": "^13.0.0",
     "zod": "^4.3.6",
@@ -30,12 +36,17 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "jsdom": "^29.0.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.3"
   }
 }

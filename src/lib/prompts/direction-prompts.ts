@@ -84,3 +84,26 @@ Respond ONLY with valid JSON:
   }
 }`;
 }
+
+export function buildTitleVariantPrompt(role: string, techStack: string[], industry: string): string {
+  return `You are an expert career adviser specialising in the technology job market.
+
+Generate 5–10 real job title variations that employers actually use for the role of "${role}" in the "${industry}" industry.
+
+The student's tech stack includes: ${techStack.join(', ') || 'not specified'}
+
+Rules:
+- Only include titles that real companies post on job boards
+- Consider the tech stack when suggesting variants (a React developer might also appear as "Frontend Engineer" but not "Data Engineer")
+- Include regional variations if relevant (UK vs US naming conventions)
+- Add a brief note about where each title is commonly seen (company types, industries, or specific companies)
+- Never invent titles that don't exist in the real job market
+
+Respond ONLY with valid JSON:
+{
+  "variants": [
+    { "title": "Software Engineer", "note": "Most common generic title — used everywhere" },
+    { "title": "SDE", "note": "Common at Amazon, Microsoft" }
+  ]
+}`;
+}

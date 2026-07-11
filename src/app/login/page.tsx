@@ -1,0 +1,119 @@
+"use client";
+
+/**
+ * Sign in / create account — the JWT auth flow of the active site
+ * (/api/auth/login, /api/auth/signup) in the warm-paper design.
+ */
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { useAuthStore } from "@/lib/stores";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const checkAuth = useAuthStore((s) => s.checkAuth);
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/auth/${mode}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const json: { error?: string } = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json.error || "Something went wrong — try again.");
+        return;
+      }
+      await checkAuth();
+      router.push("/intel");
+    } catch {
+      setError("Could not reach the server — try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const tab = (on: boolean): React.CSSProperties => ({
+    cursor: "pointer", flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--line)",
+    background: on ? "var(--accent)" : "var(--panel)", color: on ? "#F7F1E4" : "var(--muted)",
+    fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
+  });
+
+  return (
+    <div className="pf" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div className="pf-anim-up" style={{ width: "min(420px, 94vw)" }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, justifyContent: "center", marginBottom: 26, textDecoration: "none", color: "var(--fg)" }}>
+          <div style={{ width: 30, height: 30, borderRadius: 9, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--rim)" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
+          </div>
+          <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-.02em" }}>PathFinder</span>
+        </Link>
+
+        <div className="pf-panel" style={{ padding: "26px 28px", background: "var(--panelSolid)" }}>
+          <div className="pf-kicker" style={{ marginBottom: 16 }}>
+            {mode === "login" ? "Welcome back" : "Create your account"}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+            <button onClick={() => { setMode("login"); setError(null); }} style={tab(mode === "login")}>Sign in</button>
+            <button onClick={() => { setMode("signup"); setError(null); }} style={tab(mode === "signup")}>Create account</button>
+          </div>
+
+          <form onSubmit={submit}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Email</div>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@university.ac.uk"
+              required
+              className="pf-input"
+              style={{ width: "100%", height: 44, padding: "0 15px", marginBottom: 14 }}
+            />
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+              Password {mode === "signup" && <span style={{ fontWeight: 500, color: "var(--faint)" }}>(8+ characters)</span>}
+            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              minLength={8}
+              className="pf-input"
+              style={{ width: "100%", height: 44, padding: "0 15px", marginBottom: 18 }}
+            />
+
+            {error && (
+              <div style={{ fontSize: 12.5, color: "var(--risk)", marginBottom: 14, lineHeight: 1.5 }}>{error}</div>
+            )}
+
+            <button
+              type="submit"
+              disabled={busy}
+              style={{ cursor: busy ? "default" : "pointer", width: "100%", height: 46, borderRadius: 12, border: "none", background: busy ? "var(--panel3)" : "var(--accent)", color: "#F7F1E4", fontSize: 14, fontWeight: 600 }}
+            >
+              {busy ? "One moment…" : mode === "login" ? "Sign in →" : "Create account →"}
+            </button>
+          </form>
+        </div>
+
+        <p style={{ fontSize: 12.5, color: "var(--faint)", textAlign: "center", marginTop: 16, lineHeight: 1.6 }}>
+          Accounts unlock the AI mentor across every phase.{" "}
+          <Link href="/intel" style={{ color: "var(--accentText)", textDecoration: "none", fontWeight: 600 }}>Explore without one →</Link>
+        </p>
+      </div>
+    </div>
+  );
+}

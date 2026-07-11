@@ -1,16 +1,36 @@
 import type { Metadata } from "next";
-import { Manrope, JetBrains_Mono } from "next/font/google";
+import { Manrope, Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { TopNav } from "@/components/top-nav";
+import "./pf-theme.css";
 import { Providers } from "@/components/providers";
+import { ThemeController } from "@/components/theme-controller";
+import { AppChrome } from "@/components/pf/shell";
+
+// Set the Intelligence Terminal mode before first paint to avoid a flash.
+// Default = Light; Dark is the mission-control mode (stored as pf-theme).
+const NO_FLASH_THEME = `(function(){try{var s=localStorage.getItem('pf-theme');document.documentElement.setAttribute('data-theme',s==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
 const manrope = Manrope({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
+// Inter — secondary UI typeface in the Intelligence Terminal system.
+const inter = Inter({
+  variable: "--font-ui-sans",
+  subsets: ["latin"],
+});
+
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
+  subsets: ["latin"],
+});
+
+// Instrument Serif — italic display accents in the redesigned system.
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-serif",
+  weight: "400",
+  style: ["normal", "italic"],
   subsets: ["latin"],
 });
 
@@ -25,15 +45,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME }} />
+      </head>
       <body
-        className={`${manrope.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-[var(--background)] text-[var(--foreground)]`}
+        className={`${manrope.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} antialiased min-h-screen bg-[var(--canvas)] text-[var(--ink)]`}
       >
         <Providers>
-          <TopNav />
-          <main className="min-h-screen">
-            {children}
-          </main>
+          <ThemeController />
+          <AppChrome>{children}</AppChrome>
         </Providers>
       </body>
     </html>

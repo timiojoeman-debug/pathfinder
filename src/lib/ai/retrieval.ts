@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/client';
+import { createServerClient, createAdminClient } from '@/lib/supabase/client';
 import { CV_BLUEPRINT } from '@/lib/methodology/cv-blueprint';
 import { NETWORKING_STRATEGY } from '@/lib/methodology/networking';
 import { COFFEE_CHAT } from '@/lib/methodology/coffee-chat';
@@ -54,9 +54,9 @@ export async function retrieveRelevantMethodology(
   return '';
 }
 
-// One-time setup: chunk and embed all methodology content
+// One-time setup: chunk and embed all methodology content (admin — writes to public table)
 export async function embedDocumentChunks(): Promise<void> {
-  const db = createServerClient();
+  const db = createAdminClient();
 
   const chunks: { title: string; framework_name: string; topic: string; chunk_text: string }[] = [];
 

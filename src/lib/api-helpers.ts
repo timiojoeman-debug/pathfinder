@@ -1,28 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getAuthUser, type TokenPayload } from '@/lib/auth';
+import type { TokenPayload } from '@/lib/auth';
 
-export async function withAuth(
-  handler: (user: TokenPayload, req: Request) => Promise<NextResponse>
-): Promise<(req: Request) => Promise<NextResponse>> {
-  return async (req: Request) => {
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Authentication required', retryable: false },
-        { status: 401 }
-      );
-    }
-    return handler(user, req);
+export function getRequestUser(req: Request): TokenPayload {
+  const headers = req.headers;
+  return {
+    userId: headers.get('x-user-id')!,
+    email: headers.get('x-user-email')!,
+    role: headers.get('x-user-role')!,
   };
-}
-
-// Helper to get authenticated user or return null for optional auth
-export async function getOptionalUser(): Promise<TokenPayload | null> {
-  try {
-    return await getAuthUser();
-  } catch {
-    return null;
-  }
 }
 
 // Standard error response

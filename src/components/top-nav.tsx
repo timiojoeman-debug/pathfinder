@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import { MagBtn } from "./ui/mag-btn";
 
 const navItems = [
@@ -18,6 +19,14 @@ export function TopNav() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  // The intel console and the Intelligence Brief landing are full-bleed OS
+  // surfaces with their own header — no global marketing chrome.
+  const hidden = pathname === "/" || pathname?.startsWith("/intel");
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 20);
@@ -32,6 +41,8 @@ export function TopNav() {
     setMobileOpen(false);
   }, [pathname]);
 
+  if (hidden) return null;
+
   return (
     <nav
       style={{
@@ -40,11 +51,12 @@ export function TopNav() {
         left: 0,
         right: 0,
         zIndex: 100,
-        background: scrolled || mobileOpen ? "rgba(255,255,255,0.88)" : "transparent",
-        backdropFilter: scrolled || mobileOpen ? "blur(16px) saturate(1.3)" : "none",
-        WebkitBackdropFilter: scrolled || mobileOpen ? "blur(16px) saturate(1.3)" : "none",
-        borderBottom: scrolled || mobileOpen ? "1px solid var(--c-100)" : "1px solid transparent",
-        transition: "all 0.35s ease",
+        background: scrolled || mobileOpen ? "color-mix(in srgb, var(--background) 72%, transparent)" : "transparent",
+        backdropFilter: scrolled || mobileOpen ? "blur(20px) saturate(1.6)" : "none",
+        WebkitBackdropFilter: scrolled || mobileOpen ? "blur(20px) saturate(1.6)" : "none",
+        borderBottom: scrolled || mobileOpen ? "1px solid var(--border)" : "1px solid transparent",
+        boxShadow: scrolled && !mobileOpen ? "0 1px 0 rgba(20,24,38,0.02), var(--shadow-xs)" : "none",
+        transition: "background 0.35s ease, backdrop-filter 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease",
       }}
     >
       <div
@@ -101,16 +113,51 @@ export function TopNav() {
               >
                 {item.label}
                 {active && (
-                  <div style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: "2px", background: "var(--c-900)", borderRadius: "1px" }} />
+                  <div style={{ position: "absolute", bottom: "-1px", left: 0, width: "100%", height: "2px", background: "var(--accent)", borderRadius: "2px", boxShadow: "0 0 8px var(--accent-glow)" }} />
                 )}
               </Link>
             );
           })}
+          <button
+            type="button"
+            className="cmdk-trigger"
+            onClick={() => window.dispatchEvent(new Event("pf:command"))}
+            aria-label="Open command palette"
+            title="Command palette (⌘K)"
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4-4" />
+              </svg>
+              Search
+            </span>
+            <span className="cmdk-kbd">⌘K</span>
+          </button>
+          {mounted && (
+            <button
+              type="button"
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px",
+                fontSize: "16px",
+                lineHeight: 1,
+                color: "var(--c-400)",
+              }}
+              aria-label="Toggle theme"
+              title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {resolvedTheme === 'dark' ? '☀' : '☽'}
+            </button>
+          )}
           <div style={{ height: "20px", width: "1px", background: "var(--c-150)" }} />
           {pathname !== '/' && (
-            <Link href="/" style={{textDecoration: "none"}}>
+            <Link href="/intel" style={{textDecoration: "none"}}>
               <MagBtn variant="primary" size="sm">
-                Dashboard
+                Console
               </MagBtn>
             </Link>
           )}
@@ -153,9 +200,10 @@ export function TopNav() {
           style={{
             borderTop: "1px solid var(--c-100)",
             padding: "8px 24px 16px",
-            background: "rgba(255,255,255,0.97)",
+            background: "var(--background)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
+            opacity: 0.98,
           }}
         >
           {navItems.map((item) => {
@@ -181,15 +229,34 @@ export function TopNav() {
               </Link>
             );
           })}
-          {pathname !== '/' && (
-            <div style={{ paddingTop: "12px" }}>
-              <Link href="/" style={{textDecoration: "none"}}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "12px", gap: "8px" }}>
+            {pathname !== '/' && (
+              <Link href="/intel" style={{textDecoration: "none"}}>
                 <MagBtn variant="primary" size="sm">
-                  Dashboard
+                  Console
                 </MagBtn>
               </Link>
-            </div>
-          )}
+            )}
+            {mounted && (
+              <button
+                type="button"
+                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--c-200)",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  padding: "8px 12px",
+                  fontSize: "14px",
+                  color: "var(--c-500)",
+                  minHeight: "44px",
+                }}
+                aria-label="Toggle theme"
+              >
+                {resolvedTheme === 'dark' ? '☀ Light' : '☽ Dark'}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </nav>

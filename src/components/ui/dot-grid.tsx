@@ -43,6 +43,8 @@ export function DotGrid() {
 
     const draw = () => {
       ctx.clearRect(0, 0, W, H);
+      const isDark = document.documentElement.classList.contains('dark');
+      const dotColor = isDark ? '255,255,255' : '0,0,0';
       const mx = mouse.current.x,
         my = mouse.current.y;
       for (let i = 0; i < cols; i++) {
@@ -57,7 +59,7 @@ export function DotGrid() {
           const alpha = 0.06 + t * 0.4;
           ctx.beginPath();
           ctx.arc(x, y, r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+          ctx.fillStyle = `rgba(${dotColor},${alpha})`;
           ctx.fill();
         }
       }

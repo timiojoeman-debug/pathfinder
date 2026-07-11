@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { callAI } from '@/lib/ai';
+import { checkNaturalness } from '@/lib/ai/naturalness-check';
 
 export async function POST(req: Request) {
   try {
-    const { cvData, jobDescription, companyName, directionStatement } = await req.json();
+    const { cvData, jobDescription, companyName, directionStatement, region } = await req.json();
     if (!jobDescription || !companyName) {
       return NextResponse.json({ error: 'Job description and company name are required' }, { status: 400 });
     }
@@ -55,7 +56,13 @@ Respond ONLY with valid JSON:
       temperature: 0.7,
     });
 
-    return NextResponse.json(result);
+    const coverLetterText = result?.data?.coverLetter ?? '';
+    const naturalness = checkNaturalness(coverLetterText, {
+      type: 'cover_letter',
+      region: region === 'uk' || region === 'us' ? region : undefined,
+    });
+
+    return NextResponse.json({ ...result, naturalness });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Cover letter generation failed', retryable: true },

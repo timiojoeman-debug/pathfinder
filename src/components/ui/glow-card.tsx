@@ -39,8 +39,8 @@ export function GlowCard({ children, delay = 0, style = {}, padded = true }: Glo
         borderRadius: "14px",
         padding: "1px",
         background: mouse.active
-          ? `radial-gradient(200px circle at ${mouse.x}px ${mouse.y}px, rgba(0,0,0,0.12), transparent 65%)`
-          : "var(--c-150)",
+          ? `radial-gradient(200px circle at ${mouse.x}px ${mouse.y}px, var(--glow-card-hover-border, rgba(0,0,0,0.12)), transparent 65%)`
+          : undefined,
         transition: "opacity 0.5s cubic-bezier(0.25,1,0.5,1), transform 0.5s cubic-bezier(0.25,1,0.5,1)",
         opacity: vis ? 1 : 0,
         transform: vis ? "translateY(0)" : "translateY(24px)",

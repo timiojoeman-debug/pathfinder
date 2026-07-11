@@ -66,6 +66,9 @@ export async function POST(req: Request) {
         matchScore: number;
         matchedSkills: string[];
         missingSkills: string[];
+        nonNegotiables?: { requirement: string; category: string; studentMeets: boolean; explanation: string }[];
+        hasBlockers?: boolean;
+        blockerWarning?: string | null;
       }>({
         systemPrompt: buildMatchScorePrompt(jobDescription),
         userMessage,
@@ -97,6 +100,9 @@ export async function POST(req: Request) {
               "Keywords are woven naturally into bullets, not stuffed",
               "CV is one page with clean, ATS-friendly formatting",
             ],
+      nonNegotiables: matchResult.nonNegotiables ?? [],
+      hasBlockers: matchResult.hasBlockers ?? false,
+      blockerWarning: matchResult.blockerWarning ?? null,
     });
   } catch {
     return NextResponse.json({

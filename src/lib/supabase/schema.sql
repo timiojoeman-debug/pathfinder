@@ -144,6 +144,27 @@ create table if not exists ai_interactions (
   created_at timestamp with time zone default now()
 );
 
+-- Career events — the append-only spine of the Career Operating System.
+-- Every phase action emits a typed event; the derived Career Profile and the
+-- progress/recommendation engines project over this stream.
+create table if not exists career_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade not null,
+  event_type varchar(50) not null,
+  phase varchar(20) not null,
+  label text not null,
+  meta jsonb default '{}',
+  created_at timestamp with time zone default now()
+);
+
+-- Career profile snapshot — the latest derived profile + progress metrics,
+-- upserted whenever the client state changes. Normalized detail lives in the
+-- per-domain tables (applications, networking_contacts, …); this is the fast
+-- read model the dashboard and AI orchestration layer load first.
+alter table profiles add column if not exists progress_snapshot jsonb default '{}';
+alter table profiles add column if not exists strengths jsonb default '[]';
+alter table profiles add column if not exists weaknesses jsonb default '[]';
+
 -- Methodology chunks for RAG
 create table if not exists methodology_chunks (
   id uuid primary key default gen_random_uuid(),
@@ -164,6 +185,7 @@ create index if not exists idx_stories_user on interview_stories(user_id);
 create index if not exists idx_leetcode_user on leetcode_progress(user_id);
 create index if not exists idx_interview_logs_user on interview_logs(user_id);
 create index if not exists idx_ai_interactions_user on ai_interactions(user_id);
+create index if not exists idx_career_events_user on career_events(user_id, created_at desc);
 create index if not exists idx_methodology_embedding on methodology_chunks using ivfflat (embedding vector_cosine_ops) with (lists = 20);
 
 -- Row Level Security

@@ -3,7 +3,7 @@ import { callAI } from '@/lib/ai';
 
 export async function POST(req: Request) {
   try {
-    const { headline, aboutSection } = await req.json();
+    const { headline, aboutSection, targetRole, techStack, industry } = await req.json();
     if (!headline && !aboutSection) {
       return NextResponse.json({ error: 'Headline or about section required' }, { status: 400 });
     }
@@ -24,6 +24,19 @@ ABOUT SECTION RULES:
 
 Flag: vague language, missing tech stack, third-person writing, "Aspiring" anywhere.
 
+ADDITIONALLY — RECRUITER KEYWORD ANALYSIS:
+Based on the student's target role of "${targetRole || 'Software Engineer'}" in "${industry || 'Technology'}", generate a prioritised list of 10–15 keywords that recruiters typically search for when looking for candidates for this type of role.
+
+The student's tech stack includes: ${(techStack as string[])?.join(', ') || 'not specified'}
+
+For each keyword, indicate:
+- keyword: the keyword itself
+- priority: "critical" (must have), "important" (strongly recommended), or "helpful" (nice to have)
+- foundInProfile: whether it appears in the student's current headline or about section
+- suggestedPlacement: where to add it if missing — "headline", "about", "skills section", or "experience titles"
+
+These should be specific to the student's target role and tech stack, not generic.
+
 Respond ONLY with valid JSON:
 {
   "inputQuality": string,
@@ -41,6 +54,11 @@ Respond ONLY with valid JSON:
     "aboutScore": number,
     "suggestedHeadline": string,
     "suggestedAboutOpener": string
+  },
+  "keywordAnalysis": {
+    "totalKeywords": number,
+    "foundInProfile": number,
+    "keywords": [{ "keyword": string, "priority": "critical" | "important" | "helpful", "foundInProfile": boolean, "suggestedPlacement": string }]
   }
 }`,
       userMessage: `Headline: ${headline || 'Not provided'}\n\nAbout section: ${aboutSection || 'Not provided'}`,

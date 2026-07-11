@@ -1,645 +1,417 @@
 "use client";
 
-import { FormEvent, useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import {
-  getCvSummary,
-  getInternships,
-  addInternship,
-  removeInternship,
-  type Application,
-  type SavedInternship,
-} from "@/lib/store";
-import { MagBtn } from "@/components/ui/mag-btn";
-import { Tag, AnimBar } from "@/components/ui/typography";
+/**
+ * Phase 03 — Opportunity Discovery. Add & analyze a role against the CV
+ * (compatibility, dealbreakers, ATS keywords, cover letter), plus the scored
+ * job cards feeding the detail drawer.
+ */
 
-type AtsKeywordDetail = {
-  keyword: string;
-  foundInCV: boolean;
-  suggestedPlacement: string;
-};
+import { useEffect, useState } from "react";
+import { STATIC_JOBS } from "@/lib/pf/data";
+import { buildCoverLetter, fitTone, targetKeywords } from "@/lib/pf/logic";
+import { usePfStore, type SavedJob } from "@/lib/pf/store";
+import { Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
+import { NextStep } from "@/components/pf/next-step";
 
-type AnalyzeResult = {
-  matchScore: number;
-  atsKeywords: string[];
-  atsKeywordsDetail?: AtsKeywordDetail[];
-  auditChecklist: string[];
-};
+interface AiJdRead { score: number | null; checklist: string[]; warning: string | null }
+interface AiLetter { paras: string[]; assumptions: string[]; words: number }
 
-type CoverLetterResult = {
-  data: {
-    coverLetter: string;
-    assumptions: string[];
-    wordCount: number;
-    editReminder?: string;
+/** Map a /api/jobs/search listing onto the design's job-card shape. */
+function toSavedJob(j: { title?: string; company?: string; location?: string; source?: string; description?: string; matchScore?: number; atsKeywords?: string[] }): SavedJob {
+  const fit = Math.max(20, Math.min(95, Math.round(j.matchScore ?? 60)));
+  return {
+    company: j.company ?? "Unknown",
+    role: j.title ?? "Internship",
+    meta: [j.location, j.source].filter(Boolean).join(" · ") || "Live result",
+    fit,
+    dash: Math.round(144 * (1 - fit / 100)),
+    tone: fitTone(fit),
+    tags: j.atsKeywords && j.atsKeywords.length ? j.atsKeywords.slice(0, 3) : ["Live"],
+    verdict: fit >= 70 ? "Strong match" : fit >= 55 ? "Reach — tailor hard" : "Long shot",
+    action: "+ Save",
+    jdText: j.description ?? "",
   };
-  nextSteps: string[];
-};
+}
 
-export default function JobsPage() {
-  const [form, setForm] = useState({
-    jobTitle: "",
-    company: "",
-    jobDescription: "",
-    jobUrl: "",
-    userLinkedInUrl: "",
-    userLinkedIn: "",
-  });
-  const [internships, setInternshipsList] = useState<SavedInternship[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
-  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [addedToTracker, setAddedToTracker] = useState(false);
-
-  // Cover letter state
-  const [coverLetter, setCoverLetter] = useState<CoverLetterResult | null>(null);
-  const [coverLetterLoading, setCoverLetterLoading] = useState(false);
-  const [coverLetterCopied, setCoverLetterCopied] = useState(false);
-
-  // Visa sponsorship card state
-  const [visaDismissed, setVisaDismissed] = useState(false);
-
-  const cvSummary = getCvSummary();
-
-  const loadInternships = useCallback(() => {
-    setInternshipsList(getInternships());
-  }, []);
-
-  useEffect(() => {
-    loadInternships();
-  }, [loadInternships]);
-
-  function handleSaveToList(e: FormEvent) {
-    e.preventDefault();
-    if (!form.jobDescription.trim()) return;
-    addInternship({
-      jobTitle: form.jobTitle || "Untitled Role",
-      company: form.company || "Unknown Company",
-      jobDescription: form.jobDescription,
-      jobUrl: form.jobUrl || undefined,
-    });
-    loadInternships();
-    setForm({ jobTitle: "", company: "", jobDescription: "", jobUrl: "", userLinkedInUrl: form.userLinkedInUrl, userLinkedIn: form.userLinkedIn });
-  }
-
-  async function handleAnalyze(e: FormEvent) {
-    e.preventDefault();
-    if (!form.jobDescription.trim()) return;
-    setLoading(true);
-    setAnalysis(null);
-    setAnalyzingId(null);
-    setCoverLetter(null);
-    setVisaDismissed(false);
-    try {
-      const res = await fetch("/api/jobs/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobTitle: form.jobTitle,
-          company: form.company,
-          jobDescription: form.jobDescription,
-          cvSummary,
-          userLinkedInUrl: form.userLinkedInUrl || undefined,
-          userLinkedIn: form.userLinkedIn || undefined,
-        }),
-      });
-      const data = (await res.json()) as AnalyzeResult;
-      setAnalysis(data);
-      setAddedToTracker(false);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function analyzeFromList(internship: SavedInternship) {
-    setAnalyzingId(internship.id);
-    setAnalysis(null);
-    setCoverLetter(null);
-    setVisaDismissed(false);
-    try {
-      const res = await fetch("/api/jobs/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobTitle: internship.jobTitle,
-          company: internship.company,
-          jobDescription: internship.jobDescription,
-          cvSummary,
-          userLinkedInUrl: form.userLinkedInUrl || undefined,
-          userLinkedIn: form.userLinkedIn || undefined,
-        }),
-      });
-      const data = (await res.json()) as AnalyzeResult;
-      setAnalysis(data);
-      setForm({
-        jobTitle: internship.jobTitle,
-        company: internship.company,
-        jobDescription: internship.jobDescription,
-        jobUrl: internship.jobUrl || "",
-        userLinkedInUrl: form.userLinkedInUrl,
-        userLinkedIn: form.userLinkedIn,
-      });
-      setAddedToTracker(false);
-    } finally {
-      setAnalyzingId(null);
-    }
-  }
-
-  function addToTracker() {
-    if (!analysis) return;
-    const apps: Application[] = JSON.parse(
-      localStorage.getItem("pathfinder-applications") || "[]"
-    );
-    const id = crypto.randomUUID();
-    apps.push({
-      id,
-      jobTitle: form.jobTitle || "Untitled Role",
-      company: form.company || "Unknown Company",
-      source: "Manual",
-      matchScore: analysis.matchScore,
-      stage: "researching",
-      jobUrl: form.jobUrl || undefined,
-      jobDescription: form.jobDescription || undefined,
-      atsKeywords: analysis.atsKeywords,
-    });
-    localStorage.setItem("pathfinder-applications", JSON.stringify(apps));
-    setAddedToTracker(true);
-  }
-
-  function handleRemove(id: string) {
-    removeInternship(id);
-    loadInternships();
-  }
-
-  async function handleGenerateCoverLetter() {
-    if (!form.jobDescription.trim() || !form.company.trim()) return;
-    setCoverLetterLoading(true);
-    setCoverLetter(null);
-    setCoverLetterCopied(false);
-    try {
-      const res = await fetch("/api/cover-letter/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cvData: cvSummary || "",
-          jobDescription: form.jobDescription,
-          companyName: form.company,
-          directionStatement: "",
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to generate cover letter");
-      const data = (await res.json()) as CoverLetterResult;
-      setCoverLetter(data);
-    } catch {
-      setCoverLetter(null);
-    } finally {
-      setCoverLetterLoading(false);
-    }
-  }
-
-  async function handleCopyCoverLetter() {
-    if (!coverLetter?.data?.coverLetter) return;
-    try {
-      await navigator.clipboard.writeText(coverLetter.data.coverLetter);
-      setCoverLetterCopied(true);
-      setTimeout(() => setCoverLetterCopied(false), 2000);
-    } catch {
-      // fallback: select text
-    }
-  }
-
+function AddRolePanel() {
+  const s = usePfStore();
+  const canSave = !!(s.jfTitle.trim() && s.jfCompany.trim());
+  const canAnalyze = s.jfJD.trim().length >= 80;
   return (
-    <div className="page-container overflow-safe">
-      <div className="flex flex-col gap-8">
-      <section>
-        <p className="section-label">Phase 3</p>
-        <h1 className="section-title">Internships & Job Descriptions</h1>
-        <p className="section-subtitle">
-          Manually add internships and paste job descriptions to keep track. Get ATS
-          keywords, compatibility scores, and a pre-submission audit when you analyze.
-        </p>
-      </section>
+    <Panel style={{ padding: "24px 26px", marginBottom: 18 }}>
+      <Kicker style={{ marginBottom: 14 }}>Add a role you found — save it, or analyze it against your CV</Kicker>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <input
+          value={s.jfTitle}
+          onChange={(e) => s.set({ jfTitle: e.target.value })}
+          placeholder="Job title — e.g. Software Engineer Intern"
+          className="pf-input"
+          style={{ height: 44, padding: "0 15px" }}
+        />
+        <input
+          value={s.jfCompany}
+          onChange={(e) => s.set({ jfCompany: e.target.value })}
+          placeholder="Company"
+          className="pf-input"
+          style={{ height: 44, padding: "0 15px" }}
+        />
+      </div>
+      <textarea
+        value={s.jfJD}
+        onChange={(e) => s.set({ jfJD: e.target.value, jfResult: null, jfLetter: false })}
+        placeholder="Paste the job description (80+ characters unlocks the full analysis: compatibility, dealbreakers, ATS keywords, cover letter)…"
+        className="pf-input"
+        style={{ width: "100%", minHeight: 110, padding: "14px 15px", borderRadius: 12, borderStyle: "dashed", fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
+      />
+      <div style={{ display: "flex", gap: 10, marginTop: 13 }}>
+        <button
+          onClick={s.saveJfJob}
+          disabled={!canSave}
+          style={{ cursor: canSave ? "pointer" : "default", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: canSave ? "var(--fg)" : "var(--panel3)", color: canSave ? "var(--bg)" : "var(--faint)", fontSize: 13.5, fontWeight: 600 }}
+        >
+          Save to my list
+        </button>
+        <button
+          onClick={s.analyzeJf}
+          disabled={!canAnalyze}
+          style={{ cursor: canAnalyze ? "pointer" : "default", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: canAnalyze ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 13.5, fontWeight: 600 }}
+        >
+          Analyze &amp; get ATS keywords →
+        </button>
+      </div>
+    </Panel>
+  );
+}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <section className="card p-6">
-            <h2 className="text-sm font-semibold text-[var(--foreground)]">
-              Add internship & paste job description
-            </h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Save to your list or analyze immediately.
-            </p>
+function AnalysisResult() {
+  const s = usePfStore();
+  const r = s.jfResult;
+  const [aiRead, setAiRead] = useState<AiJdRead | null>(null);
+  const [aiLetter, setAiLetter] = useState<AiLetter | null>(null);
 
-            <form className="mt-5 flex flex-col gap-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-[var(--foreground)]">Job title</label>
-                  <input
-                    className="input"
-                    placeholder="e.g. Software Engineering Intern"
-                    value={form.jobTitle}
-                    onChange={(e) => setForm((f) => ({ ...f, jobTitle: e.target.value }))}
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-[var(--foreground)]">Company</label>
-                  <input
-                    className="input"
-                    placeholder="e.g. NovaTech Labs"
-                    value={form.company}
-                    onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-[var(--foreground)]">Job URL (optional)</label>
-                <input
-                  type="url"
-                  className="input"
-                  placeholder="https://..."
-                  value={form.jobUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, jobUrl: e.target.value }))}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-[var(--foreground)]">Your LinkedIn profile URL (optional)</label>
-                <input
-                  type="url"
-                  className="input"
-                  placeholder="https://linkedin.com/in/yourprofile"
-                  value={form.userLinkedInUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, userLinkedInUrl: e.target.value }))}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-[var(--foreground)]">Or paste your profile content (optional)</label>
-                <textarea
-                  className="input h-24 resize-y"
-                  placeholder="Paste your About, Experience, Education, Skills to compare against the job description..."
-                  value={form.userLinkedIn}
-                  onChange={(e) => setForm((f) => ({ ...f, userLinkedIn: e.target.value }))}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-[var(--foreground)]">Job description (paste full text)</label>
-                <textarea
-                  className="input h-40 resize-y"
-                  placeholder="Paste the full job description here..."
-                  value={form.jobDescription}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, jobDescription: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="flex flex-wrap gap-3 mt-2">
-                <button type="button" onClick={handleSaveToList} disabled={!form.jobDescription.trim()} className="bg-transparent border-0 p-0">
-                  <MagBtn variant="secondary" size="md" style={!form.jobDescription.trim() ? {opacity: 0.5, pointerEvents: 'none'} : {}}>
-                    Save to my list
-                  </MagBtn>
-                </button>
-                <button type="submit" onClick={handleAnalyze} disabled={loading || !form.jobDescription.trim()} className="bg-transparent border-0 p-0">
-                  <MagBtn variant="primary" size="md" style={(loading || !form.jobDescription.trim()) ? {opacity: 0.5, pointerEvents: 'none'} : {}}>
-                    {loading ? "Analyzing..." : "Analyze & get ATS keywords"}
-                  </MagBtn>
-                </button>
-              </div>
-            </form>
-          </section>
+  // AI enrichment of the deterministic analysis — silent fallback when offline.
+  useEffect(() => {
+    setAiRead(null);
+    if (!r) return;
+    const st = usePfStore.getState();
+    const controller = new AbortController();
+    fetch("/api/jobs/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobTitle: st.jfTitle, company: st.jfCompany, jobDescription: st.jfJD, cvSummary: st.cvText }),
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: unknown) => {
+        if (!json || typeof json !== "object") return;
+        const j = json as { matchScore?: number; auditChecklist?: unknown; blockerWarning?: string | null };
+        const checklist = Array.isArray(j.auditChecklist) ? j.auditChecklist.filter((x): x is string => typeof x === "string").slice(0, 5) : [];
+        if (checklist.length || j.blockerWarning) {
+          setAiRead({ score: typeof j.matchScore === "number" ? j.matchScore : null, checklist, warning: j.blockerWarning ?? null });
+        }
+      })
+      .catch(() => { /* deterministic result stays */ });
+    return () => controller.abort();
+  }, [r]);
 
-          <section className="card p-6">
-            <h2 className="text-sm font-semibold text-[var(--foreground)]">
-              Saved internships
-            </h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Your manual list of roles with job descriptions. Click Analyze to get insights.
-            </p>
-            {internships.length === 0 ? (
-              <div className="mt-4 flex h-32 items-center justify-center rounded-lg border border-dashed border-[var(--border)] text-sm text-[var(--muted)]">
-                No internships saved yet. Add one above.
-              </div>
-            ) : (
-              <ul className="mt-4 space-y-3">
-                {internships.map((i) => (
-                  <li
-                    key={i.id}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-4"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-[var(--foreground)]">{i.jobTitle}</p>
-                        <p className="text-sm text-[var(--muted)]">{i.company}</p>
-                      </div>
-                      <div className="flex shrink-0 gap-2 items-center">
-                        <button type="button" onClick={() => analyzeFromList(i)} disabled={!!analyzingId} className="bg-transparent border-0 p-0">
-                           <MagBtn variant="primary" size="sm" style={!!analyzingId ? {opacity: 0.5, pointerEvents: 'none'} : {}}>
-                             {analyzingId === i.id ? "Analyzing..." : "Analyze"}
-                           </MagBtn>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(i.id)}
-                          className="rounded p-1.5 text-[var(--muted)] hover:bg-rose-500/10 hover:text-rose-400"
-                          aria-label="Remove"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedId(expandedId === i.id ? null : i.id)
-                      }
-                      className="mt-2 text-xs text-[var(--accent)] hover:underline"
-                    >
-                      {expandedId === i.id ? "Hide" : "View"} job description
-                    </button>
-                    {expandedId === i.id && (
-                      <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-[var(--card)] p-3 text-xs text-[var(--muted)]">
-                        {i.jobDescription}
-                      </pre>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+  // AI cover letter via the active site's generator; local draft as fallback.
+  useEffect(() => {
+    if (!s.jfLetter) { setAiLetter(null); return; }
+    const st = usePfStore.getState();
+    const controller = new AbortController();
+    fetch("/api/cover-letter/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cvData: st.cvText, jobDescription: st.jfJD, companyName: st.jfCompany || "the company", directionStatement: st.dirRole ? `${st.dirRole} internships` : undefined }),
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: unknown) => {
+        const data = (json as { data?: { coverLetter?: string; assumptions?: unknown } } | null)?.data;
+        const text = data?.coverLetter;
+        if (typeof text === "string" && text.trim().length > 80) {
+          const paras = text.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean);
+          const assumptions = Array.isArray(data?.assumptions) ? data.assumptions.filter((x): x is string => typeof x === "string") : [];
+          setAiLetter({ paras, assumptions, words: text.split(/\s+/).length });
+        }
+      })
+      .catch(() => { /* local letter renders */ });
+    return () => controller.abort();
+  }, [s.jfLetter]);
+
+  if (!r) return null;
+  const localLetter = buildCoverLetter(s.jfCompany, s.jfTitle, s.jfJD, targetKeywords(s.dirStack));
+  const letter = aiLetter
+    ? { paras: aiLetter.paras, words: aiLetter.words, assumptions: aiLetter.assumptions.length ? aiLetter.assumptions : localLetter.assumptions }
+    : { paras: [localLetter.p1, localLetter.p2, localLetter.p3], words: localLetter.words, assumptions: localLetter.assumptions };
+  return (
+    <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", borderBottom: "1px solid var(--line)", background: "var(--accentSoft)" }}>
+        <span className="pf-mono" style={{ fontSize: 30, fontWeight: 700, color: r.compatTone }}>{r.compat}</span>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>Compatibility with your CV</div>
+          <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 2 }}>{r.tally}</div>
         </div>
-
-        <section className="space-y-4">
-          {analysis ? (
-            <>
-              {/* Visa Sponsorship Check Card */}
-              {!visaDismissed && (
-                <div className="card relative flex items-start gap-3 border-amber-500/30 bg-amber-500/5 p-4">
-                  <span className="mt-0.5 text-lg leading-none">&#9888;</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[var(--foreground)]">
-                      International student?
-                    </p>
-                    <p className="mt-1 text-sm text-[var(--muted)]">
-                      Check if this company sponsors visas before applying.
-                    </p>
-                    <a
-                      href="https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-block text-sm text-[var(--accent)] hover:underline"
-                    >
-                      Check UK licensed sponsor register &rarr;
-                    </a>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setVisaDismissed(true)}
-                    className="shrink-0 rounded p-1 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
-                    aria-label="Dismiss visa check reminder"
-                  >
-                    &#10005;
-                  </button>
-                </div>
-              )}
-
-              <div className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    Compatibility score
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">
-                    Based on your CV vs job requirements
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1 min-w-[120px]">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold tracking-tight text-[var(--c-900)]">
-                      {analysis.matchScore}
-                    </span>
-                    <span className="text-sm text-[var(--muted)]">/100</span>
-                  </div>
-                  <div className="w-full mt-1">
-                     <AnimBar width={analysis.matchScore} delay={100} />
-                  </div>
-                </div>
-              </div>
-
-              {/* ATS Keyword Visualization Grid */}
-              <div className="card p-4">
-                <p className="text-sm font-semibold text-[var(--foreground)]">ATS keyword analysis</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  How your CV matches against required keywords from the job description.
-                </p>
-                {analysis.atsKeywordsDetail && analysis.atsKeywordsDetail.length > 0 ? (
-                  <div className="mt-3 overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--border)]">
-                          <th className="pb-2 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                            Keyword
-                          </th>
-                          <th className="pb-2 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                            Found in CV
-                          </th>
-                          <th className="pb-2 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                            Section
-                          </th>
-                          <th className="pb-2 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                            Action needed
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analysis.atsKeywordsDetail.map((kw) => (
-                          <tr key={kw.keyword} className="border-b border-[var(--border)]/50">
-                            <td className="py-2.5 pr-4">
-                              <Tag>{kw.keyword}</Tag>
-                            </td>
-                            <td className="py-2.5 pr-4">
-                              {kw.foundInCV ? (
-                                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500">
-                                  <span>&#10003;</span> Yes
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-400">
-                                  <span>&#10007;</span> Missing
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2.5 pr-4 text-xs text-[var(--muted)]">
-                              {kw.foundInCV ? kw.suggestedPlacement : "---"}
-                            </td>
-                            <td className="py-2.5 text-xs text-[var(--muted)]">
-                              {kw.foundInCV ? (
-                                <span className="text-emerald-500">No action needed</span>
-                              ) : (
-                                <span>
-                                  Add to <span className="font-medium text-[var(--foreground)]">{kw.suggestedPlacement}</span>
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div className="mt-3 flex items-center gap-4 text-xs text-[var(--muted)]">
-                      <span>
-                        <span className="font-medium text-emerald-500">
-                          {analysis.atsKeywordsDetail.filter((k) => k.foundInCV).length}
-                        </span>{" "}
-                        / {analysis.atsKeywordsDetail.length} keywords matched
-                      </span>
-                      <span className="h-3 w-px bg-[var(--border)]" />
-                      <span>
-                        {analysis.atsKeywordsDetail.filter((k) => !k.foundInCV).length > 0
-                          ? `${analysis.atsKeywordsDetail.filter((k) => !k.foundInCV).length} keywords to add`
-                          : "All keywords covered"}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  /* Fallback to simple tags if detail not available */
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {analysis.atsKeywords.map((k) => (
-                      <Tag key={k}>{k}</Tag>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="card p-4">
-                <p className="text-sm font-semibold text-[var(--foreground)]">ATS pre-submission audit</p>
-                <ul className="mt-3 space-y-2 text-sm text-[var(--muted)]">
-                  {analysis.auditChecklist?.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="mt-0.5 text-[var(--success)]">&#10003;</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="flex flex-wrap gap-3 mt-4">
-                <button type="button" onClick={addToTracker} disabled={addedToTracker} className="bg-transparent border-0 p-0">
-                  <MagBtn variant="primary" size="md" style={addedToTracker ? {opacity: 0.5, pointerEvents: 'none'} : {}}>
-                     {addedToTracker ? "Added to tracker ✓" : "Add to tracker"}
-                  </MagBtn>
-                </button>
-                <Link href="/tracker" style={{textDecoration: 'none'}}>
-                  <MagBtn variant="secondary" size="md">
-                    View tracker &rarr;
-                  </MagBtn>
-                </Link>
-              </div>
-
-              {/* Cover Letter Generator */}
-              <div className="card p-4">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Cover letter generator</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  Generate a tailored cover letter based on your CV and this job description.
-                </p>
-
-                {!coverLetter && !coverLetterLoading && (
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={handleGenerateCoverLetter}
-                      disabled={!form.company.trim() || !form.jobDescription.trim()}
-                      className="bg-transparent border-0 p-0"
-                    >
-                      <MagBtn
-                        variant="primary"
-                        size="md"
-                        style={
-                          !form.company.trim() || !form.jobDescription.trim()
-                            ? { opacity: 0.5, pointerEvents: "none" }
-                            : {}
-                        }
-                      >
-                        Generate cover letter
-                      </MagBtn>
-                    </button>
-                    {!form.company.trim() && (
-                      <p className="mt-2 text-xs text-rose-400">
-                        Enter a company name above to generate a cover letter.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {coverLetterLoading && (
-                  <div className="mt-4 flex items-center gap-2 text-sm text-[var(--muted)]">
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
-                    Generating your cover letter...
-                  </div>
-                )}
-
-                {coverLetter?.data?.coverLetter && (
-                  <div className="mt-4 space-y-3">
-                    <div className="relative rounded-lg border border-[var(--border)] bg-[var(--background)] p-4">
-                      <button
-                        type="button"
-                        onClick={handleCopyCoverLetter}
-                        className="absolute right-3 top-3 rounded px-2 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10 border border-[var(--border)]"
-                      >
-                        {coverLetterCopied ? "Copied!" : "Copy"}
-                      </button>
-                      <pre className="whitespace-pre-wrap text-sm text-[var(--foreground)] leading-relaxed pr-16" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>
-                        {coverLetter.data.coverLetter}
-                      </pre>
-                    </div>
-
-                    {coverLetter.data.assumptions && coverLetter.data.assumptions.length > 0 && (
-                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-                        <p className="text-xs font-semibold text-[var(--foreground)]">
-                          Assumptions made (review these)
-                        </p>
-                        <ul className="mt-1.5 space-y-1">
-                          {coverLetter.data.assumptions.map((a, i) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--muted)]">
-                              <span className="mt-0.5 text-amber-500">&#8226;</span>
-                              {a}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    <div className="rounded-lg border border-[var(--accent)]/20 bg-[var(--accent)]/5 p-3">
-                      <p className="text-xs text-[var(--muted)]">
-                        <span className="font-semibold text-[var(--foreground)]">Reminder:</span>{" "}
-                        {coverLetter.data.editReminder ||
-                          "Review and personalise this before sending. AI drafts the structure \u2014 you add the authenticity."}
-                      </p>
-                    </div>
-
-                    {coverLetter.data.wordCount && (
-                      <p className="text-xs text-[var(--muted)]">
-                        Word count: {coverLetter.data.wordCount}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="card flex h-64 items-center justify-center border-dashed p-8 text-center text-sm text-[var(--muted)]">
-              Paste a job description and click Analyze (or Analyze on a saved internship) to see
-              compatibility score, ATS keywords, and audit checklist.
-            </div>
-          )}
-        </section>
+        {r.hasBlockers && (
+          <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "var(--risk)", border: "1px solid color-mix(in srgb,var(--risk) 32%,transparent)", borderRadius: 6, padding: "3px 9px" }}>
+            DEALBREAKER FOUND
+          </span>
+        )}
       </div>
 
-      {!cvSummary && (
-        <div className="card border-[var(--accent-muted)]/50 bg-[var(--accent)]/5 p-4 text-sm text-[var(--muted)]">
-          Tip: Upload your CV in the{" "}
-          <Link href="/cv" className="text-[var(--accent)] hover:underline">
-            CV Optimizer
-          </Link>{" "}
-          for more accurate compatibility scores.
+      {r.noBlockers && (
+        <div style={{ padding: "11px 24px", borderBottom: "1px solid var(--line2)", fontSize: 12.5, color: "var(--muted)" }}>
+          No dealbreakers detected — no clearance, sponsorship or experience walls in this posting.
         </div>
       )}
-    </div>
+      {r.blockers.map((b) => (
+        <div key={b.text} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 24px", borderBottom: "1px solid var(--line2)" }}>
+          <MarkDot mark={b.mark} bg={b.bg} />
+          <span style={{ fontSize: 13 }}>{b.text}</span>
+        </div>
+      ))}
+
+      <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: 10, padding: "9px 24px", background: "var(--panel2)", borderBottom: "1px solid var(--line)" }}>
+        <span className="pf-mono" style={{ fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)" }}>Keyword</span>
+        <span className="pf-mono" style={{ fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)" }}>Action needed</span>
+      </div>
+      {r.rows.map((row) => (
+        <div key={row.kw} style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: 10, alignItems: "center", padding: "9px 24px", borderBottom: "1px solid var(--line2)" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 16, height: 16, borderRadius: "50%", background: row.bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, flexShrink: 0 }}>{row.mark}</span>
+            <span className="pf-mono" style={{ fontSize: 11.5, fontWeight: 600 }}>{row.kw}</span>
+          </span>
+          <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{row.action}</span>
+        </div>
+      ))}
+
+      {aiRead && (
+        <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--line2)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
+            <Kicker style={{ fontSize: 9.5 }}>AI read</Kicker>
+            {aiRead.score !== null && (
+              <span className="pf-mono" style={{ fontSize: 10.5, color: "var(--muted)" }}>AI match {aiRead.score}%</span>
+            )}
+          </div>
+          {aiRead.warning && (
+            <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--risk)", margin: "0 0 8px" }}>{aiRead.warning}</p>
+          )}
+          {aiRead.checklist.map((c) => (
+            <div key={c.slice(0, 60)} style={{ display: "flex", gap: 9, padding: "3px 0" }}>
+              <span style={{ color: "var(--accent)" }}>·</span>
+              <span style={{ fontSize: 13, lineHeight: 1.6, color: "var(--muted)" }}>{c}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!s.jfLetter && (
+        <div style={{ padding: "16px 24px" }}>
+          <button
+            onClick={() => s.set({ jfLetter: true })}
+            style={{ cursor: "pointer", height: 42, padding: "0 20px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13, fontWeight: 600 }}
+          >
+            Generate cover letter →
+          </button>
+        </div>
+      )}
+      {s.jfLetter && (
+        <div style={{ padding: "20px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <Kicker style={{ fontSize: 9.5 }}>Cover letter draft</Kicker>
+            <span className="pf-mono" style={{ fontSize: 10, color: "var(--muted)" }}>{letter.words} words</span>
+            <span className="pf-mono" style={{ fontSize: 10, fontWeight: 700, color: "var(--strong)", border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)", borderRadius: 6, padding: "2px 8px" }}>
+              {aiLetter ? "AI · tailored" : "reads natural"}
+            </span>
+          </div>
+          {letter.paras.map((p, i) => (
+            <p key={i} style={{ fontSize: 13.5, lineHeight: 1.7, margin: i === letter.paras.length - 1 ? "0 0 14px" : "0 0 10px" }}>{p}</p>
+          ))}
+          <div className="pf-mono" style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--warn)", marginBottom: 7 }}>Review these assumptions before sending</div>
+          {letter.assumptions.map((a) => (
+            <div key={a} style={{ display: "flex", gap: 9, padding: "4px 0" }}>
+              <span style={{ color: "var(--warn)" }}>·</span>
+              <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{a}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Reveal>
+  );
+}
+
+export default function JobsPage() {
+  const s = usePfStore();
+  const jobsAll = [...s.savedJobs, ...STATIC_JOBS];
+
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [liveJobs, setLiveJobs] = useState<SavedJob[]>([]);
+  const [searchNote, setSearchNote] = useState<string | null>(null);
+
+  // Live search against the active site's job-board route (Adzuna/JSearch).
+  const runSearch = async () => {
+    const q = query.trim();
+    if (!q || searching) return;
+    setSearching(true);
+    setSearchNote(null);
+    try {
+      const res = await fetch("/api/jobs/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleType: q, cvSummary: s.cvText }),
+      });
+      const json: unknown = res.ok ? await res.json() : null;
+      const raw = (json as { jobs?: unknown } | null)?.jobs;
+      const mapped = Array.isArray(raw) ? raw.map((j) => toSavedJob(j as Parameters<typeof toSavedJob>[0])) : [];
+      if (mapped.length) {
+        setLiveJobs(mapped);
+      } else {
+        setLiveJobs([]);
+        setSearchNote("Live search unavailable — showing curated matches");
+      }
+    } catch {
+      setLiveJobs([]);
+      setSearchNote("Live search unavailable — showing curated matches");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Saving a live result makes it a real card: tracked in the store,
+  // searchable from ⌘K, and openable in the detail drawer.
+  const saveLiveJob = (job: SavedJob, open: boolean) => {
+    const st = usePfStore.getState();
+    const exists = st.savedJobs.some((sj) => sj.company === job.company && sj.role === job.role);
+    if (!exists) s.set({ savedJobs: [{ ...job, action: "Analyze" }, ...st.savedJobs] });
+    if (open) s.openJob(job.company);
+  };
+
+  return (
+    <div>
+      <PageHeader label="Phase 03 · Growth" title="Opportunity Discovery">
+        <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "56ch" }}>
+          10–15 <span style={{ color: "var(--fg)", fontWeight: 600 }}>high-fit</span> targets a week beats 100 cold applications. Every role is scored 0–100 against your profile.
+        </p>
+      </PageHeader>
+
+      <NextStep />
+
+      <Reveal style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 260, display: "flex", alignItems: "center", gap: 10, height: 46, padding: "0 16px", border: "1px solid var(--lineStrong)", borderRadius: 12, background: "var(--panel)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
+            placeholder="SWE intern · Edinburgh · React, Node…"
+            style={{ flex: 1, border: "none", background: "transparent", color: "var(--fg)", fontSize: 14, fontFamily: "inherit", outline: "none" }}
+          />
+          {searching && <span className="pf-anim-spin" style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid var(--panel3)", borderTopColor: "var(--accent)", flexShrink: 0 }} />}
+        </div>
+        <span className="pf-mono" style={{ fontSize: 11, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel)", borderRadius: 9, padding: "0 14px", height: 46, display: "flex", alignItems: "center" }}>Fit ≥ 60</span>
+        <span className="pf-mono" style={{ fontSize: 11, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel)", borderRadius: 9, padding: "0 14px", height: 46, display: "flex", alignItems: "center" }}>Startup 2–50</span>
+      </Reveal>
+
+      {searchNote && (
+        <div style={{ fontSize: 12, color: "var(--faint)", margin: "-8px 0 14px" }}>{searchNote}</div>
+      )}
+
+      {liveJobs.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <div className="pf-mono" style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 10 }}>
+            live results · {liveJobs.length} found
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
+            {liveJobs.map((j, i) => (
+              <div
+                key={`live-${j.company}-${j.role}-${i}`}
+                onClick={() => saveLiveJob(j, true)}
+                className="pf-hover-border"
+                style={{ cursor: "pointer", border: "1px solid color-mix(in srgb,var(--accent) 24%,transparent)", borderRadius: 16, background: "var(--panel)", padding: "22px 24px", transition: "transform .3s var(--ease),border-color .3s var(--ease)" }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 14 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.01em" }}>{j.company}</div>
+                    <div style={{ fontSize: 13, color: "var(--muted)" }}>{j.role}</div>
+                    <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 5 }}>{j.meta}</div>
+                  </div>
+                  <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
+                    <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>
+                      <circle cx="28" cy="28" r="23" fill="none" stroke="var(--panel3)" strokeWidth="5" />
+                      <circle cx="28" cy="28" r="23" fill="none" stroke={j.tone} strokeWidth="5" strokeLinecap="round" strokeDasharray="144" strokeDashoffset={j.dash} />
+                    </svg>
+                    <div className="pf-mono" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: j.tone }}>{j.fit}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                  {j.tags.map((tg) => (
+                    <span key={tg} className="pf-mono" style={{ fontSize: 10, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel2)", borderRadius: 6, padding: "3px 8px" }}>{tg}</span>
+                  ))}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--line2)", paddingTop: 12 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: j.tone }}>{j.verdict}</span>
+                  <span
+                    onClick={(e) => { e.stopPropagation(); saveLiveJob(j, false); }}
+                    className="pf-mono"
+                    style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", cursor: "pointer" }}
+                  >
+                    + Save →
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <AddRolePanel />
+
+      {s.jfAnalyzing && (
+        <div className="pf-panel" style={{ padding: 40, textAlign: "center", marginBottom: 18 }}>
+          <div className="pf-anim-spin" style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid var(--panel3)", borderTopColor: "var(--accent)", margin: "0 auto 14px" }} />
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>Scoring the role against your CV…</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>compatibility · dealbreakers · keyword coverage</div>
+        </div>
+      )}
+
+      {!s.jfAnalyzing && <AnalysisResult />}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
+        {jobsAll.map((j, i) => (
+          <Reveal key={`${j.company}-${j.role}-${i}`} style={{}}>
+            <div
+              onClick={() => s.openJob(j.company)}
+              className="pf-hover-border"
+              style={{ cursor: "pointer", border: "1px solid var(--line)", borderRadius: 16, background: "var(--panel)", padding: "22px 24px", transition: "transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s var(--ease)" }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 14 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.01em" }}>{j.company}</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>{j.role}</div>
+                  <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 5 }}>{j.meta}</div>
+                </div>
+                <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
+                  <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>
+                    <circle cx="28" cy="28" r="23" fill="none" stroke="var(--panel3)" strokeWidth="5" />
+                    <circle cx="28" cy="28" r="23" fill="none" stroke={j.tone} strokeWidth="5" strokeLinecap="round" strokeDasharray="144" strokeDashoffset={j.dash} />
+                  </svg>
+                  <div className="pf-mono" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: j.tone }}>{j.fit}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                {j.tags.map((tg) => (
+                  <span key={tg} className="pf-mono" style={{ fontSize: 10, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel2)", borderRadius: 6, padding: "3px 8px" }}>{tg}</span>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--line2)", paddingTop: 12 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: j.tone }}>{j.verdict}</span>
+                <span className="pf-mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)" }}>{j.action} →</span>
+              </div>
+            </div>
+          </Reveal>
+        ))}
+      </div>
     </div>
   );
 }
