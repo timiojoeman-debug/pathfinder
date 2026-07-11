@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { readLoose } from "@/lib/api";
 import { callAI } from '@/lib/ai';
 import { buildReferralPackagePrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
   try {
-    const { studentProfile, contactName, roleName, chatNotes, cvStrengths } = await req.json();
+    const __p = await readLoose(req);
+    if (!__p.ok) return __p.response;
+    const { studentProfile, contactName, roleName, chatNotes, cvStrengths } = __p.data;
     if (!contactName || !roleName) {
       return NextResponse.json({ error: 'Contact name and role are required' }, { status: 400 });
     }

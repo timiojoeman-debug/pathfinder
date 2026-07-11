@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readLoose } from "@/lib/api";
 import { generateWithAI } from "@/lib/ai";
 
 type AnalyzeBody = {
@@ -14,7 +15,9 @@ type AnalyzeBody = {
 };
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as AnalyzeBody;
+  const __p = await readLoose(req);
+  if (!__p.ok) return __p.response;
+  const body = __p.data as AnalyzeBody;
   const jobSites = body.jobSites ?? [];
   const profileContent = [
     body.about && `[About]\n${body.about}`,

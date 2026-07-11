@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
-import { classifyRoute, hit, LIMITS } from '@/lib/rate-limit';
+import { AI_DAILY_QUOTA, classifyRoute, hit, hitDaily, LIMITS } from '@/lib/rate-limit';
 
 const PUBLIC_API_ROUTES = [
   '/api/auth/login',
@@ -82,8 +82,28 @@ export async function middleware(request: NextRequest) {
       new TextEncoder().encode(secret)
     );
 
+    const userId = payload.userId as string;
+
+    // Per-user daily AI quota — caps OpenAI cost from any single account.
+    if (bucket === 'ai') {
+      const quota = hitDaily(`aiq:${userId}`, AI_DAILY_QUOTA);
+      if (!quota.ok) {
+        return NextResponse.json(
+          { error: `You've reached today's AI limit (${AI_DAILY_QUOTA} requests). It resets at midnight UTC.` },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(quota.retryAfter),
+              'RateLimit-Limit': String(quota.limit),
+              'RateLimit-Remaining': String(quota.remaining),
+            },
+          },
+        );
+      }
+    }
+
     const headers = new Headers(request.headers);
-    headers.set('x-user-id', payload.userId as string);
+    headers.set('x-user-id', userId);
     headers.set('x-user-email', payload.email as string);
     headers.set('x-user-role', payload.role as string);
 

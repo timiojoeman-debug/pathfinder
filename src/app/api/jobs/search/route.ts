@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { readBody, zShort, zText } from "@/lib/api";
 
-type SearchBody = {
-  location?: string;
-  roleType?: string;
-  industry?: string;
-  workMode?: string;
-  companySize?: string;
-  cvSummary?: string;
-};
+const SearchSchema = z.object({
+  location: zShort().optional(),
+  roleType: zShort().optional(),
+  industry: zShort().optional(),
+  workMode: zShort().optional(),
+  companySize: zShort().optional(),
+  cvSummary: zText().optional(),
+});
 
 type JobListing = {
   id: string;
@@ -63,7 +65,9 @@ function computeMatchScore(cv: string, jobDescription: string): { score: number;
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as SearchBody;
+  const parsed = await readBody(req, SearchSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const cvSummary = body.cvSummary ?? "";
 

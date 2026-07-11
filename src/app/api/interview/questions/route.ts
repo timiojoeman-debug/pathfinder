@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readLoose } from "@/lib/api";
 import { callAI } from "@/lib/ai";
 import { buildInterviewQuestionsPrompt } from "@/lib/prompts";
 
@@ -38,7 +39,9 @@ const FALLBACK_QUESTIONS = {
 };
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as InterviewBody;
+  const __p = await readLoose(req);
+  if (!__p.ok) return __p.response;
+  const body = __p.data as InterviewBody;
   const count = body.more ? 4 : 2;
   const cvData = body.cvSummary || "N/A";
   const targetRole = body.targetRole || "Software Engineering Intern";

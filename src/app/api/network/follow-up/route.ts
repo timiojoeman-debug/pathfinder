@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
+import { readLoose } from "@/lib/api";
 import { callAI } from '@/lib/ai';
 import { buildFollowUpPrompt } from '@/lib/prompts';
 import { checkNaturalness } from '@/lib/ai/naturalness-check';
 
 export async function POST(req: Request) {
   try {
-    const { contactName, chatNotes, cadenceStep } = await req.json();
+    const __p = await readLoose(req);
+    if (!__p.ok) return __p.response;
+    const { contactName, chatNotes, cadenceStep } = __p.data;
     if (!contactName || !cadenceStep) {
       return NextResponse.json({ error: 'Contact name and cadence step required' }, { status: 400 });
     }

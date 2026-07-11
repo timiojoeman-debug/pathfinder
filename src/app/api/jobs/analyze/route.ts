@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callAI } from "@/lib/ai";
 import { buildATSAuditPrompt, buildMatchScorePrompt } from "@/lib/prompts";
+import { readBody, zShort, zText } from "@/lib/api";
 
-type AnalyzeBody = {
-  jobTitle?: string;
-  company?: string;
-  jobDescription: string;
-  cvSummary?: string;
-  userLinkedInUrl?: string;
-  userLinkedIn?: string;
-};
+const AnalyzeSchema = z.object({
+  jobTitle: zShort().optional(),
+  company: zShort().optional(),
+  jobDescription: zText(),
+  cvSummary: zText().optional(),
+  userLinkedInUrl: zShort(2000).optional(),
+  userLinkedIn: zText().optional(),
+});
 
 function computeMatchScore(cvAndProfile: string, jobDescription: string): { score: number; keywords: string[] } {
   const normalizedProfile = cvAndProfile.toLowerCase();
@@ -36,7 +38,9 @@ function computeMatchScore(cvAndProfile: string, jobDescription: string): { scor
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as AnalyzeBody;
+  const parsed = await readBody(req, AnalyzeSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const jobDescription = body.jobDescription?.trim() || "";
   const cvSummary = body.cvSummary || "";
   const userLinkedInUrl = body.userLinkedInUrl?.trim() || "";

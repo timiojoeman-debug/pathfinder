@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+import { readLoose } from "@/lib/api";
 import { generateWithAI } from "@/lib/ai";
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as { completedIds?: string[] };
+  const __p = await readLoose(req);
+  if (!__p.ok) return __p.response;
+  const body = __p.data as { completedIds?: string[] };
   const completedIds = new Set(body.completedIds ?? []);
 
   const { content } = await generateWithAI(

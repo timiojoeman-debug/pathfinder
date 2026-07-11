@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { readLoose } from "@/lib/api";
 import { callAI } from '@/lib/ai';
 import { buildCompanyBriefingPrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
   try {
-    const { companyName, roleName, studentProfile } = await req.json();
+    const __p = await readLoose(req);
+    if (!__p.ok) return __p.response;
+    const { companyName, roleName, studentProfile } = __p.data;
     if (!companyName) {
       return NextResponse.json({ error: 'Company name is required' }, { status: 400 });
     }

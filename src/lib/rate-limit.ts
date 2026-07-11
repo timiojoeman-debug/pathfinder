@@ -78,3 +78,33 @@ export function classifyRoute(pathname: string): keyof typeof LIMITS {
   }
   return "api";
 }
+
+/* ── Per-user daily AI quota ────────────────────────────────────────────
+   Protects against a single authenticated user cost-bombing the OpenAI
+   budget. In-memory + per-instance like the limiter above; back it with a
+   shared store (Upstash/DB) for multi-instance production. Resets at UTC
+   midnight. */
+
+interface DailyWindow { count: number; day: number }
+const dailyBuckets = new Map<string, DailyWindow>();
+
+function utcDay(now: number): number {
+  return Math.floor(now / 86_400_000);
+}
+
+/** Per-key daily counter. `retryAfter` counts down to the next UTC midnight. */
+export function hitDaily(key: string, limit: number): RateLimitResult {
+  const now = Date.now();
+  const day = utcDay(now);
+  const w = dailyBuckets.get(key);
+  if (!w || w.day !== day) {
+    dailyBuckets.set(key, { count: 1, day });
+    return { ok: true, limit, remaining: limit - 1, retryAfter: 0 };
+  }
+  w.count += 1;
+  const msToMidnight = (day + 1) * 86_400_000 - now;
+  return { ok: w.count <= limit, limit, remaining: Math.max(0, limit - w.count), retryAfter: Math.ceil(msToMidnight / 1000) };
+}
+
+/** Free-tier daily AI-call budget per user (override with AI_DAILY_QUOTA). */
+export const AI_DAILY_QUOTA = Number(process.env.AI_DAILY_QUOTA) || 60;

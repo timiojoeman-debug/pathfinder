@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readLoose } from "@/lib/api";
 import { callAI } from "@/lib/ai";
 import { buildDirectionPrompt } from "@/lib/prompts";
 
@@ -44,7 +45,9 @@ function computeSpecificity(input: DirectionInput): { level: SpecificityLevel; s
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as Partial<DirectionInput>;
+  const __p = await readLoose(req);
+  if (!__p.ok) return __p.response;
+  const body = __p.data as Partial<DirectionInput>;
 
   const input: DirectionInput = {
     industry: body.industry ?? "",

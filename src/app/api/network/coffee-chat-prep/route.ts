@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { readLoose } from "@/lib/api";
 import { callAI } from '@/lib/ai';
 import { buildCoffeeChatPrepPrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
   try {
-    const { contactName, contactRole, contactCompany, studentProfile, coffeeChatsDone } = await req.json();
+    const __p = await readLoose(req);
+    if (!__p.ok) return __p.response;
+    const { contactName, contactRole, contactCompany, studentProfile, coffeeChatsDone } = __p.data;
     if (!contactName || !contactCompany) {
       return NextResponse.json({ error: 'Contact name and company are required' }, { status: 400 });
     }

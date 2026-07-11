@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readLoose } from "@/lib/api";
 import { generateWithAI } from "@/lib/ai";
 
 type Body = {
@@ -7,7 +8,9 @@ type Body = {
 };
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as Body;
+  const __p = await readLoose(req);
+  if (!__p.ok) return __p.response;
+  const body = __p.data as Body;
 
   const { content } = await generateWithAI(
     {

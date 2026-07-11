@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readLoose } from "@/lib/api";
 import { callAI } from "@/lib/ai";
 
 type Role = { company: string; role: string; jobDescription: string };
@@ -19,7 +20,9 @@ Return exactly 3 priorityMoves, ranked by leverage (highest first).`;
 export async function POST(req: Request) {
   let body: Body;
   try {
-    body = (await req.json()) as Body;
+    const __p = await readLoose(req);
+    if (!__p.ok) return __p.response;
+    body = __p.data as Body;
   } catch {
     return NextResponse.json({ source: "heuristic", roles: [], priorityMoves: [] });
   }

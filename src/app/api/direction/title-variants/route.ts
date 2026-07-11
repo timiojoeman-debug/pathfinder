@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { callAI, AIError } from '@/lib/ai';
 import { buildTitleVariantPrompt } from '@/lib/prompts/direction-prompts';
+import { readBody, zShort } from '@/lib/api';
+
+const TitleVariantSchema = z.object({
+  role: zShort(),
+  techStack: z.array(zShort(100)).max(30).optional(),
+  industry: zShort().optional(),
+});
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { role, techStack, industry } = body;
+    const parsed = await readBody(req, TitleVariantSchema);
+    if (!parsed.ok) return parsed.response;
+    const { role, techStack, industry } = parsed.data;
 
     if (!role) {
       return NextResponse.json({ error: 'Missing required field: role' }, { status: 400 });

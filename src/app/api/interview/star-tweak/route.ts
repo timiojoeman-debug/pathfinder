@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readLoose } from "@/lib/api";
 import { callAI } from "@/lib/ai";
 import { buildSTARPrompt } from "@/lib/prompts";
 
@@ -19,7 +20,9 @@ const STAR_CATEGORIES = [
 ] as const;
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as Body;
+  const __p = await readLoose(req);
+  if (!__p.ok) return __p.response;
+  const body = __p.data as Body;
   const { situation, task, action, result, category } = body;
 
   if (!situation && !task && !action && !result) {

@@ -1,22 +1,24 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callAI } from "@/lib/ai";
 import { buildOutreachPrompt } from "@/lib/prompts";
 import { checkNaturalness } from "@/lib/ai/naturalness-check";
+import { readBody, zShort, zText } from "@/lib/api";
 
-type OutreachBody = {
-  type: "recruiter" | "hiringManager" | "peer";
-  recipientName?: string;
-  senderName?: string;
-  roleTitle?: string;
-  company?: string;
-  technologies?: string;
-  sharedAttributes?: string;
-  profileInsights?: {
-    summary?: string;
-    connectionPoints?: string[];
-    outreachAngles?: string[];
-  };
-};
+const OutreachSchema = z.object({
+  type: z.enum(["recruiter", "hiringManager", "peer"]),
+  recipientName: zShort().optional(),
+  senderName: zShort().optional(),
+  roleTitle: zShort().optional(),
+  company: zShort().optional(),
+  technologies: zShort(1000).optional(),
+  sharedAttributes: zText(2000).optional(),
+  profileInsights: z.object({
+    summary: zText(2000).optional(),
+    connectionPoints: z.array(zShort()).max(20).optional(),
+    outreachAngles: z.array(zShort()).max(20).optional(),
+  }).optional(),
+});
 
 const FALLBACK_OUTREACH = {
   message: "",
@@ -39,7 +41,9 @@ const FALLBACK_OUTREACH = {
 };
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as OutreachBody;
+  const parsed = await readBody(req, OutreachSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const studentProfile = [
     `Sender: ${body.senderName || "Student"}`,

@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { callAI } from '@/lib/ai';
 import { checkNaturalness } from '@/lib/ai/naturalness-check';
+import { readBody, zShort, zText } from '@/lib/api';
+
+const CoverLetterSchema = z.object({
+  cvData: z.unknown().optional(),
+  jobDescription: zText(),
+  companyName: zShort(),
+  directionStatement: zText(2000).optional(),
+  region: zShort(20).optional(),
+});
 
 export async function POST(req: Request) {
   try {
-    const { cvData, jobDescription, companyName, directionStatement, region } = await req.json();
+    const parsed = await readBody(req, CoverLetterSchema);
+    if (!parsed.ok) return parsed.response;
+    const { cvData, jobDescription, companyName, directionStatement, region } = parsed.data;
     if (!jobDescription || !companyName) {
       return NextResponse.json({ error: 'Job description and company name are required' }, { status: 400 });
     }

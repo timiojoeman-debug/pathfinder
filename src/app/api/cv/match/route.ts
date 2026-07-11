@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { readLoose } from "@/lib/api";
 import { callAI } from '@/lib/ai';
 import { buildMatchScorePrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
   try {
-    const { jobDescription, cvData } = await req.json();
+    const __p = await readLoose(req);
+    if (!__p.ok) return __p.response;
+    const { jobDescription, cvData } = __p.data;
     if (!jobDescription) {
       return NextResponse.json({ error: 'Job description is required' }, { status: 400 });
     }

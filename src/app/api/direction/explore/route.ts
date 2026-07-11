@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { callAI } from '@/lib/ai';
 import { buildExploreRolesPrompt } from '@/lib/prompts';
+import { readBody, zText } from '@/lib/api';
+
+const ExploreSchema = z.object({
+  messages: z.array(z.object({ role: z.string().max(30), content: zText(8000) })).min(1).max(50),
+});
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: 'Messages array is required' }, { status: 400 });
-    }
+    const parsed = await readBody(req, ExploreSchema);
+    if (!parsed.ok) return parsed.response;
+    const { messages } = parsed.data;
 
     const conversationHistory = messages
       .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)

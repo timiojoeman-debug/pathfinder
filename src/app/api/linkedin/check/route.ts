@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
+import { readLoose } from "@/lib/api";
 import { callAI } from '@/lib/ai';
 
 export async function POST(req: Request) {
   try {
-    const { headline, aboutSection, targetRole, techStack, industry } = await req.json();
+    const __p = await readLoose(req);
+    if (!__p.ok) return __p.response;
+    const { headline, aboutSection, targetRole, techStack, industry } = __p.data;
     if (!headline && !aboutSection) {
       return NextResponse.json({ error: 'Headline or about section required' }, { status: 400 });
     }

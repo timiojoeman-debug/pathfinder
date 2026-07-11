@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { readLoose } from "@/lib/api";
 import { callAI } from '@/lib/ai';
 import { buildProjectPrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
   try {
-    const { skillGaps, existingSkills, targetRole } = await req.json();
+    const __p = await readLoose(req);
+    if (!__p.ok) return __p.response;
+    const { skillGaps, existingSkills, targetRole } = __p.data;
 
     const systemPrompt = buildProjectPrompt(
       skillGaps || [],
