@@ -640,9 +640,9 @@ export default function Landing() {
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>PathFinder</span>
         </div>
         <div style={{ display: "flex", gap: 26, fontSize: 13, color: "var(--faint)" }}>
-          <a href="#" style={{ color: "inherit", textDecoration: "none" }}>Privacy</a>
-          <a href="#" style={{ color: "inherit", textDecoration: "none" }}>Terms</a>
-          <a href="#" style={{ color: "inherit", textDecoration: "none" }}>Contact</a>
+          <Link href="/privacy" style={{ color: "inherit", textDecoration: "none" }}>Privacy</Link>
+          <Link href="/terms" style={{ color: "inherit", textDecoration: "none" }}>Terms</Link>
+          <a href="mailto:support@pathfinder.app" style={{ color: "inherit", textDecoration: "none" }}>Contact</a>
         </div>
         <span style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: ".08em", color: "var(--faint)" }}>© 2026 PATHFINDER · CAREER INTELLIGENCE OS</span>
       </footer>
