@@ -230,3 +230,25 @@ create trigger leetcode_updated_at before update on leetcode_progress for each r
 
 -- Cross-device client working-state snapshot (see migration 0002)
 alter table profiles add column if not exists client_state jsonb default '{}';
+
+-- Email verification + password reset tokens (migration 0003). Only token
+-- hashes are stored; tokens are single-use and time-boxed.
+alter table users add column if not exists email_verified boolean default false;
+create table if not exists email_verification_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade not null,
+  token_hash varchar(64) not null,
+  expires_at timestamp with time zone not null,
+  used boolean default false,
+  created_at timestamp with time zone default now()
+);
+create table if not exists password_reset_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade not null,
+  token_hash varchar(64) not null,
+  expires_at timestamp with time zone not null,
+  used boolean default false,
+  created_at timestamp with time zone default now()
+);
+create index if not exists idx_email_verif_hash on email_verification_tokens(token_hash);
+create index if not exists idx_pw_reset_hash on password_reset_tokens(token_hash);

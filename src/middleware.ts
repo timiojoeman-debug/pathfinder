@@ -7,6 +7,13 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/login',
   '/api/auth/signup',
   '/api/auth/logout',
+  // Password reset + email verification are used by logged-out users. They are
+  // rate-limited under the strict 'auth' bucket and never reveal account
+  // existence.
+  '/api/auth/password-reset/request',
+  '/api/auth/password-reset/confirm',
+  '/api/auth/verify-email/request',
+  '/api/auth/verify-email/confirm',
   '/api/health',
   // Intel console is a logged-out surface; this route analyses request-body
   // text only (no user-specific server data).

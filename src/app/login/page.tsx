@@ -81,8 +81,13 @@ export default function LoginPage() {
               className="pf-input"
               style={{ width: "100%", height: 44, padding: "0 15px", marginBottom: 14 }}
             />
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-              Password {mode === "signup" && <span style={{ fontWeight: 500, color: "var(--faint)" }}>(8+ characters)</span>}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>
+                Password {mode === "signup" && <span style={{ fontWeight: 500, color: "var(--faint)" }}>(8+ characters)</span>}
+              </span>
+              {mode === "login" && (
+                <Link href="/forgot-password" style={{ fontSize: 12, color: "var(--accentText)", textDecoration: "none", fontWeight: 600 }}>Forgot?</Link>
+              )}
             </div>
             <input
               type="password"

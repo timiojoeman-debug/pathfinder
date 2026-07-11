@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { hashPassword, setAuthCookies } from '@/lib/auth';
+import { generateToken, hashToken, TOKEN_TTL_MS } from '@/lib/tokens';
+import { sendEmail, verificationEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
@@ -72,6 +74,20 @@ export async function POST(req: Request) {
       career_preferences: {},
       user_phase: 'new',
     });
+
+    // Issue an email-verification token and send the link (best-effort — a
+    // failed email must not block account creation).
+    try {
+      const token = generateToken();
+      await db.from('email_verification_tokens').insert({
+        user_id: user.id,
+        token_hash: await hashToken(token),
+        expires_at: new Date(Date.now() + TOKEN_TTL_MS.verifyEmail).toISOString(),
+      });
+      await sendEmail({ to: user.email, ...verificationEmail(token) });
+    } catch (e) {
+      logger.warn('verification email not sent at signup', { error: e instanceof Error ? e.message : String(e) });
+    }
 
     // Set auth cookies
     await setAuthCookies({
