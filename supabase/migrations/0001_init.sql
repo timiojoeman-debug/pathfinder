@@ -1,5 +1,15 @@
--- PathFinder Database Schema
--- Run this in Supabase SQL Editor
+-- PathFinder Database Schema — initial tables, RLS, policies, triggers.
+--
+-- Authorization model: the app authenticates with a custom JWT (not Supabase
+-- Auth), so `auth.uid()` is null on server calls and the server uses the
+-- SERVICE-ROLE client, which bypasses RLS. Row ownership is enforced in the app
+-- layer via `.eq('user_id', userId)`. RLS + the owner policies below are
+-- defense-in-depth: if the anon/authenticated key is ever used directly, a user
+-- can only reach their own rows. Tables with no policy (career_events) are
+-- reachable only by the service role.
+--
+-- Idempotent: safe to re-run (create ... if not exists, drop-then-create for
+-- policies/triggers, create-or-replace for functions).
 
 -- Enable pgvector
 create extension if not exists vector;
@@ -146,7 +156,8 @@ create table if not exists ai_interactions (
 
 -- Career events — the append-only spine of the Career Operating System.
 -- Every phase action emits a typed event; the derived Career Profile and the
--- progress/recommendation engines project over this stream.
+-- progress/recommendation engines project over this stream. No RLS policy: this
+-- table is reachable only by the service-role client.
 create table if not exists career_events (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade not null,
@@ -188,7 +199,7 @@ create index if not exists idx_ai_interactions_user on ai_interactions(user_id);
 create index if not exists idx_career_events_user on career_events(user_id, created_at desc);
 create index if not exists idx_methodology_embedding on methodology_chunks using ivfflat (embedding vector_cosine_ops) with (lists = 20);
 
--- Row Level Security
+-- Row Level Security (enabled on every table; owner policies are defense-in-depth)
 alter table users enable row level security;
 alter table profiles enable row level security;
 alter table cvs enable row level security;
@@ -199,31 +210,52 @@ alter table interview_stories enable row level security;
 alter table leetcode_progress enable row level security;
 alter table interview_logs enable row level security;
 alter table ai_interactions enable row level security;
+alter table career_events enable row level security;
+alter table methodology_chunks enable row level security;
 
--- RLS Policies (students see only their own data)
+-- RLS Policies (students see only their own data). Drop-then-create for idempotency.
+drop policy if exists "users_own_data" on users;
 create policy "users_own_data" on users for all using (id = auth.uid());
+drop policy if exists "profiles_own_data" on profiles;
 create policy "profiles_own_data" on profiles for all using (user_id = auth.uid());
+drop policy if exists "cvs_own_data" on cvs;
 create policy "cvs_own_data" on cvs for all using (user_id = auth.uid());
+drop policy if exists "applications_own_data" on applications;
 create policy "applications_own_data" on applications for all using (user_id = auth.uid());
+drop policy if exists "contacts_own_data" on networking_contacts;
 create policy "contacts_own_data" on networking_contacts for all using (user_id = auth.uid());
+drop policy if exists "chats_own_data" on coffee_chat_notes;
 create policy "chats_own_data" on coffee_chat_notes for all using (user_id = auth.uid());
+drop policy if exists "stories_own_data" on interview_stories;
 create policy "stories_own_data" on interview_stories for all using (user_id = auth.uid());
+drop policy if exists "leetcode_own_data" on leetcode_progress;
 create policy "leetcode_own_data" on leetcode_progress for all using (user_id = auth.uid());
+drop policy if exists "interview_logs_own_data" on interview_logs;
 create policy "interview_logs_own_data" on interview_logs for all using (user_id = auth.uid());
+drop policy if exists "ai_interactions_own_data" on ai_interactions;
 create policy "ai_interactions_own_data" on ai_interactions for all using (user_id = auth.uid());
 -- methodology_chunks is public read
+drop policy if exists "methodology_public_read" on methodology_chunks;
 create policy "methodology_public_read" on methodology_chunks for select using (true);
 
--- Updated at trigger
+-- Updated-at trigger. search_path pinned to '' (empty) so the function resolves
+-- only fully-qualified names — hardening against search_path injection.
 create or replace function update_updated_at()
-returns trigger as $$
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
 begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$;
 
+drop trigger if exists users_updated_at on users;
 create trigger users_updated_at before update on users for each row execute function update_updated_at();
+drop trigger if exists profiles_updated_at on profiles;
 create trigger profiles_updated_at before update on profiles for each row execute function update_updated_at();
+drop trigger if exists applications_updated_at on applications;
 create trigger applications_updated_at before update on applications for each row execute function update_updated_at();
+drop trigger if exists leetcode_updated_at on leetcode_progress;
 create trigger leetcode_updated_at before update on leetcode_progress for each row execute function update_updated_at();
