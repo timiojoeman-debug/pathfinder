@@ -329,11 +329,12 @@ export default function DirectionPage() {
 
       {dirGenerated && !dirGenerating && <GeneratedStatement />}
 
+      {dirGenerated && (
       <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 18 }}>
         <Panel style={{ overflow: "hidden" }}>
           <div style={{ padding: "20px 24px 12px" }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Target roles</h2>
-            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Ranked by fit to your profile</span>
+            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Common role families for your direction</span>
           </div>
           {TARGET_ROLES.map((r) => (
             <div key={r.title} style={{ display: "flex", alignItems: "center", gap: 14, padding: "15px 24px", borderTop: "1px solid var(--line2)" }}>
@@ -349,21 +350,21 @@ export default function DirectionPage() {
 
         <Panel style={{ padding: "20px 24px" }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>The HIRE framework</h2>
-          <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Your progress through the arc</span>
+          <span style={{ fontSize: 12.5, color: "var(--muted)" }}>The arc every phase maps to</span>
           <div style={{ marginTop: 16 }}>
             {HIRE_FRAMEWORK.map((h) => (
               <div key={h.k} style={{ display: "flex", alignItems: "center", gap: 13, padding: "11px 0", borderBottom: "1px solid var(--line2)" }}>
-                <span className="pf-mono" style={{ width: 26, height: 26, borderRadius: 8, background: h.bg, color: h.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{h.k}</span>
+                <span className="pf-mono" style={{ width: 26, height: 26, borderRadius: 8, background: "var(--panel3)", color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{h.k}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600 }}>{h.label}</div>
                   <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{h.note}</div>
                 </div>
-                <span className="pf-mono" style={{ fontSize: 10, fontWeight: 600, color: h.statusColor }}>{h.status}</span>
               </div>
             ))}
           </div>
         </Panel>
       </div>
+      )}
     </div>
   );
 }

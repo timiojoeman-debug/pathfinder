@@ -7,7 +7,7 @@
  */
 
 import { useRouter } from "next/navigation";
-import { DIAG_TIMINGS, JOB_DETAILS, REJECTION_DIAGNOSIS, STATIC_JOBS } from "@/lib/pf/data";
+import { DIAG_TIMINGS, JOB_DETAILS, REJECTION_DIAGNOSIS } from "@/lib/pf/data";
 import { formatReminder } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
 import { Kicker, MarkDot } from "./ui";
@@ -57,8 +57,7 @@ function JobDrawer({ company }: { company: string }) {
   const closeDrawers = usePfStore((s) => s.closeDrawers);
   const trackJob = usePfStore((s) => s.trackJob);
 
-  const jobsAll = [...savedJobs, ...STATIC_JOBS];
-  const jd = jobsAll.find((j) => j.company === company);
+  const jd = savedJobs.find((j) => j.company === company);
   if (!jd) return null;
 
   const det = JOB_DETAILS[jd.company] ?? {

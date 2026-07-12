@@ -10,7 +10,6 @@
 import { useRef, useState } from "react";
 import { usePfStore } from "@/lib/pf/store";
 import { analyzeCvText, linkedInIssues } from "@/lib/pf/logic";
-import { ATS_CHECKS, CV_LINES, CV_MATCH, PROJECT_IDEAS } from "@/lib/pf/data";
 import { Kicker, PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 
@@ -47,7 +46,6 @@ export default function CvPage() {
   const cvText = usePfStore((s) => s.cvText);
   const cvAnalyzingRaw = usePfStore((s) => s.cvAnalyzing);
   const cvAnalyzedRaw = usePfStore((s) => s.cvAnalyzed);
-  const cvProjects = usePfStore((s) => s.cvProjects);
   const cvLinkedIn = usePfStore((s) => s.cvLinkedIn);
   const dirStack = usePfStore((s) => s.dirStack);
   const set = usePfStore((s) => s.set);
@@ -112,7 +110,6 @@ export default function CvPage() {
   const analysis = analyzeCvText(cvText, dirStack);
   const hasVague = analysis.vague.length > 0;
   const hasMissing = analysis.missing.length > 0;
-  const cvNoProjects = cvAnalyzedRaw && !cvProjects;
   const linkedin = linkedInIssues(analysis.targetKw);
   const linkedinChevron = cvLinkedIn ? "▾" : "▸";
 
@@ -213,47 +210,29 @@ export default function CvPage() {
               <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{analysis.sub}</div>
             </Reveal>
 
-            {/* ATS audit */}
+            {/* Score breakdown — derived from the analysis, not preset */}
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "20px 24px 12px" }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>ATS audit</h2>
-                <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--warn)" }}>3 to fix</span>
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>What&apos;s affecting your score</h2>
+                <span style={{ fontFamily: mono, fontSize: 10.5, color: (hasVague || hasMissing) ? "var(--warn)" : "var(--strong)" }}>
+                  {analysis.vague.length + analysis.missing.length} to fix
+                </span>
               </div>
-              {ATS_CHECKS.map((a, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 24px", borderTop: "1px solid var(--line2)" }}>
-                  <span style={{ width: 18, height: 18, borderRadius: "50%", background: a.bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0 }}>{a.mark}</span>
-                  <span style={{ flex: 1, fontSize: 13 }}>{a.label}</span>
-                  <span style={{ fontFamily: mono, fontSize: 10, color: a.noteColor }}>{a.note}</span>
-                </div>
-              ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 24px", borderTop: "1px solid var(--line2)" }}>
+                <span style={{ width: 18, height: 18, borderRadius: "50%", background: hasVague ? "var(--warn)" : "var(--strong)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0 }}>{hasVague ? "!" : "✓"}</span>
+                <span style={{ flex: 1, fontSize: 13 }}>Vague, unquantified phrasing</span>
+                <span style={{ fontFamily: mono, fontSize: 10, color: hasVague ? "var(--warn)" : "var(--strong)" }}>{analysis.vague.length} found</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 24px", borderTop: "1px solid var(--line2)" }}>
+                <span style={{ width: 18, height: 18, borderRadius: "50%", background: hasMissing ? "var(--warn)" : "var(--strong)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0 }}>{hasMissing ? "!" : "✓"}</span>
+                <span style={{ flex: 1, fontSize: 13 }}>Target-stack keyword coverage</span>
+                <span style={{ fontFamily: mono, fontSize: 10, color: hasMissing ? "var(--warn)" : "var(--strong)" }}>{analysis.missing.length} missing</span>
+              </div>
+              <div style={{ padding: "12px 24px", borderTop: "1px solid var(--line2)", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                {analysis.verdict} — {analysis.sub}
+              </div>
             </Reveal>
           </div>
-
-          {/* Line-by-line feedback */}
-          <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", marginBottom: 18 }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "22px 24px 14px" }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-.02em", margin: 0 }}>Line-by-line feedback</h2>
-              <span style={{ fontFamily: mono, fontSize: 11, color: "var(--faint)" }}>Action verb + task + quantified result</span>
-            </div>
-            {CV_LINES.map((l, i) => (
-              <div key={i} style={{ padding: "16px 24px", borderTop: "1px solid var(--line2)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
-                  <span style={{ fontFamily: mono, fontSize: 9.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: l.tagColor, border: `1px solid color-mix(in srgb, ${l.tagColor} 30%, transparent)`, borderRadius: 5, padding: "2px 8px" }}>{l.tag}</span>
-                  <span style={{ fontSize: 12, color: "var(--muted)" }}>{l.reason}</span>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "11px 13px", background: "var(--panel2)" }}>
-                    <div style={{ fontFamily: mono, fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--risk)", marginBottom: 5 }}>Before</div>
-                    <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>{l.before}</div>
-                  </div>
-                  <div style={{ border: "1px solid color-mix(in srgb,var(--strong) 28%,transparent)", borderRadius: 10, padding: "11px 13px", background: "color-mix(in srgb,var(--strong) 8%,transparent)" }}>
-                    <div style={{ fontFamily: mono, fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--strong)", marginBottom: 5 }}>After · AI rewrite</div>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>{l.after}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </Reveal>
 
           {/* AI mentor read — only when the OpenAI-backed route returned data */}
           {aiRead && (
@@ -326,33 +305,8 @@ export default function CvPage() {
                   </div>
                 </>
               )}
-              {cvNoProjects && (
-                <button
-                  onClick={() => set({ cvProjects: true })}
-                  style={{ cursor: "pointer", marginTop: 16, height: 42, padding: "0 20px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}
-                >
-                  Generate project ideas to close these gaps →
-                </button>
-              )}
             </Reveal>
           </div>
-
-          {/* Project ideas */}
-          {cvProjects && (
-            <Reveal style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
-              {PROJECT_IDEAS.map((pi, i) => (
-                <div key={i} style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 16, background: "var(--accentSoft)", padding: "20px 22px" }}>
-                  <div style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accentText)", marginBottom: 8 }}>Project idea · closes your gap</div>
-                  <div style={{ fontSize: 15.5, fontWeight: 700, marginBottom: 5 }}>{pi.name}</div>
-                  <div style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)", marginBottom: 10 }}>{pi.stack}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--fg)", lineHeight: 1.55, marginBottom: 10 }}>{pi.features}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.55, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-                    <span style={{ fontWeight: 700, color: "var(--fg)" }}>Interview talking point:</span> {pi.talk}
-                  </div>
-                </div>
-              ))}
-            </Reveal>
-          )}
 
           {/* LinkedIn quick check */}
           <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", marginBottom: 18 }}>
@@ -375,21 +329,6 @@ export default function CvPage() {
             )}
           </Reveal>
 
-          {/* Match score per role */}
-          <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
-            <div style={{ padding: "20px 24px 12px" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Match score per role</h2>
-            </div>
-            {CV_MATCH.map((m, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 24px", borderTop: "1px solid var(--line2)" }}>
-                <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>{m.role}</span>
-                <span style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--panel3)", overflow: "hidden", maxWidth: 280 }}>
-                  <span className="pf-anim-grow" style={{ display: "block", height: "100%", width: m.pct, background: m.tone, transformOrigin: "left" }} />
-                </span>
-                <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 700, color: m.tone, width: 38, textAlign: "right" }}>{m.score}</span>
-              </div>
-            ))}
-          </Reveal>
         </div>
       )}
     </div>

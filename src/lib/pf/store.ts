@@ -12,7 +12,7 @@ import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
-  BOARD_SEED,
+  EMPTY_BOARD,
   OUTREACH_MESSAGES,
   type BoardCard,
   type BoardColumn,
@@ -229,7 +229,7 @@ export const usePfStore = create<PfState>()(
       savedJobs: [],
 
       netPersona: "Recruiter",
-      netSent: 8,
+      netSent: 0,
       netGenerated: false,
       netFollow: false,
 
@@ -240,7 +240,7 @@ export const usePfStore = create<PfState>()(
       fbNote: "",
       ivFeedback: [],
 
-      board: BOARD_SEED,
+      board: EMPTY_BOARD,
       diags: {},
 
       events: [],

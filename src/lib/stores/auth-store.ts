@@ -25,6 +25,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     set({ user: null, isAuthenticated: false });
+    // Clear the per-browser working state so the next user who signs in on this
+    // device starts blank (their own state re-hydrates from the server on login).
+    // A full navigation also resets the in-memory store to its empty defaults.
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('pathfinder-redesign-v1');
+      } catch {
+        /* storage unavailable — navigation below still resets in-memory state */
+      }
+      window.location.href = '/login';
+    }
   },
   checkAuth: async () => {
     set({ isLoading: true });

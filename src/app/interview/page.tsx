@@ -5,30 +5,31 @@
  * builder, likely questions, company briefing and post-interview reflections.
  */
 
-import {
-  COMPANY_BRIEFING,
-  INTERVIEW_QUESTIONS,
-  IV_TABS,
-  LEETCODE_BASE_SOLVED,
-  LEETCODE_PATTERNS,
-  STAR_STORY,
-} from "@/lib/pf/data";
+import { IV_TABS, LEETCODE_PATTERNS } from "@/lib/pf/data";
 import { usePfStore } from "@/lib/pf/store";
 import { PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 
+/** STAR scaffold prompts — guidance, not a preset story. */
+const STAR_PROMPTS: { k: string; label: string; prompt: string }[] = [
+  { k: "S", label: "Situation", prompt: "Set the scene in one sentence — where were you and what was at stake?" },
+  { k: "T", label: "Task", prompt: "What was your specific responsibility or goal?" },
+  { k: "A", label: "Action", prompt: "What did you do? Lead with \"I…\" verbs and be concrete." },
+  { k: "R", label: "Result", prompt: "The measurable outcome — a number, or what changed because of you." },
+];
+
 function LeetTab() {
   const s = usePfStore();
-  let solvedSum = LEETCODE_BASE_SOLVED;
-  const rows = LEETCODE_PATTERNS.map(([name, total, def]) => {
-    const cur = Math.min(total, s.ivSolved[name] ?? def);
+  let solvedSum = 0;
+  const rows = LEETCODE_PATTERNS.map(([name, total]) => {
+    const cur = Math.min(total, s.ivSolved[name] ?? 0);
     solvedSum += cur;
     const r = cur / total;
     return {
-      name, total, def,
+      name, total,
       count: cur + "/" + total,
       pct: Math.round(r * 100) + "%",
-      tone: r >= 0.65 ? "var(--strong)" : r >= 0.4 ? "var(--warn)" : "var(--risk)",
+      tone: r >= 0.65 ? "var(--strong)" : r >= 0.4 ? "var(--warn)" : "var(--faint)",
     };
   });
 
@@ -46,7 +47,7 @@ function LeetTab() {
           </span>
           <span className="pf-mono" style={{ fontSize: 11.5, fontWeight: 700, color: p.tone, width: 44, textAlign: "right" }}>{p.count}</span>
           <button
-            onClick={() => s.bumpPattern(p.name, p.total, p.def)}
+            onClick={() => s.bumpPattern(p.name, p.total, 0)}
             title="Log a solved problem"
             className="pf-mono"
             style={{ cursor: "pointer", width: 28, height: 28, borderRadius: 8, border: "1px solid var(--line)", background: "var(--panel2)", color: "var(--accent)", fontSize: 14, fontWeight: 700 }}
@@ -66,15 +67,15 @@ function StarTab() {
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", maxWidth: 720 }}>
       <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>STAR story builder</h2>
-      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>&quot;Tell me about a time you handled conflict&quot;</span>
+      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Draft one story per prompt — e.g. &quot;a time you handled conflict&quot;. Keep it to four crisp beats.</span>
       <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-        {STAR_STORY.map((st) => (
+        {STAR_PROMPTS.map((st) => (
           <div key={st.k} style={{ border: "1px solid var(--line)", borderRadius: 11, padding: "12px 14px", background: "var(--panel2)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5 }}>
               <span className="pf-mono" style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>{st.k}</span>
               <span style={{ fontSize: 12, fontWeight: 700 }}>{st.label}</span>
             </div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55 }}>{st.text}</div>
+            <div style={{ fontSize: 12.5, color: "var(--faint)", lineHeight: 1.55, fontStyle: "italic" }}>{st.prompt}</div>
           </div>
         ))}
       </div>
@@ -84,38 +85,22 @@ function StarTab() {
 
 function QuestionsTab() {
   return (
-    <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", maxWidth: 720 }}>
-      <div style={{ padding: "20px 24px 12px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Likely questions · tailored to your direction</h2>
-      </div>
-      {INTERVIEW_QUESTIONS.map((q) => (
-        <div key={q.q} style={{ padding: "14px 24px", borderTop: "1px solid var(--line2)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
-            <span className="pf-mono" style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".06em", color: q.tone, border: `1px solid color-mix(in srgb, ${q.tone} 32%, transparent)`, borderRadius: 5, padding: "2px 8px" }}>{q.type}</span>
-            <span style={{ fontSize: 13.5, fontWeight: 700 }}>{q.q}</span>
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6 }}>{q.a}</div>
-        </div>
-      ))}
+    <Reveal style={{ border: "1px dashed var(--lineStrong)", borderRadius: 18, background: "var(--panel)", padding: "32px 24px", maxWidth: 720, textAlign: "center" }}>
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 6px" }}>No tailored questions yet</h2>
+      <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: "48ch", margin: "0 auto" }}>
+        Set your <strong>career direction</strong> and analyze a role in Opportunity Discovery — likely behavioural, technical and role questions will generate here from that context.
+      </p>
     </Reveal>
   );
 }
 
 function BriefingTab() {
   return (
-    <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Company briefing · Skyscanner</h2>
-        <span className="pf-mono" style={{ fontSize: 10.5, color: "var(--accent)" }}>auto-generated</span>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
-        {COMPANY_BRIEFING.map((b) => (
-          <div key={b.label} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "14px 16px", background: "var(--panel2)" }}>
-            <div className="pf-mono" style={{ fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 7 }}>{b.label}</div>
-            <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>{b.text}</div>
-          </div>
-        ))}
-      </div>
+    <Reveal style={{ border: "1px dashed var(--lineStrong)", borderRadius: 18, background: "var(--panel)", padding: "32px 24px", maxWidth: 720, textAlign: "center" }}>
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 6px" }}>No company briefing yet</h2>
+      <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: "48ch", margin: "0 auto" }}>
+        Save a role in Opportunity Discovery, then generate a briefing here — what the company does, likely questions, and the angle that fits your profile.
+      </p>
     </Reveal>
   );
 }

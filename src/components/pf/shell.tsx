@@ -9,7 +9,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { CRUMBS } from "@/lib/pf/data";
-import { usePfStore, useProfile, useSidebarReadiness } from "@/lib/pf/store";
+import { usePfStore, useProfile, useProgress, useSidebarReadiness } from "@/lib/pf/store";
 import { PHASE_LABEL, type PfPhase } from "@/lib/pf/events";
 import { useAuthStore } from "@/lib/stores";
 import { applyTheme, getStoredTheme, setStoredTheme, type ThemeMode } from "@/lib/theme";
@@ -32,36 +32,46 @@ const NAV_OVERVIEW: { href: string; label: string; icon: ReactNode; badge: Badge
   },
 ];
 
-const NAV_PHASES: { href: string; label: string; icon: ReactNode; badge: Badge }[] = [
+const NAV_PHASES: { href: string; label: string; icon: ReactNode; phase?: PfPhase }[] = [
   {
-    href: "/direction", label: "Career Direction", badge: { kind: "done" },
+    href: "/direction", label: "Career Direction", phase: "direction",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5 5-2z" /></svg>,
   },
   {
-    href: "/cv", label: "CV Optimisation", badge: { kind: "fix" },
+    href: "/cv", label: "CV Optimisation", phase: "cv",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h5" /></svg>,
   },
   {
-    href: "/jobs", label: "Opportunity Discovery", badge: { kind: "dot" },
+    href: "/jobs", label: "Opportunity Discovery", phase: "jobs",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>,
   },
   {
-    href: "/networking", label: "Networking", badge: null,
+    href: "/networking", label: "Networking", phase: "networking",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="9" cy="8" r="3.2" /><path d="M15.5 11a3 3 0 100-5M3 20a6 6 0 0112 0M15 20a6 6 0 00-3-5.2" /></svg>,
   },
   {
-    href: "/interview", label: "Interview Prep", badge: null,
+    href: "/interview", label: "Interview Prep", phase: "interview",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0014 0M12 18v3" /></svg>,
   },
   {
-    href: "/tracker", label: "Application Tracking", badge: null,
+    href: "/tracker", label: "Application Tracking", phase: "tracker",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg>,
   },
   {
-    href: "/plan", label: "Summer Plan", badge: null,
+    href: "/plan", label: "Summer Plan",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="3" y="4" width="18" height="17" rx="3" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>,
   },
 ];
+
+/** Sidebar phase badge, derived from real progress:
+ *  the active phase gets the pulse dot, completed phases (≥80%) a check,
+ *  everything else stays unbadged. Nothing is preset. */
+function phaseBadge(phase: PfPhase | undefined, current: PfPhase, pct: number): Badge {
+  if (!phase) return null;
+  if (phase === current) return { kind: "dot" };
+  if (pct >= 80) return { kind: "done" };
+  return null;
+}
 
 function NavBadge({ badge }: { badge: Badge }) {
   if (!badge) return null;
@@ -107,11 +117,13 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
   const pathname = usePathname();
   const readiness = useSidebarReadiness();
   const profile = useProfile();
+  const progress = useProgress();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const dash = Math.round(119 * (1 - readiness / 100));
   const phaseOrder: PfPhase[] = ["direction", "cv", "jobs", "networking", "interview", "tracker"];
   const phaseNum = phaseOrder.indexOf(profile.currentPhase) + 1;
+  const pctFor = (ph?: PfPhase) => (ph ? progress.phases.find((p) => p.phase === ph)?.pct ?? 0 : 0);
   const name = user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "Alex Chen";
   const initials = name.split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 2) || "AC";
 
@@ -163,7 +175,15 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
         )}
         {collapsed && <div style={{ height: 14 }} />}
         {NAV_PHASES.map((n) => (
-          <NavLink key={n.href} {...n} active={pathname === n.href} collapsed={collapsed} />
+          <NavLink
+            key={n.href}
+            href={n.href}
+            label={n.label}
+            icon={n.icon}
+            badge={phaseBadge(n.phase, profile.currentPhase, pctFor(n.phase))}
+            active={pathname === n.href}
+            collapsed={collapsed}
+          />
         ))}
         <div style={{ height: 8 }} />
         <NavLink
@@ -183,7 +203,7 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
             <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>Edinburgh · CS Yr 2</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
               </div>
               <button
                 onClick={() => void logout()}

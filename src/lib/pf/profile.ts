@@ -7,7 +7,7 @@
  * Every page reads this. Every phase writes to the store/events that feed it.
  */
 
-import { KEYWORD_VOCAB, OPPORTUNITY_MATRIX, type BoardColumn } from "./data";
+import { KEYWORD_VOCAB, type BoardColumn } from "./data";
 import { analyzeCvText, directionStatement, targetKeywords, trackerDerived } from "./logic";
 import type { PfEvent, PfPhase } from "./events";
 import type { ChatMsg, InterviewFeedback, SavedJob } from "./store";
@@ -95,14 +95,15 @@ export interface CareerProfile {
   events: PfEvent[];
 }
 
-const LEET_PATTERNS: [string, number, number][] = [
-  ["Two Pointers", 10, 9],
-  ["Sliding Window", 10, 8],
-  ["BFS / DFS", 10, 7],
-  ["Dynamic Programming", 10, 4],
-  ["Graphs", 15, 5],
+// Pattern list only supplies the names + per-pattern totals; a new user has
+// solved 0 until they log real progress (no seeded defaults).
+const LEET_PATTERNS: [string, number][] = [
+  ["Two Pointers", 10],
+  ["Sliding Window", 10],
+  ["BFS / DFS", 10],
+  ["Dynamic Programming", 10],
+  ["Graphs", 15],
 ];
-const LEET_BASE = 19;
 
 /** Skills *evidenced in the CV* — kept disjoint from missing/target skills so
  *  the profile never claims a skill is both present and absent. */
@@ -123,10 +124,8 @@ function gatherTargetCompanies(board: BoardColumn[], savedJobs: SavedJob[]): Tar
     const key = j.company.toLowerCase();
     if (!byCompany.has(key)) byCompany.set(key, { company: j.company, role: j.role, fit: j.fit, stage: "Saved" });
   });
-  OPPORTUNITY_MATRIX.forEach((o) => {
-    const key = o.company.toLowerCase();
-    if (!byCompany.has(key)) byCompany.set(key, { company: o.company, role: o.role, fit: o.fit, stage: "Prospect" });
-  });
+  // Only the user's real board + saved jobs count — no seeded market prospects,
+  // so a new user's target list starts empty.
   return [...byCompany.values()].sort((a, b) => b.fit - a.fit);
 }
 
@@ -155,11 +154,11 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
     ),
   ];
 
-  // Interview
-  let leetSolved = LEET_BASE;
+  // Interview — solved counts come only from real logged progress.
+  let leetSolved = 0;
   const weakPatterns: string[] = [];
-  LEET_PATTERNS.forEach(([name, total, def]) => {
-    const cur = Math.min(total, s.ivSolved[name] ?? def);
+  LEET_PATTERNS.forEach(([name, total]) => {
+    const cur = Math.min(total, s.ivSolved[name] ?? 0);
     leetSolved += cur;
     if (cur / total < 0.5) weakPatterns.push(name);
   });

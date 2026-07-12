@@ -6,7 +6,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { SCREEN_ROUTES, STATIC_JOBS } from "@/lib/pf/data";
+import { SCREEN_ROUTES } from "@/lib/pf/data";
 import { usePfStore } from "@/lib/pf/store";
 
 interface Cmd { label: string; hint: string; pick: () => void }
@@ -40,10 +40,9 @@ export function CommandPalette() {
     window.scrollTo(0, 0);
   };
 
-  const jobsAll = [...savedJobs, ...STATIC_JOBS];
   const allCmds: Cmd[] = [
     ...SCREEN_ROUTES.map(([label, href]) => ({ label, hint: "go to", pick: () => go(href) })),
-    ...jobsAll.map((j) => ({ label: j.company + " — " + j.role, hint: "job · fit " + j.fit, pick: () => go("/jobs", { jobDetail: j.company }) })),
+    ...savedJobs.map((j) => ({ label: j.company + " — " + j.role, hint: "job · fit " + j.fit, pick: () => go("/jobs", { jobDetail: j.company }) })),
     ...board.flatMap((col) =>
       col.cards.map((c) => ({ label: c.company + " — " + c.role, hint: "application · " + col.title, pick: () => go("/tracker", { appDetail: c.key }) })),
     ),

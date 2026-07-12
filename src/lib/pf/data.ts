@@ -81,6 +81,10 @@ export const BOARD_SEED: BoardColumn[] = [
   },
 ];
 
+/** The real starting board for a new user: the five columns, no cards.
+ *  BOARD_SEED is demo content only (Storybook/design reference). */
+export const EMPTY_BOARD: BoardColumn[] = BOARD_SEED.map((col) => ({ ...col, cards: [] }));
+
 /* ── CV analysis reference tables ──────────────────────────────────── */
 
 export const VAGUE_TERMS: [string, string][] = [

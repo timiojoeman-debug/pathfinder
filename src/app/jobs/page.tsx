@@ -7,7 +7,6 @@
  */
 
 import { useEffect, useState } from "react";
-import { STATIC_JOBS } from "@/lib/pf/data";
 import { buildCoverLetter, fitTone, targetKeywords } from "@/lib/pf/logic";
 import { usePfStore, type SavedJob } from "@/lib/pf/store";
 import { Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
@@ -242,7 +241,7 @@ function AnalysisResult() {
 
 export default function JobsPage() {
   const s = usePfStore();
-  const jobsAll = [...s.savedJobs, ...STATIC_JOBS];
+  const jobsAll = [...s.savedJobs];
 
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -377,6 +376,20 @@ export default function JobsPage() {
 
       {!s.jfAnalyzing && <AnalysisResult />}
 
+      {jobsAll.length > 0 && (
+        <div className="pf-mono" style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)", margin: "0 0 10px" }}>
+          Your saved roles · {jobsAll.length}
+        </div>
+      )}
+
+      {jobsAll.length === 0 ? (
+        <Reveal style={{ border: "1px dashed var(--lineStrong)", borderRadius: 16, background: "var(--panel)", padding: "40px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>No saved roles yet</div>
+          <div style={{ fontSize: 13, color: "var(--muted)", maxWidth: "46ch", margin: "0 auto", lineHeight: 1.6 }}>
+            Search live roles above, or paste a job description below to score it against your CV and save it. Saved roles show here and feed your pipeline.
+          </div>
+        </Reveal>
+      ) : (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
         {jobsAll.map((j, i) => (
           <Reveal key={`${j.company}-${j.role}-${i}`} style={{}}>
@@ -412,6 +425,7 @@ export default function JobsPage() {
           </Reveal>
         ))}
       </div>
+      )}
     </div>
   );
 }

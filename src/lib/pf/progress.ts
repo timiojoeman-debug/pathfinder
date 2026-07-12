@@ -47,7 +47,7 @@ function projectsPct(p: CareerProfile): number {
   const covered = p.targetKeywords.length
     ? (p.targetKeywords.length - p.missingSkills.length) / p.targetKeywords.length
     : 0;
-  const base = p.projectsGenerated ? 55 : 20;
+  const base = p.projectsGenerated ? 55 : 0;
   return clamp(base + covered * 40);
 }
 

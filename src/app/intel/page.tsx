@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePfStore, useProfile, useProgress } from "@/lib/pf/store";
+import { useAuthStore } from "@/lib/stores";
 import { CountUp, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 import { MemoryFeed, ProfileSummary, ProgressLadder, RecommendationStack } from "@/components/pf/journey";
@@ -22,10 +23,16 @@ export default function IntelPage() {
   const openJob = usePfStore((s) => s.openJob);
   const profile = useProfile();
   const progress = useProgress();
-  const [today, setToday] = useState("08 Jul 2026");
+  const user = useAuthStore((s) => s.user);
+  const firstName = user?.email ? user.email.split("@")[0].replace(/[._]/g, " ").split(/\s+/)[0] : "";
+  const [today, setToday] = useState("");
+  const [partOfDay, setPartOfDay] = useState("morning");
 
   useEffect(() => {
-    setToday(new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }));
+    const now = new Date();
+    setToday(now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }));
+    const h = now.getHours();
+    setPartOfDay(h < 12 ? "morning" : h < 18 ? "afternoon" : "evening");
   }, []);
 
   const openOpportunity = (company: string) => {
@@ -47,7 +54,7 @@ export default function IntelPage() {
       {/* Greeting header */}
       <Reveal style={{ marginBottom: 18 }}>
         <span style={{ fontFamily: mono, fontSize: 11, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--accent)" }}>
-          Good morning, Alex · {today}
+          Good {partOfDay}{firstName ? `, ${firstName}` : ""}{today ? ` · ${today}` : ""}
         </span>
         <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-.03em", margin: "10px 0 0" }}>Here&apos;s what moves the needle today.</h1>
       </Reveal>
@@ -124,6 +131,14 @@ export default function IntelPage() {
             <span key={h} style={{ fontFamily: mono, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)" }}>{h}</span>
           ))}
         </div>
+        {pipeline.length === 0 && (
+          <div style={{ padding: "26px 24px", textAlign: "center" }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4 }}>No opportunities yet</div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
+              Save roles in <span style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => router.push("/jobs")}>Opportunity Discovery</span> and they&apos;ll rank here by fit.
+            </div>
+          </div>
+        )}
         {pipeline.map((o) => {
           const tone = fitTone(o.fit);
           return (
