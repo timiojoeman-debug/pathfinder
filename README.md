@@ -143,4 +143,4 @@ env-safe.
 
 ## License
 
-Private / unlicensed. All rights reserved.
+[MIT](LICENSE) © 2026 timiojoeman-debug
