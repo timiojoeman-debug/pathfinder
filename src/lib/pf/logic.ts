@@ -8,9 +8,6 @@ import {
   CHAT_REPLIES,
   DEFAULT_TARGET_KEYWORDS,
   KEYWORD_VOCAB,
-  PLAN_PHASES_RAW,
-  PLAN_START,
-  PLAN_TOTAL_WEEKS,
   VAGUE_TERMS,
   type BoardColumn,
 } from "./data";
@@ -302,31 +299,6 @@ export function rejectionInsight(diags: Record<string, string>, diagCauses: Reco
     }
   });
   return insight;
-}
-
-/* ── Summer plan ───────────────────────────────────────────────────── */
-
-export function planWeekNow(now: number = Date.now()): number {
-  return Math.min(PLAN_TOTAL_WEEKS, Math.max(1, Math.floor((now - new Date(PLAN_START).getTime()) / (7 * 864e5)) + 1));
-}
-
-export interface PlanPhase {
-  tag: string; title: string; dates: string; weeks: string; badge: string; tone: string; border: string; items: { t: string }[];
-}
-
-export function planPhases(week: number): PlanPhase[] {
-  return PLAN_PHASES_RAW.map(({ tag, title, dates, a, b, items }) => {
-    const done = b < week;
-    const cur = a <= week && week <= b;
-    return {
-      tag, title, dates,
-      weeks: "WKS " + a + "–" + b,
-      badge: done ? "COMPLETE" : cur ? "IN PROGRESS · WK " + week : "UPCOMING",
-      tone: done ? "var(--strong)" : cur ? "var(--accent)" : "var(--faint)",
-      border: cur ? "var(--lineStrong)" : "var(--line)",
-      items: items.map((t) => ({ t })),
-    };
-  });
 }
 
 /* ── Misc ──────────────────────────────────────────────────────────── */

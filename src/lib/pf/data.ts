@@ -329,25 +329,6 @@ export const REJECTION_DIAGNOSIS: Record<string, string> = {
 
 export const DIAG_TIMINGS = ["Within hours", "1–2 days", "1–2 weeks", "Never"];
 
-/* ── Summer plan ───────────────────────────────────────────────────── */
-
-export const PLAN_START = "2026-04-07";
-export const PLAN_TOTAL_WEEKS = 24;
-
-export const PLAN_PHASES_RAW: { tag: string; title: string; dates: string; a: number; b: number; items: string[] }[] = [
-  { tag: "PHASE A", title: "Foundation", dates: "Apr 7 – May 17", a: 1, b: 6, items: ["Python + web fundamentals (HTML · CSS · JavaScript)", "Databases — SQL + Excel", "CAFI groundwork: AI mind map + TurboLearn notes", "CV baseline through Phase 02"] },
-  { tag: "PHASE B", title: "Build", dates: "May 18 – Jul 12", a: 7, b: 14, items: ["Project 1 — PathFinder (Next.js · TypeScript · React · OpenAI + embeddings · AWS)", "Project 2 — Data Dashboard (Django · React · Chart.js)", "Ship progress publicly — GitHub + LinkedIn posts"] },
-  { tag: "PHASE C", title: "Advanced + exam prep", dates: "Jul 13 – Aug 23", a: 15, b: 20, items: ["CAFI exam in August — Advanced Higher past papers", "NeetCode Blind 75 → 150, by pattern (Phase 05)", "Certificates: 3+ each in SWE / Data / AI-ML (Forage + Coursera, Edinburgh-aligned)"] },
-  { tag: "PHASE D", title: "Launch", dates: "Aug 24 – Sep 21", a: 21, b: 24, items: ["September windows open — 2–3 tailored applications/wk (+ Reslink)", "Re-contact people at previously-applied companies → referrals", "Convert summer coffee chats into the Sept–Dec referral window"] },
-];
-
-export const PLAN_CADENCE = [
-  { n: "3", t: "Connection requests", note: "Personalised, with notes — LinkedIn free-tier pace" },
-  { n: "1", t: "Coffee chat", note: "Run the four-part framework (Phase 04)" },
-  { n: "1", t: "GitHub / LinkedIn post", note: "Ship-in-public proof of the build phases" },
-  { n: "F", t: "Friday review", note: "Score the week across the Four Pillars" },
-];
-
 /* ── Onboarding (Stage 00) ─────────────────────────────────────────── */
 
 export const ONB_ROLE_OPTS = ["Software Engineering", "Data / ML", "Product", "Design"];
@@ -361,7 +342,6 @@ export const ONB_CADENCE_OPTS: [string, number][] = [["Not yet consistent", 8], 
 /* ── Navigation / palette ──────────────────────────────────────────── */
 
 export const SCREEN_ROUTES: [string, string][] = [
-  ["Summer Plan · 24 weeks", "/plan"],
   ["Command Centre", "/intel"],
   ["Get started · onboarding", "/start"],
   ["Career Direction", "/direction"],
@@ -373,7 +353,6 @@ export const SCREEN_ROUTES: [string, string][] = [
 ];
 
 export const CRUMBS: Record<string, string> = {
-  "/plan": "SUMMER PLAN · APR 7 – SEP 21",
   "/start": "STAGE 00 · ONBOARDING",
   "/intel": "COMMAND CENTRE · POSITION FIXED",
   "/direction": "PHASE 01 · CAREER DIRECTION",

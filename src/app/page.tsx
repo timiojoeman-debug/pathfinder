@@ -384,7 +384,6 @@ export default function Landing() {
           <a href="#product" className="pf-hover-row" style={navLink}>Product</a>
           <a href="#phases" className="pf-hover-row" style={navLink}>Phases</a>
           <a href="#results" className="pf-hover-row" style={navLink}>Results</a>
-          <Link href="/plan" className="pf-hover-row" style={navLink}>Summer Plan</Link>
         </nav>
         <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
           <button

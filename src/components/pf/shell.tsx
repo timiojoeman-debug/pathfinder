@@ -57,10 +57,6 @@ const NAV_PHASES: { href: string; label: string; icon: ReactNode; phase?: PfPhas
     href: "/tracker", label: "Application Tracking", phase: "tracker",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg>,
   },
-  {
-    href: "/plan", label: "Summer Plan",
-    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="3" y="4" width="18" height="17" rx="3" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>,
-  },
 ];
 
 /** Sidebar phase badge, derived from real progress:
@@ -304,7 +300,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
 
 /* ── Chrome ────────────────────────────────────────────────────────── */
 
-const APP_ROUTES = ["/start", "/intel", "/direction", "/cv", "/jobs", "/networking", "/interview", "/tracker", "/plan", "/dashboard", "/settings"];
+const APP_ROUTES = ["/start", "/intel", "/direction", "/cv", "/jobs", "/networking", "/interview", "/tracker", "/dashboard", "/settings"];
 
 /** True below the mobile breakpoint (SSR-safe: false until mounted). */
 function useIsMobile(): boolean {
