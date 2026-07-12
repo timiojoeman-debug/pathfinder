@@ -228,13 +228,13 @@ export function buildCoverLetter(company: string, role: string, jd: string, targ
   const emphasis = jd
     ? KEYWORD_VOCAB.filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0).slice(0, 2).join(" and ") || "engineering rigour"
     : "engineering rigour";
-  const p1 = "Dear hiring team, I’m a CS student at Edinburgh applying for the " + letterRole + " position at " + letterCompany + ". I build with " + targetKw.slice(0, 3).join(", ") + ", and recently shipped a deployed project used by 40+ people.";
-  const p2 = "Your posting emphasises " + emphasis + " — the same things I optimised for in my last project, where I cut load time 40% and wrote the tests that kept it shipped.";
-  const p3 = "I’d value the chance to bring that energy to " + letterCompany + " this summer. Thank you for your consideration.";
+  const p1 = "Dear hiring team, I’m writing to apply for the " + letterRole + " position at " + letterCompany + ". I build with " + targetKw.slice(0, 3).join(", ") + ", and I’d welcome the chance to contribute this summer.";
+  const p2 = "Your posting emphasises " + emphasis + " — the same things I focused on in a recent project, where I owned the work end to end and wrote the tests that kept it shipping.";
+  const p3 = "I’d value the chance to bring that to " + letterCompany + " this summer. Thank you for your consideration.";
   return {
     p1, p2, p3,
     words: (p1 + " " + p2 + " " + p3).split(/\s+/).length,
-    assumptions: ["Assumes your project metric (40+ users) is current", "Assumes you can start in June", "Verify the team name before sending"],
+    assumptions: ["Add a concrete metric to your project (users, performance, scale)", "Confirm your earliest start date", "Verify the team name before sending", "Swap in your name and a specific example before sending"],
   };
 }
 
@@ -340,5 +340,5 @@ export function formatReminder(v: string): string {
 }
 
 export function followUpMessage(to: string): string {
-  return "Hi " + to.split(" ")[0] + " — quick follow-up on my last note. Since then I shipped the improvement you suggested (repo link below). Still keen on that 15 minutes if your week allows. Alex";
+  return "Hi " + to.split(" ")[0] + " — quick follow-up on my last note. Since then I shipped the improvement you suggested (repo link below). Still keen on that 15 minutes if your week allows.";
 }

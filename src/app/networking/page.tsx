@@ -17,6 +17,7 @@ import {
 } from "@/lib/pf/data";
 import { followUpMessage, targetKeywords } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
+import { useAuthStore } from "@/lib/stores";
 import { Chip, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 
@@ -31,6 +32,8 @@ interface AiOutreach { paras: string[]; followUp: string | null }
 
 export default function NetworkingPage() {
   const s = usePfStore();
+  const user = useAuthStore((a) => a.user);
+  const senderName = user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "";
   const netMsg = OUTREACH_MESSAGES[s.netPersona];
   const [aiMsg, setAiMsg] = useState<AiOutreach | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -47,11 +50,11 @@ export default function NetworkingPage() {
         body: JSON.stringify({
           type: PERSONA_API_TYPE[s.netPersona],
           recipientName: netMsg.to.split(" ·")[0],
-          senderName: "Alex",
+          senderName,
           roleTitle: s.dirRole ? `${s.dirRole} Intern` : "SWE Intern",
           company: netMsg.to.split(", ").pop() ?? "the company",
           technologies: targetKeywords(s.dirStack).slice(0, 3).join(", "),
-          sharedAttributes: s.netPersona === "Startup founder" ? "Built a project on their product; founder-led team" : "Edinburgh CS student",
+          sharedAttributes: s.netPersona === "Startup founder" ? "Built a project on their product; founder-led team" : (s.dirRole ? `${s.dirRole} student` : "Student targeting internships"),
         }),
       });
       const json: unknown = res.ok ? await res.json() : null;

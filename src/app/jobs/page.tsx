@@ -303,7 +303,7 @@ export default function JobsPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
-            placeholder="SWE intern · Edinburgh · React, Node…"
+            placeholder="SWE intern · React, Node · remote…"
             style={{ flex: 1, border: "none", background: "transparent", color: "var(--fg)", fontSize: 14, fontFamily: "inherit", outline: "none" }}
           />
           {searching && <span className="pf-anim-spin" style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid var(--panel3)", borderTopColor: "var(--accent)", flexShrink: 0 }} />}

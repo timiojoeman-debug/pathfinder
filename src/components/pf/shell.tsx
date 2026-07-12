@@ -124,8 +124,8 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
   const phaseOrder: PfPhase[] = ["direction", "cv", "jobs", "networking", "interview", "tracker"];
   const phaseNum = phaseOrder.indexOf(profile.currentPhase) + 1;
   const pctFor = (ph?: PfPhase) => (ph ? progress.phases.find((p) => p.phase === ph)?.pct ?? 0 : 0);
-  const name = user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "Alex Chen";
-  const initials = name.split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 2) || "AC";
+  const name = user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "You";
+  const initials = name.split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 2) || "?";
 
   return (
     <aside
