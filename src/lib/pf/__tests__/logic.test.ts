@@ -1,0 +1,185 @@
+import { describe, it, expect } from 'vitest';
+import {
+  toneFor, fitTone,
+  readinessFrom,
+  directionReady, directionStatement, directionSpecificity, extractChatPatch,
+  targetKeywords, analyzeCvText,
+  roleFit, analyzeJobDescription,
+  buildCoverLetter, followUpMessage,
+  trackerDerived,
+  type OnbState, type DirectionFields,
+} from '../logic';
+import { EMPTY_BOARD, DEFAULT_TARGET_KEYWORDS, type BoardCard } from '../data';
+
+/* ── helpers ──────────────────────────────────────────────────────── */
+
+const dir = (over: Partial<DirectionFields> = {}): DirectionFields => ({
+  dirRole: null, dirStack: [], dirIndustry: null, dirSize: null, dirSetting: null, ...over,
+});
+
+const mkCard = (key: string): BoardCard => ({
+  key, company: key, role: 'SWE Intern', tag: '', tone: '', when: 'new', match: 60, note: '',
+});
+
+/** Build a board from a per-column card count. */
+function boardWith(counts: Partial<Record<string, number>>) {
+  return EMPTY_BOARD.map((col) => ({
+    ...col,
+    cards: Array.from({ length: counts[col.id] ?? 0 }, (_, i) => mkCard(`${col.id}-${i}`)),
+  }));
+}
+
+/* ── scales ───────────────────────────────────────────────────────── */
+
+describe('score → tone thresholds', () => {
+  it('toneFor uses 65 / 45 breakpoints', () => {
+    expect(toneFor(70)).toBe('var(--strong)');
+    expect(toneFor(50)).toBe('var(--warn)');
+    expect(toneFor(30)).toBe('var(--risk)');
+  });
+  it('fitTone uses 70 / 55 breakpoints', () => {
+    expect(fitTone(80)).toBe('var(--strong)');
+    expect(fitTone(60)).toBe('var(--warn)');
+    expect(fitTone(40)).toBe('var(--risk)');
+  });
+});
+
+describe('readinessFrom', () => {
+  const complete: OnbState = { step: 3, role: 'SWE', industry: 'Fintech', stage: 'Big Tech', cv: 80, projects: 70, outreach: 60, cadence: 80 };
+
+  it('returns the 74 baseline until all self-assessments are answered', () => {
+    expect(readinessFrom({ ...complete, cadence: null })).toBe(74);
+  });
+  it('computes a weighted score once complete', () => {
+    // 82*.1 + 80*.3 + ((70+60)/2)*.35 + 80*.25 = 8.2 + 24 + 22.75 + 20 = 74.95 → 75
+    expect(readinessFrom(complete)).toBe(75);
+  });
+});
+
+/* ── direction ────────────────────────────────────────────────────── */
+
+describe('direction derivations', () => {
+  it('requires role + industry + size to be ready', () => {
+    expect(directionReady(dir({ dirRole: 'Backend', dirIndustry: 'Fintech', dirSize: 'Big Tech' }))).toBe(true);
+    expect(directionReady(dir({ dirRole: 'Backend' }))).toBe(false);
+  });
+
+  it('composes a readable statement from the fields', () => {
+    const s = directionStatement(dir({ dirRole: 'Backend', dirIndustry: 'Fintech', dirSize: 'Big Tech', dirStack: ['Go', 'SQL'] }));
+    expect(s).toContain('Backend internships in fintech at big tech');
+    expect(s).toContain('Go / SQL');
+  });
+
+  it('prompts to pick fields when not ready', () => {
+    expect(directionStatement(dir())).toMatch(/pick a role/i);
+  });
+
+  it('grades specificity by how many fields are chosen', () => {
+    expect(directionSpecificity(dir()).label).toMatch(/low/i);
+    expect(directionSpecificity(dir({ dirRole: 'x', dirIndustry: 'y', dirSize: 'z' })).label).toMatch(/medium/i);
+    expect(directionSpecificity(dir({ dirRole: 'x', dirIndustry: 'y', dirSize: 'z', dirSetting: 'Remote', dirStack: ['React'] })).label).toMatch(/high/i);
+  });
+
+  it('extracts wizard fields from free text', () => {
+    const patch = extractChatPatch('I love frontend work at fintech startups');
+    expect(patch.dirRole).toBe('Frontend');
+    expect(patch.dirIndustry).toBe('Fintech');
+    expect(patch.dirSize).toBe('Startups 0–50');
+  });
+});
+
+/* ── CV analysis ──────────────────────────────────────────────────── */
+
+describe('analyzeCvText', () => {
+  it('defaults target keywords when no direction stack is set', () => {
+    expect(targetKeywords([])).toEqual(DEFAULT_TARGET_KEYWORDS);
+    expect(targetKeywords(['Go'])).toEqual(['Go']);
+  });
+
+  it('scores a strong CV high with no vague terms or missing keywords', () => {
+    const a = analyzeCvText('Built and shipped with React, TypeScript, Node and SQL.', []);
+    expect(a.vague).toHaveLength(0);
+    expect(a.missing).toHaveLength(0);
+    expect(a.score).toBe(92);
+    expect(a.tone).toBe('var(--strong)');
+  });
+
+  it('penalises vague terms and missing keywords', () => {
+    const a = analyzeCvText('Responsible for various tasks.', ['React']);
+    // "responsible for" + "various" = 2 vague (-14); "React" missing (-6) → 92-20 = 72
+    expect(a.vague.length).toBe(2);
+    expect(a.missing.map((m) => m.label)).toContain('React');
+    expect(a.score).toBe(72);
+  });
+
+  it('never scores below 25 or above 95', () => {
+    const bad = analyzeCvText('responsible for helped worked on assisted various involved in', ['React', 'Go', 'Rust', 'Kafka', 'AWS']);
+    expect(bad.score).toBeGreaterThanOrEqual(25);
+    expect(bad.score).toBeLessThanOrEqual(95);
+  });
+});
+
+/* ── job-description analysis ─────────────────────────────────────── */
+
+describe('roleFit', () => {
+  it('penalises senior / high-YOE postings', () => {
+    const fit = roleFit('Senior engineer, 5+ years required', 74, '', []);
+    expect(fit).toBeLessThan(74);
+  });
+  it('rewards keyword overlap with CV / target stack', () => {
+    const fit = roleFit('React and TypeScript role', 70, 'react typescript', ['React', 'TypeScript']);
+    expect(fit).toBeGreaterThan(70);
+  });
+  it('clamps to the 20–95 range', () => {
+    expect(roleFit('senior staff phd 9+ years', 30, '', [])).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('analyzeJobDescription', () => {
+  it('flags a no-sponsorship blocker', () => {
+    const r = analyzeJobDescription('Great role. We are unable to sponsor visas.', '', []);
+    expect(r.hasBlockers).toBe(true);
+    expect(r.blockers.some((b) => /sponsorship/i.test(b.text))).toBe(true);
+  });
+  it('reports no blockers for a clean junior JD', () => {
+    const r = analyzeJobDescription('Internship building React apps with TypeScript.', 'react typescript', ['React', 'TypeScript']);
+    expect(r.noBlockers).toBe(true);
+    expect(r.compat).toBeGreaterThan(0);
+  });
+});
+
+/* ── generated content stays identity-neutral ─────────────────────── */
+
+describe('generated content has no hardcoded identity', () => {
+  it('cover letter omits the old Alex / Edinburgh / 40+ specifics', () => {
+    const cl = buildCoverLetter('Acme', 'Backend Intern', 'We value testing and Node.', ['Node', 'SQL']);
+    const all = `${cl.p1} ${cl.p2} ${cl.p3} ${cl.assumptions.join(' ')}`;
+    expect(all).not.toMatch(/Edinburgh|Alex|40\+/);
+    expect(cl.p1).toContain('Acme');
+    expect(cl.words).toBeGreaterThan(0);
+  });
+  it('follow-up message is unsigned (no Alex)', () => {
+    expect(followUpMessage('Priya · Recruiter')).not.toMatch(/Alex/);
+  });
+});
+
+/* ── tracker derivations ──────────────────────────────────────────── */
+
+describe('trackerDerived', () => {
+  it('is empty for a fresh board', () => {
+    const d = trackerDerived(EMPTY_BOARD, 0);
+    expect(d.submitted).toBe(0);
+    expect(d.interviews).toBe(0);
+    expect(d.offers).toBe(0);
+    expect(d.leakLabel).toMatch(/too few submissions/i);
+  });
+
+  it('counts submissions, interviews and offers across columns', () => {
+    const d = trackerDerived(boardWith({ saved: 3, applied: 2, interview: 1, offer: 1, rejected: 1 }), 5);
+    // submitted = applied+interview+offer+rejected (saved excluded)
+    expect(d.submitted).toBe(5);
+    // interviews = interview + offer
+    expect(d.interviews).toBe(2);
+    expect(d.offers).toBe(1);
+  });
+});
