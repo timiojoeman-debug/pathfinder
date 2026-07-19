@@ -85,31 +85,46 @@ export function recommend(p: CareerProfile, progress: ProgressReport): Recommend
     });
   }
 
-  // 5. Strong CV, no networking → the classic leverage move.
-  if ((p.atsScore ?? 0) >= 65 && p.outreachSent <= 8) {
+  // 5. A basic CV is enough to start networking — referrals are the single
+  // highest-leverage move, so surface them early, not after a perfect CV.
+  if ((p.atsScore ?? 0) >= 55 && p.contactedCompanies.length < 3) {
     recs.push({
       id: "start-networking",
-      title: "Open a warm path to a target company",
-      why: "Your CV is strong enough, but you have no referral activity — referred candidates convert ~4× cold applications. This is your highest-leverage move.",
+      title: "Get a referral into a target company",
+      why: "A referral converts ~4× a cold application — it's the highest-leverage move in the whole search, and the one thing no tool can automate. You don't need a perfect CV to start a coffee chat.",
       href: "/networking",
       phase: "networking",
       impact: "4× odds",
       impactTone: "var(--strong)",
-      priority: 82,
+      priority: 90,
     });
   }
 
-  // 6. Enough applications out → shift to interview prep.
+  // 6. Build interview readiness *before* the callback — it takes weeks, not days.
+  if (p.directionSet && p.applicationsSubmitted >= 2 && p.leetSolved < 30 && p.interviewsLanded === 0) {
+    recs.push({
+      id: "build-interview-readiness",
+      title: "Start interview prep now — before the first callback",
+      why: "Interview readiness is built over weeks, not the days between a callback and the round. Begin STAR stories and pattern drills in parallel with applying, so you're ready when it lands.",
+      href: "/interview",
+      phase: "interview",
+      impact: "get ready",
+      impactTone: "var(--accent)",
+      priority: 84,
+    });
+  }
+
+  // 7. Interview in the pipeline → convert what you've earned before applying more.
   if (p.applicationsSubmitted >= 5 && p.interviewsLanded > 0 && p.leetSolved < 55) {
     recs.push({
       id: "prep-interviews",
-      title: "Shift focus to interview prep",
-      why: `You have ${p.interviewsLanded} interview${p.interviewsLanded > 1 ? "s" : ""} in the pipeline${p.weakPatterns.length ? ` and weak spots in ${p.weakPatterns[0]}` : ""}. Convert what you've earned before applying more.`,
+      title: "Convert the interviews you've earned",
+      why: `You have ${p.interviewsLanded} interview${p.interviewsLanded > 1 ? "s" : ""} in the pipeline${p.weakPatterns.length ? ` and weak spots in ${p.weakPatterns[0]}` : ""}. Preparing to convert beats sending more cold applications.`,
       href: "/interview",
       phase: "interview",
       impact: "convert",
-      impactTone: "var(--accent)",
-      priority: 80,
+      impactTone: "var(--strong)",
+      priority: 86,
     });
   }
 
@@ -151,7 +166,7 @@ export function recommend(p: CareerProfile, progress: ProgressReport): Recommend
       phase: "interview",
       impact: "+readiness",
       impactTone: "var(--warn)",
-      priority: 66,
+      priority: 72,
     });
   }
 

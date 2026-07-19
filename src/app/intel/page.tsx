@@ -41,11 +41,14 @@ export default function IntelPage() {
   };
 
   const overallTone = progress.overall >= 65 ? "var(--strong)" : progress.overall >= 45 ? "var(--warn)" : "var(--risk)";
+  // Lead with the outcome (interview rate) and the highest-leverage input
+  // (referrals) — not raw application volume, which optimises the wrong thing.
+  const interviewRatePct = profile.applicationsSubmitted ? Math.round(profile.interviewRate * 100) : null;
   const stats = [
-    { label: "Applications", value: String(profile.applicationsSubmitted), note: "submitted", color: "var(--fg)" },
-    { label: "Interviews", value: String(profile.interviewsLanded), note: "landed", color: "var(--accent)" },
-    { label: "Outreach", value: String(profile.outreachSent), note: "sent", color: "var(--active)" },
-    { label: "Offers", value: String(profile.offers), note: profile.offers ? "in hand" : "keep going", color: "var(--strong)" },
+    { label: "Interview rate", value: interviewRatePct !== null ? `${interviewRatePct}%` : "—", note: "the number that matters", color: "var(--accent)" },
+    { label: "Referrals", value: String(profile.contactedCompanies.length), note: "warm paths opened", color: "var(--active)" },
+    { label: "Interviews", value: String(profile.interviewsLanded), note: "landed", color: "var(--strong)" },
+    { label: "Offers", value: String(profile.offers), note: profile.offers ? "in hand" : "keep going", color: "var(--fg)" },
   ];
   const pipeline = profile.targetCompanies.slice(0, 6);
 

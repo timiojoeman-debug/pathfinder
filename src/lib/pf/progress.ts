@@ -93,14 +93,17 @@ export function computeProgress(p: CareerProfile): ProgressReport {
   ];
   const phases: PhaseProgress[] = raw.map((x) => ({ ...x, tone: toneFor(x.pct) }));
 
-  // Weighted overall — direction & CV are prerequisites, pipeline is the goal.
+  // Readiness is weighted toward the spine of a real offer: referrals
+  // (networking) and interview readiness are the highest-leverage, least
+  // automatable phases, so they carry the most weight. Direction, CV and
+  // tracking are necessary hygiene — not the differentiator between candidates.
   const weights: Record<PfPhase, number> = {
-    direction: 0.12,
-    cv: 0.24,
-    jobs: 0.16,
-    networking: 0.18,
-    interview: 0.16,
-    tracker: 0.14,
+    direction: 0.10,
+    cv: 0.18,
+    jobs: 0.12,
+    networking: 0.26,
+    interview: 0.22,
+    tracker: 0.12,
   };
   const overall = clamp(phases.reduce((sum, ph) => sum + ph.pct * weights[ph.phase], 0));
 
