@@ -58,8 +58,8 @@ const PHASES = [
   { n: "01", label: "Phase 01 · Discovery", title: "Career Direction", href: "/direction", desc: "Surface your strengths, values and fit — the AI helps you name a direction worth pursuing.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5 5-2z" /></svg> },
   { n: "02", label: "Phase 02 · Precision", title: "CV Optimisation", href: "/cv", desc: "Line-by-line feedback with match scores per role — every bullet sharpened against the job.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h5" /></svg> },
   { n: "03", label: "Phase 03 · Growth", title: "Opportunity Discovery", href: "/jobs", desc: "A living map of internships matched to your skills and level — ranked by real fit, not keywords.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg> },
-  { n: "04", label: "Phase 04 · Connections", title: "Networking", href: "/networking", desc: "AI outreach tailored per recruiter and company — warm paths that turn contacts into conversations.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3.2" /><path d="M15.5 11a3 3 0 100-5M3 20a6 6 0 0112 0M15 20a6 6 0 00-3-5.2" /></svg> },
-  { n: "05", label: "Phase 05 · Mastery", title: "Interview Preparation", href: "/interview", desc: "Realistic mock interviews mirroring real company formats, with feedback that builds genuine confidence.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0014 0M12 18v3" /></svg> },
+  { n: "04", label: "Phase 04 · Connections", title: "Networking", href: "/networking", desc: "The highest-leverage move in the whole search: AI-coached referrals and coffee chats. A warm intro converts ~4× a cold application.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3.2" /><path d="M15.5 11a3 3 0 100-5M3 20a6 6 0 0112 0M15 20a6 6 0 00-3-5.2" /></svg> },
+  { n: "05", label: "Phase 05 · Mastery", title: "Interview Preparation", href: "/interview", desc: "STAR stories, pattern drills and realistic mock rounds — built over weeks, so you're ready when the callback lands instead of scrambling after.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0014 0M12 18v3" /></svg> },
   { n: "06", label: "Phase 06 · Momentum", title: "Application Tracking", href: "/tracker", desc: "Every application in one calm board, so nothing slips and momentum compounds toward the offer.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg> },
 ];
 
@@ -408,13 +408,13 @@ export default function Landing() {
         <div style={{ position: "relative", zIndex: 2 }}>
           <div className="pf-anim-up" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 15px 6px 8px", borderRadius: 100, border: "1px solid var(--lineStrong)", background: "var(--panel)", fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".08em", color: "var(--muted)", marginBottom: 32, whiteSpace: "nowrap", boxShadow: "var(--rim)" }}>
             <span style={{ display: "inline-flex", width: 20, height: 20, alignItems: "center", justifyContent: "center", borderRadius: 100, background: "var(--accentSoft)", color: "var(--accent)" }}>✦</span>
-            AI CAREER OPERATING SYSTEM
+            AI INTERNSHIP READINESS COACH
           </div>
           <h1 className="pf-anim-up" style={{ fontSize: "clamp(46px,8vw,92px)", lineHeight: 0.98, letterSpacing: "-.045em", fontWeight: 800, margin: "0 auto 26px", maxWidth: "16ch", animationDelay: ".05s" }}>
             From uncertain to <span style={serifItalic}>hired.</span>
           </h1>
           <p className="pf-anim-up" style={{ fontSize: "clamp(16px,2vw,20px)", lineHeight: 1.6, color: "var(--muted)", maxWidth: "40rem", margin: "0 auto 38px", animationDelay: ".12s" }}>
-            The career operating system that guides university students through six connected phases — measuring exactly where you stand, then showing the one move that gets you closer. Every day.
+            For university students chasing internships. PathFinder coaches you to become genuinely ready — the referrals and interview skills that actually land offers — instead of spraying applications no one reads. Every day, it shows your one highest-leverage move.
           </p>
           <div className="pf-anim-up" style={{ display: "flex", gap: 13, justifyContent: "center", flexWrap: "wrap", marginBottom: 14, animationDelay: ".19s" }}>
             <Link href="/start" style={{ display: "flex", alignItems: "center", gap: 9, height: 54, padding: "0 30px", borderRadius: 13, background: "var(--fg)", color: "var(--bg)", fontSize: 16, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 10px 26px rgba(56,44,32,.16),var(--rim)", transition: "transform .22s var(--ease),box-shadow .22s var(--ease)" }}>
@@ -427,7 +427,7 @@ export default function Landing() {
         </div>
 
         <div style={{ position: "relative", zIndex: 2, marginTop: "clamp(150px,22vw,280px)", display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}>
-          <span style={{ fontFamily: mono, fontSize: 11, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--faint)" }}>40+ universities · one system</span>
+          <span style={{ fontFamily: mono, fontSize: 11, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--faint)" }}>Built for UK &amp; EU internship season</span>
         </div>
       </section>
 
@@ -521,10 +521,10 @@ export default function Landing() {
         <div style={{ textAlign: "center", marginBottom: 60 }}>
           <span style={kicker}>The Journey</span>
           <h2 style={{ fontSize: "clamp(34px,5vw,52px)", fontWeight: 800, letterSpacing: "-.04em", margin: "16px 0 14px" }}>
-            Six phases. One <span style={serifItalic}>clear</span> path.
+            Six phases. Two that get you <span style={serifItalic}>hired.</span>
           </h2>
           <p style={{ fontSize: 17, color: "var(--muted)", maxWidth: "34rem", margin: "0 auto", lineHeight: 1.6 }}>
-            Each phase compounds into the next. You always know where you are, what you&apos;ve completed, and the single next thing to do.
+            Direction, CV and tracking keep you tidy — but referrals and interview readiness are what convert. PathFinder coaches all six, and pushes hardest on the two that decide the offer.
           </p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
