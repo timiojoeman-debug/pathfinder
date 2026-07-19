@@ -1,0 +1,343 @@
+"use client";
+
+/**
+ * PathFinder — "For Universities" surface. The B2B2C pitch to university
+ * career services: PathFinder as the AI readiness-coaching layer a university
+ * gives every student, with a staff view of cohort readiness.
+ *
+ * Integrity note: this is pre-launch. It presents the value proposition and a
+ * pilot offer — deliberately NO fabricated partner logos, testimonials, or
+ * placement statistics. The cohort dashboard shown is labelled illustrative.
+ * Wire CONTACT_MAILTO to a real inbox before going live.
+ */
+
+import Link from "next/link";
+import { useEffect, useState, type CSSProperties } from "react";
+import { applyTheme, getStoredTheme, setStoredTheme, type ThemeMode } from "@/lib/theme";
+import { Reveal } from "@/components/pf/ui";
+
+const mono = "var(--font-mono), 'JetBrains Mono', monospace";
+const serifItalic: CSSProperties = {
+  fontFamily: "var(--font-serif), 'Instrument Serif', serif",
+  fontWeight: 400,
+  fontStyle: "italic",
+  letterSpacing: "-.01em",
+  color: "var(--accent)",
+};
+const kicker: CSSProperties = { fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--accent)" };
+
+// TODO: point at a real partnerships inbox before launch.
+const CONTACT_MAILTO = "mailto:partnerships@pathfinder.app?subject=PathFinder%20for%20universities%20%E2%80%94%20pilot%20enquiry";
+
+const PROBLEMS = [
+  {
+    t: "You can’t coach everyone",
+    d: "A handful of advisers, thousands of students, a few weeks each term. Genuine 1:1 readiness coaching simply doesn’t scale to a whole cohort.",
+  },
+  {
+    t: "Students are drowning in the AI-apply flood",
+    d: "Auto-apply tools fire off hundreds of generic, AI-written applications. Employers pattern-match them to the bin — and your students blend into the noise.",
+  },
+  {
+    t: "You’re judged on outcomes, not activity",
+    d: "Placement and interview rates are what matter. But you can’t see which students are actually ready — or which need a nudge — until it’s too late to help.",
+  },
+];
+
+const GETS = [
+  {
+    t: "Coaching at scale",
+    d: "Every student gets direction-setting, CV/ATS feedback, referral coaching, and interview prep on demand — the 1:1 experience, without the 1:1 staffing.",
+  },
+  {
+    t: "A cohort readiness view",
+    d: "See readiness, interview rate, and skill gaps across the whole cohort. Spot the students slipping behind and reach out before the deadline, not after.",
+  },
+  {
+    t: "Outcomes you can report",
+    d: "Track interview and placement rates over the term, by programme — the numbers your leadership and your rankings actually care about.",
+  },
+  {
+    t: "Your brand, your students",
+    d: "White-labelled to your institution. Students never pay. The relationship — and the data policy — stays yours.",
+  },
+];
+
+const STEPS = [
+  { n: "01", t: "Scope", d: "A 30-minute call to pick a pilot cohort — one department or one graduating year is plenty." },
+  { n: "02", t: "Launch", d: "Students onboard in minutes. Your careers team gets the cohort dashboard the same day." },
+  { n: "03", t: "Measure", d: "At the end of the pilot we review the readiness lift and interview-rate change together — the pilot fee credits toward a licence." },
+];
+
+const FAQS = [
+  {
+    q: "Does this replace Handshake or our careers service?",
+    a: "No — it complements them. PathFinder is the coaching layer, not a job board or a CRM. Students still apply where they apply; PathFinder makes them ready to.",
+  },
+  {
+    q: "Who owns the student data?",
+    a: "You do. Students own their individual profiles; your team sees cohort-level readiness, and the data handling is scoped to your institution’s policy during onboarding.",
+  },
+  {
+    q: "How much does it cost students?",
+    a: "Nothing, ever. It’s an institutional licence — priced per student or as a site licence — so cost never sits with the people you’re trying to help.",
+  },
+];
+
+// Illustrative sample cohort — clearly not real data.
+const SAMPLE_PHASES = [
+  { label: "Direction set", pct: 82, tone: "var(--strong)" },
+  { label: "CV interview-ready", pct: 61, tone: "var(--warn)" },
+  { label: "≥1 referral opened", pct: 34, tone: "var(--risk)" },
+  { label: "Interview-prep started", pct: 45, tone: "var(--warn)" },
+];
+
+export default function UniversitiesPage() {
+  const [mode, setMode] = useState<ThemeMode>("light");
+
+  useEffect(() => {
+    const t = getStoredTheme() ?? "light";
+    applyTheme(t);
+    setMode(t);
+    const sync = () => setMode(getStoredTheme() ?? "light");
+    window.addEventListener("pf:theme", sync);
+    return () => window.removeEventListener("pf:theme", sync);
+  }, []);
+
+  const toggleTheme = () => {
+    const next: ThemeMode = mode === "dark" ? "light" : "dark";
+    setStoredTheme(next);
+    applyTheme(next);
+    setMode(next);
+  };
+
+  const navLink: CSSProperties = { color: "inherit", textDecoration: "none", padding: "8px 12px", margin: "-8px 0", borderRadius: 9, transition: "color .2s var(--ease), background .2s var(--ease)" };
+  const card: CSSProperties = { border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "26px 26px 28px", boxShadow: "var(--rim)", height: "100%" };
+  const sectionPad = "clamp(64px,9vw,110px) clamp(20px,5vw,56px)";
+  const h2: CSSProperties = { fontSize: "clamp(30px,4.4vw,48px)", fontWeight: 800, letterSpacing: "-.035em", margin: "14px 0 14px", textWrap: "balance" as CSSProperties["textWrap"] };
+  const lead: CSSProperties = { fontSize: 17, color: "var(--muted)", lineHeight: 1.6, maxWidth: "38rem" };
+
+  const primaryBtn: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 9, height: 52, padding: "0 26px", borderRadius: 13, background: "var(--fg)", color: "var(--bg)", fontSize: 15.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 10px 26px rgba(56,44,32,.16),var(--rim)" };
+  const ghostBtn: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 9, height: 52, padding: "0 22px", borderRadius: 13, background: "var(--panel)", color: "var(--fg)", border: "1px solid var(--lineStrong)", fontSize: 15.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" };
+
+  return (
+    <div className="pf pf-landing" style={{ position: "relative", width: "100%", background: "var(--bg)", overflow: "hidden", color: "var(--fg)" }}>
+      {/* ── Nav ── */}
+      <header style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", height: 68, padding: "0 clamp(20px,4vw,56px)", borderBottom: "1px solid var(--line)", background: "color-mix(in srgb,var(--bg) 80%,transparent)", backdropFilter: "blur(12px)" }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "var(--fg)" }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--rim)" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
+          </div>
+          <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.02em" }}>PathFinder</span>
+          <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accent)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", borderRadius: 6, padding: "3px 7px", marginLeft: 4 }}>For universities</span>
+        </Link>
+        <nav className="pf-hide-mobile" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 500, color: "var(--muted)" }}>
+          <a href="#problem" className="pf-hover-row" style={navLink}>Why</a>
+          <a href="#how" className="pf-hover-row" style={navLink}>How it works</a>
+          <a href="#pricing" className="pf-hover-row" style={navLink}>Pricing</a>
+        </nav>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 7, height: 36, padding: "0 13px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", fontFamily: mono, fontSize: 11, fontWeight: 500 }}
+          >
+            <span style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid currentColor" }} />
+            {mode === "dark" ? "Paper" : "Night"}
+          </button>
+          <Link href="/" className="pf-hide-mobile" style={{ ...navLink, fontSize: 13.5, fontWeight: 600, color: "var(--muted)" }}>For students →</Link>
+          <a href={CONTACT_MAILTO} style={{ display: "flex", alignItems: "center", height: 39, padding: "0 18px", borderRadius: 11, background: "var(--fg)", color: "var(--bg)", fontSize: 13.5, fontWeight: 600, textDecoration: "none", boxShadow: "var(--rim)" }}>
+            Book a pilot
+          </a>
+        </div>
+      </header>
+
+      {/* ── Hero ── */}
+      <section style={{ padding: "clamp(64px,10vw,120px) clamp(20px,5vw,56px) clamp(40px,6vw,70px)", maxWidth: 980, margin: "0 auto", textAlign: "center" }}>
+        <span style={{ ...kicker, display: "inline-block", marginBottom: 18 }}>For universities &amp; career services</span>
+        <h1 style={{ fontSize: "clamp(38px,6.5vw,74px)", lineHeight: 1.02, letterSpacing: "-.04em", fontWeight: 800, margin: "0 auto 24px", maxWidth: "18ch" }}>
+          Give every student a coach — not just a <span style={serifItalic}>job board.</span>
+        </h1>
+        <p style={{ ...lead, margin: "0 auto 32px", fontSize: "clamp(16px,2vw,20px)" }}>
+          Your team can’t run 1:1 readiness coaching for thousands of students. PathFinder is the AI layer that does — referrals, interviews, CVs — with a staff view of exactly who’s ready and who needs a nudge.
+        </p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <a href={CONTACT_MAILTO} style={primaryBtn}>Book a pilot →</a>
+          <a href="#how" style={ghostBtn}>See how it works</a>
+        </div>
+        <p style={{ fontFamily: mono, fontSize: 11.5, letterSpacing: ".04em", color: "var(--faint)", marginTop: 26 }}>
+          Complements your existing tools · your branding · students never pay
+        </p>
+      </section>
+
+      {/* ── Problem ── */}
+      <section id="problem" style={{ padding: sectionPad, maxWidth: 1140, margin: "0 auto" }}>
+        <div style={{ maxWidth: "40rem", marginBottom: 44 }}>
+          <span style={kicker}>The gap</span>
+          <h2 style={h2}>Careers teams are set up to advise. Not to <span style={serifItalic}>coach at scale.</span></h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 16 }}>
+          {PROBLEMS.map((p, i) => (
+            <Reveal key={p.t} style={{ animationDelay: `${i * 0.06}s` }}>
+              <div style={card}>
+                <div style={{ fontFamily: mono, fontSize: 12, color: "var(--faint)", marginBottom: 14 }}>{String(i + 1).padStart(2, "0")}</div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-.01em", margin: "0 0 9px" }}>{p.t}</h3>
+                <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6, margin: 0 }}>{p.d}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── What it is ── */}
+      <section style={{ padding: `0 clamp(20px,5vw,56px) clamp(20px,4vw,40px)`, maxWidth: 1140, margin: "0 auto" }}>
+        <div style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 20, background: "var(--accentSoft)", padding: "clamp(26px,4vw,42px)" }}>
+          <span style={kicker}>What PathFinder is</span>
+          <p style={{ fontSize: "clamp(19px,2.6vw,27px)", lineHeight: 1.4, fontWeight: 500, letterSpacing: "-.02em", margin: "14px 0 0", maxWidth: "44ch", textWrap: "balance" as CSSProperties["textWrap"] }}>
+            An AI readiness coach you hand to every student. It coaches the two things that actually convert — <span style={serifItalic}>referrals</span> and <span style={serifItalic}>interviews</span> — and keeps students genuinely ready, not just busy.
+          </p>
+        </div>
+      </section>
+
+      {/* ── What your team gets ── */}
+      <section style={{ padding: sectionPad, maxWidth: 1140, margin: "0 auto" }}>
+        <div style={{ maxWidth: "40rem", marginBottom: 44 }}>
+          <span style={kicker}>For your team</span>
+          <h2 style={h2}>1:1 coaching outcomes, at cohort <span style={serifItalic}>scale.</span></h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16 }}>
+          {GETS.map((g, i) => (
+            <Reveal key={g.t} style={{ animationDelay: `${i * 0.05}s` }}>
+              <div style={card}>
+                <h3 style={{ fontSize: 17.5, fontWeight: 700, letterSpacing: "-.01em", margin: "0 0 9px" }}>{g.t}</h3>
+                <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6, margin: 0 }}>{g.d}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Illustrative cohort dashboard ── */}
+      <section style={{ padding: `0 clamp(20px,5vw,56px) ${sectionPad.split(" ")[0]}`, maxWidth: 1140, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", overflow: "hidden", boxShadow: "var(--rim)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--line)", background: "var(--panel2)" }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Cohort readiness — CS, Year 2</span>
+              <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--warn)", border: "1px solid color-mix(in srgb,var(--warn) 34%,transparent)", background: "color-mix(in srgb,var(--warn) 10%,transparent)", borderRadius: 6, padding: "3px 9px" }}>Illustrative · sample data</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18, padding: "24px 22px" }}>
+              <div>
+                <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 14 }}>Where the cohort stands</div>
+                {SAMPLE_PHASES.map((s) => (
+                  <div key={s.label} style={{ marginBottom: 13 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                      <span style={{ fontSize: 13 }}>{s.label}</span>
+                      <span style={{ fontFamily: mono, fontSize: 12, fontWeight: 700, color: s.tone }}>{s.pct}%</span>
+                    </div>
+                    <div style={{ height: 6, borderRadius: 3, background: "var(--panel3)", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${s.pct}%`, borderRadius: 3, background: s.tone }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ border: "1px solid var(--line)", borderRadius: 13, padding: "16px 18px", background: "var(--panel2)" }}>
+                  <div style={{ fontFamily: mono, fontSize: 26, fontWeight: 700, letterSpacing: "-.03em", color: "var(--risk)" }}>66%</div>
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>have opened <b style={{ color: "var(--fg)" }}>zero referrals</b> — the biggest lever, untouched.</div>
+                </div>
+                <div style={{ border: "1px solid color-mix(in srgb,var(--accent) 26%,transparent)", borderRadius: 13, padding: "16px 18px", background: "var(--accentSoft)" }}>
+                  <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accentText)", marginBottom: 6 }}>Suggested outreach</div>
+                  <div style={{ fontSize: 13, lineHeight: 1.55 }}>Nudge the <b>41 students</b> below interview-ready before the autumn deadline.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ── How a pilot works ── */}
+      <section id="how" style={{ padding: sectionPad, maxWidth: 1140, margin: "0 auto" }}>
+        <div style={{ maxWidth: "40rem", marginBottom: 44 }}>
+          <span style={kicker}>How it works</span>
+          <h2 style={h2}>A pilot you can run in one <span style={serifItalic}>term.</span></h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 16 }}>
+          {STEPS.map((s, i) => (
+            <Reveal key={s.n} style={{ animationDelay: `${i * 0.06}s` }}>
+              <div style={card}>
+                <div style={{ fontFamily: "var(--font-serif), 'Instrument Serif', serif", fontSize: 40, lineHeight: 1, color: "var(--accent)", marginBottom: 14 }}>{s.n}</div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>{s.t}</h3>
+                <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6, margin: 0 }}>{s.d}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Pricing / model ── */}
+      <section id="pricing" style={{ padding: `0 clamp(20px,5vw,56px) ${sectionPad.split(" ")[0]}`, maxWidth: 1140, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 20, alignItems: "center", border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", padding: "clamp(26px,4vw,40px)", boxShadow: "var(--rim)" }}>
+            <div>
+              <span style={kicker}>Pricing</span>
+              <h2 style={{ ...h2, fontSize: "clamp(26px,3.4vw,38px)", margin: "12px 0 12px" }}>An institutional licence — <span style={serifItalic}>never</span> a student cost.</h2>
+              <p style={{ ...lead, fontSize: 15.5 }}>
+                Priced per student or as a site licence, so the cost sits with the institution, not the people you’re trying to help. Pilots are scoped per cohort and the pilot fee credits toward the licence.
+              </p>
+            </div>
+            <div style={{ border: "1px solid var(--lineStrong)", borderRadius: 16, background: "var(--panel2)", padding: "24px 24px 26px" }}>
+              <div style={{ fontFamily: mono, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)" }}>Start here</div>
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", margin: "8px 0 4px" }}>Cohort pilot</div>
+              <p style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.55, margin: "0 0 18px" }}>One department or year group, one term. We measure the readiness lift together.</p>
+              <a href={CONTACT_MAILTO} style={{ ...primaryBtn, height: 46, width: "100%", justifyContent: "center" }}>Contact us for pricing</a>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section style={{ padding: sectionPad, maxWidth: 820, margin: "0 auto" }}>
+        <div style={{ marginBottom: 34 }}>
+          <span style={kicker}>Questions</span>
+          <h2 style={{ ...h2, fontSize: "clamp(26px,3.6vw,40px)" }}>The honest answers.</h2>
+        </div>
+        <div style={{ display: "grid", gap: 12 }}>
+          {FAQS.map((f) => (
+            <div key={f.q} style={{ border: "1px solid var(--line)", borderRadius: 14, background: "var(--panel)", padding: "18px 22px" }}>
+              <h3 style={{ fontSize: 15.5, fontWeight: 700, margin: "0 0 7px" }}>{f.q}</h3>
+              <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6, margin: 0 }}>{f.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Final CTA ── */}
+      <section style={{ padding: `${sectionPad.split(" ")[0]} clamp(20px,5vw,56px) clamp(80px,10vw,120px)`, maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
+        <h2 style={{ fontSize: "clamp(30px,5vw,52px)", fontWeight: 800, letterSpacing: "-.035em", margin: "0 0 16px", textWrap: "balance" as CSSProperties["textWrap"] }}>
+          Bring readiness coaching to <span style={serifItalic}>every</span> student.
+        </h2>
+        <p style={{ ...lead, margin: "0 auto 30px", textAlign: "center" }}>
+          Book a 30-minute call. We’ll scope a pilot cohort and show you the dashboard your careers team would see.
+        </p>
+        <a href={CONTACT_MAILTO} style={{ ...primaryBtn, height: 56, fontSize: 16.5, padding: "0 32px" }}>Book a pilot →</a>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer style={{ borderTop: "1px solid var(--line)", padding: "28px clamp(20px,5vw,56px)", display: "flex", flexWrap: "wrap", gap: "12px 24px", alignItems: "center", justifyContent: "space-between", fontSize: 13, color: "var(--muted)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
+          </div>
+          <span style={{ fontWeight: 600, color: "var(--fg)" }}>PathFinder</span>
+          <span style={{ color: "var(--faint)" }}>· for universities</span>
+        </div>
+        <nav style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+          <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>For students</Link>
+          <Link href="/privacy" style={{ color: "inherit", textDecoration: "none" }}>Privacy</Link>
+          <Link href="/terms" style={{ color: "inherit", textDecoration: "none" }}>Terms</Link>
+          <a href={CONTACT_MAILTO} style={{ color: "inherit", textDecoration: "none" }}>Contact</a>
+        </nav>
+      </footer>
+    </div>
+  );
+}
