@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type AIRequest = {
   systemPrompt: string;
   userPrompt: string;
@@ -190,4 +192,36 @@ export async function callAI<T = Record<string, unknown>>(params: {
       `Failed to parse AI response as JSON: ${e instanceof Error ? e.message : String(e)}. Raw content: ${stripped.slice(0, 200)}...`
     );
   }
+}
+
+/**
+ * Like `callAI`, but validates the model's response against a Zod schema.
+ *
+ * `callAI<T>()` is a *compile-time* cast — nothing checks that the model
+ * actually returned shape T. When it doesn't (a renamed key, a different
+ * nesting level), routes that read `result.someField ?? fallback` silently
+ * ship an empty payload: HTTP 200, no content, no error, no log. That failure
+ * mode shipped three separate broken features before it was caught.
+ *
+ * Validating here converts a shape mismatch into a thrown AIError, so the
+ * route's existing `catch` fires its real fallback *and* the mismatch is
+ * logged instead of disappearing.
+ */
+export async function callAIValidated<T>(
+  params: { systemPrompt: string; userMessage: string; temperature?: number },
+  schema: z.ZodType<T>,
+  context?: string,
+): Promise<T> {
+  const raw = await callAI<unknown>(params);
+  const parsed = schema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+
+  const issue = parsed.error.issues[0];
+  const where = issue?.path?.length ? issue.path.map(String).join(".") : "(root)";
+  throw new AIError(
+    `AI response failed validation${context ? ` for ${context}` : ""} at "${where}": ${issue?.message ?? "unknown"}. ` +
+      `Received keys: ${raw && typeof raw === "object" ? Object.keys(raw as object).join(", ") : typeof raw}`,
+    502,
+    true,
+  );
 }

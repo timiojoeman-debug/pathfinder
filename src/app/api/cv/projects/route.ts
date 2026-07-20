@@ -1,7 +1,29 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { readLoose } from "@/lib/api";
-import { callAI } from "@/lib/ai";
+import { callAIValidated } from "@/lib/ai";
+import { logger } from "@/lib/logger";
 import { buildProjectPrompt } from "@/lib/prompts";
+
+/** Shape the prompt actually asks the model for (projects live under `data`). */
+const ProjectsResponse = z.object({
+  data: z.object({
+    projects: z
+      .array(
+        z.object({
+          title: z.string(),
+          description: z.string(),
+          problemItSolves: z.string().optional(),
+          techStack: z.array(z.string()).default([]),
+          keyFeatures: z.array(z.string()).default([]),
+          weeklyPlan: z.array(z.unknown()).optional(),
+          qualityChecklist: z.array(z.unknown()).optional(),
+          talkingPoints: z.array(z.string()).default([]),
+        }),
+      )
+      .min(1),
+  }),
+});
 
 const FALLBACK_PROJECTS = {
   projects: [
@@ -63,14 +85,23 @@ export async function POST(req: Request) {
 
   try {
     const systemPrompt = buildProjectPrompt(gaps, skills, targetRole);
-    const aiResult = await callAI<{ projects?: { title: string; description: string; techStack: string[]; keyFeatures: string[]; talkingPoints: string[] }[] }>({
-      systemPrompt,
-      userMessage: `Design 3 projects that use the missing technologies and frameworks to close gaps. Each project should help the student learn and showcase the skills they lack.`,
-      temperature: 0.3,
+    // The prompt asks for the projects nested under `data` — reading them off
+    // the root silently produced an empty array while the model was in fact
+    // returning good content. Validated so a shape change throws instead.
+    const aiResult = await callAIValidated(
+      {
+        systemPrompt,
+        userMessage: `Design 3 projects that use the missing technologies and frameworks to close gaps. Each project should help the student learn and showcase the skills they lack.`,
+        temperature: 0.3,
+      },
+      ProjectsResponse,
+      "cv/projects",
+    );
+    return NextResponse.json({ projects: aiResult.data.projects });
+  } catch (e) {
+    logger.error("cv/projects — AI unusable, serving fallback projects", {
+      error: e instanceof Error ? e.message : String(e),
     });
-    const projects = aiResult.projects ?? [];
-    return NextResponse.json({ projects });
-  } catch {
     return NextResponse.json(FALLBACK_PROJECTS);
   }
 }

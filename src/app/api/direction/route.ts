@@ -1,7 +1,40 @@
 import { NextResponse } from "next/server";
-import { readLoose } from "@/lib/api";
-import { callAI } from "@/lib/ai";
+import { z } from "zod";
+import { readBody } from "@/lib/api";
+import { callAIValidated } from "@/lib/ai";
+import { logger } from "@/lib/logger";
 import { buildDirectionPrompt } from "@/lib/prompts";
+
+/** Shape the prompt actually asks for — the statement lives under `data`. */
+const DirectionResponse = z.object({
+  data: z.object({
+    directionStatement: z.string(),
+    specificityScore: z.number().optional(),
+    specificityTier: z.string(),
+    sharpeningSuggestions: z.array(z.string()).default([]),
+  }),
+});
+
+/**
+ * Every field below is `.trim()`-ed, so a non-string value used to throw and
+ * return a bare 500 — and the app models a tech stack as `string[]`, which hit
+ * exactly that path. Accept either a string or a string[], normalise to a
+ * trimmed string, and reject anything else with a 400 instead of crashing.
+ */
+const flexText = z.preprocess((v) => {
+  if (Array.isArray(v)) return v.filter((x) => typeof x === "string").join(", ");
+  if (typeof v === "string") return v;
+  return "";
+}, z.string().max(2000));
+
+const DirectionSchema = z.object({
+  industry: flexText,
+  roleType: flexText,
+  techStack: flexText,
+  location: flexText,
+  companySize: flexText,
+  workMode: flexText,
+});
 
 type DirectionInput = {
   industry: string;
@@ -45,18 +78,9 @@ function computeSpecificity(input: DirectionInput): { level: SpecificityLevel; s
 }
 
 export async function POST(req: Request) {
-  const __p = await readLoose(req);
+  const __p = await readBody(req, DirectionSchema);
   if (!__p.ok) return __p.response;
-  const body = __p.data as Partial<DirectionInput>;
-
-  const input: DirectionInput = {
-    industry: body.industry ?? "",
-    roleType: body.roleType ?? "",
-    techStack: body.techStack ?? "",
-    location: body.location ?? "",
-    companySize: body.companySize ?? "",
-    workMode: body.workMode ?? "",
-  };
+  const input: DirectionInput = __p.data;
 
   const statementParts: string[] = [];
 
@@ -101,22 +125,26 @@ export async function POST(req: Request) {
       companySize: input.companySize,
       workMode: input.workMode,
     });
-    const aiResult = await callAI<{
-      directionStatement: string;
-      specificityScore: number;
-      specificityTier: string;
-      sharpeningSuggestions: string[];
-    }>({
-      systemPrompt,
-      userMessage: "Generate the direction statement and assessment.",
-      temperature: 0.3,
-    });
+    // The prompt nests these under `data`; reading them off the root returned
+    // undefined for every field, so the response collapsed to {suggestions:[]}.
+    const aiResult = await callAIValidated(
+      {
+        systemPrompt,
+        userMessage: "Generate the direction statement and assessment.",
+        temperature: 0.3,
+      },
+      DirectionResponse,
+      "direction",
+    );
     return NextResponse.json({
-      statement: aiResult.directionStatement,
-      specificity: aiResult.specificityTier,
-      suggestions: aiResult.sharpeningSuggestions ?? [],
+      statement: aiResult.data.directionStatement,
+      specificity: aiResult.data.specificityTier,
+      suggestions: aiResult.data.sharpeningSuggestions ?? [],
     });
-  } catch {
+  } catch (e) {
+    logger.error("direction — AI unusable, serving locally-derived statement", {
+      error: e instanceof Error ? e.message : String(e),
+    });
     return NextResponse.json({
       statement,
       specificity: level,

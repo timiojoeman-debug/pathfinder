@@ -1,7 +1,22 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { readLoose } from "@/lib/api";
-import { callAI } from "@/lib/ai";
+import { callAIValidated } from "@/lib/ai";
+import { logger } from "@/lib/logger";
 import { buildSTARPrompt } from "@/lib/prompts";
+
+/** Shape the prompt actually asks for — the refined story lives under `data`. */
+const StarResponse = z.object({
+  data: z.object({
+    situation: z.string(),
+    task: z.string(),
+    action: z.string(),
+    result: z.string(),
+    tips: z.array(z.string()).optional(),
+    mappedQuestions: z.array(z.string()).optional(),
+    estimatedDuration: z.string().optional(),
+  }),
+});
 
 type Body = {
   situation: string;
@@ -42,30 +57,34 @@ export async function POST(req: Request) {
 
   try {
     const systemPrompt = buildSTARPrompt(rawStory, cat);
-    const aiResult = await callAI<{
-      situation: string;
-      task: string;
-      action: string;
-      result: string;
-      improvementSuggestions?: string[];
-      commonQuestionsThisAnswers?: string[];
-    }>({
-      systemPrompt,
-      userMessage: "Improve the flow and clarity while keeping the same story.",
-      temperature: 0.3,
-    });
-
-    const tips =
-      aiResult.improvementSuggestions?.slice(0, 3) ?? ["Keep it under 2 minutes.", "Lead with the result when possible."];
+    // Previously read `aiResult.situation` / `improvementSuggestions`, which the
+    // prompt never returns — every field came back undefined and the refined
+    // story was silently dropped, leaving only the canned tips.
+    const aiResult = await callAIValidated(
+      {
+        systemPrompt,
+        userMessage: "Improve the flow and clarity while keeping the same story.",
+        temperature: 0.3,
+      },
+      StarResponse,
+      "interview/star-tweak",
+    );
+    const d = aiResult.data;
+    const tips = d.tips?.length
+      ? d.tips.slice(0, 3)
+      : ["Keep it under 2 minutes.", "Lead with the result when possible."];
 
     return NextResponse.json({
-      situation: aiResult.situation,
-      task: aiResult.task,
-      action: aiResult.action,
-      result: aiResult.result,
+      situation: d.situation,
+      task: d.task,
+      action: d.action,
+      result: d.result,
       tips,
     });
-  } catch {
+  } catch (e) {
+    logger.error("interview/star-tweak — AI unusable, echoing the original story", {
+      error: e instanceof Error ? e.message : String(e),
+    });
     return NextResponse.json({
       situation: rawStory.situation,
       task: rawStory.task,
