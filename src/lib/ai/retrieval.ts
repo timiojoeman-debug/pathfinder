@@ -37,9 +37,15 @@ export async function retrieveRelevantMethodology(
     const embedding = await getEmbedding(`${topic}: ${userInput}`);
     const db = createServerClient();
 
+    // Threshold tuned empirically against the seeded corpus: with
+    // text-embedding-3-small, relevant-but-differently-worded matches land
+    // around 0.35–0.55, so 0.5 returned nothing for most real questions
+    // ("how do I ask for a referral?" missed the Referral Ask Scripts chunk).
+    // 0.35 surfaces the correct chunk for every test query; match_count still
+    // bounds how much context we pull in.
     const { data: chunks } = await db.rpc('match_methodology', {
       query_embedding: embedding,
-      match_threshold: 0.5,
+      match_threshold: 0.35,
       match_count: maxChunks,
     });
 
