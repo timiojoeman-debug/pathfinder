@@ -1,0 +1,211 @@
+{
+  "$schema": "https://pathfinder.local/schemas/source-registry-1.json",
+  "generated": "2026-06-11",
+  "description": "Canonical provenance for the PathFinder Knowledge Model. Three tiers preserved (never flattened): primary masterclass docs, distilled Wiki concepts/topics, and provenance source notes. The TS mirror is src/lib/knowledge/sources.ts.",
+  "vaultRoot": "C:/Users/timio/OneDrive/Desktop/AI Brain/AI Brain",
+  "sliceStatus": {
+    "deepBuilt": ["networking", "jobs"],
+    "planned": ["direction", "cv", "interview", "tracker", "foundations"]
+  },
+  "sources": [
+    {
+      "id": "doc-four-pillars",
+      "title": "TechTalk — Four Pillars of Job Search",
+      "kind": "masterclass-doc",
+      "vaultPath": "Raw Sources/Career/TechTalk - Four Pillars of Job Search (How to Structure Your Search).docx",
+      "confidence": "high",
+      "concepts": ["c-four-pillars"],
+      "frameworks": [],
+      "principles": ["p-balanced-search", "p-targeted-tailored"],
+      "linkedNotes": ["Wiki/concepts/four-pillars-job-search.md", "Wiki/topics/job-search-system.md"]
+    },
+    {
+      "id": "doc-coffee-chat",
+      "title": "TechTalk — Coffee Chat Mastery Essentials",
+      "kind": "masterclass-doc",
+      "vaultPath": "Raw Sources/Career/TechTalk - Coffee Chat Mastery Essentials.docx",
+      "confidence": "high",
+      "concepts": ["c-coffee-chat"],
+      "frameworks": ["f-coffee-chat"],
+      "principles": ["p-information-before-ask"],
+      "linkedNotes": ["Wiki/concepts/coffee-chat.md"]
+    },
+    {
+      "id": "doc-linkedin-checklist",
+      "title": "TechTalk — LinkedIn Profile Checklist (Messaging Recruiters)",
+      "kind": "masterclass-doc",
+      "vaultPath": "Raw Sources/Career/TechTalk - LinkedIn Profile Checklist (Messaging Recruiters).docx",
+      "confidence": "high",
+      "concepts": [],
+      "frameworks": ["f-outreach-variants"],
+      "principles": [],
+      "linkedNotes": ["Wiki/topics/networking.md"]
+    },
+    {
+      "id": "doc-hidden-market",
+      "title": "Hidden Job Market Tactics & Tips",
+      "kind": "masterclass-doc",
+      "vaultPath": "Raw Sources/Career/Hidden Job Market Tactics & Tips.pdf",
+      "confidence": "high",
+      "concepts": ["c-hidden-job-market", "c-ai-screening"],
+      "frameworks": ["f-hiring-pyramid"],
+      "principles": ["p-hidden-market", "p-referral-leverage", "p-volume-cold-fails"],
+      "linkedNotes": ["Wiki/concepts/hidden-job-market.md"]
+    },
+    {
+      "id": "doc-10-interviews",
+      "title": "TechTalk (Masterclass) — 10 Interviews in 30 Days",
+      "kind": "masterclass-doc",
+      "vaultPath": "Raw Sources/Career/TechTalk (Masterclass) - 10 Interviews in 30 days.docx",
+      "confidence": "high",
+      "concepts": ["c-hidden-job-market", "c-apply-early"],
+      "frameworks": [],
+      "principles": ["p-hidden-market", "p-apply-early"],
+      "linkedNotes": ["Wiki/sources/techtalk-masterclass-age-of-ai.md"]
+    },
+    {
+      "id": "doc-outsmart-ai",
+      "title": "TechTalk — Outsmart the Job Market (Use AI to Get Hired Faster)",
+      "kind": "masterclass-doc",
+      "vaultPath": "Raw Sources/Career/TechTalk - Outsmart the Job Market (How to Use AI to Get Hired Faster).docx",
+      "confidence": "medium",
+      "concepts": [],
+      "frameworks": [],
+      "principles": [],
+      "linkedNotes": ["Wiki/sources/techtalk-masterclass-age-of-ai.md"]
+    },
+    {
+      "id": "doc-career-os",
+      "title": "Software Engineering Career Operating System",
+      "kind": "masterclass-doc",
+      "vaultPath": "Raw Sources/Career/Software_Engineering_Career_Operating_System.docx",
+      "confidence": "medium",
+      "concepts": [],
+      "frameworks": [],
+      "principles": [],
+      "linkedNotes": ["Wiki/topics/job-search-system.md"]
+    },
+    {
+      "id": "wiki-referral-leverage",
+      "title": "Referral Leverage",
+      "kind": "wiki-concept",
+      "vaultPath": "Wiki/concepts/referral-leverage.md",
+      "confidence": "high",
+      "concepts": ["c-referral-leverage"],
+      "frameworks": [],
+      "principles": ["p-referral-leverage"],
+      "linkedNotes": ["Wiki/topics/networking.md", "Wiki/concepts/apply-early.md"]
+    },
+    {
+      "id": "wiki-hidden-job-market",
+      "title": "The Hidden Job Market",
+      "kind": "wiki-concept",
+      "vaultPath": "Wiki/concepts/hidden-job-market.md",
+      "confidence": "high",
+      "concepts": ["c-hidden-job-market"],
+      "frameworks": ["f-hiring-pyramid"],
+      "principles": ["p-hidden-market"],
+      "linkedNotes": ["Wiki/concepts/referral-leverage.md", "Wiki/concepts/coffee-chat.md"]
+    },
+    {
+      "id": "wiki-coffee-chat",
+      "title": "The Coffee Chat",
+      "kind": "wiki-concept",
+      "vaultPath": "Wiki/concepts/coffee-chat.md",
+      "confidence": "high",
+      "concepts": ["c-coffee-chat"],
+      "frameworks": ["f-coffee-chat"],
+      "principles": ["p-information-before-ask"],
+      "linkedNotes": ["Wiki/concepts/hidden-job-market.md", "Wiki/concepts/referral-leverage.md"]
+    },
+    {
+      "id": "wiki-four-pillars",
+      "title": "The Four Pillars of a Job Search",
+      "kind": "wiki-concept",
+      "vaultPath": "Wiki/concepts/four-pillars-job-search.md",
+      "confidence": "high",
+      "concepts": ["c-four-pillars"],
+      "frameworks": [],
+      "principles": ["p-balanced-search"],
+      "linkedNotes": ["Wiki/topics/application-strategy.md", "Wiki/topics/interview-prep.md"]
+    },
+    {
+      "id": "wiki-proof-of-work",
+      "title": "Proof of Work",
+      "kind": "wiki-concept",
+      "vaultPath": "Wiki/concepts/proof-of-work.md",
+      "confidence": "high",
+      "concepts": [],
+      "frameworks": [],
+      "principles": [],
+      "linkedNotes": ["Wiki/concepts/ats-optimization.md", "Wiki/concepts/starl-method.md"],
+      "note": "Cross-cutting concept; planned for the CV/foundations slice."
+    },
+    {
+      "id": "wiki-apply-early",
+      "title": "Apply Early",
+      "kind": "wiki-concept",
+      "vaultPath": "Wiki/concepts/apply-early.md",
+      "confidence": "high",
+      "concepts": ["c-apply-early"],
+      "frameworks": [],
+      "principles": ["p-apply-early"],
+      "linkedNotes": ["Wiki/concepts/referral-leverage.md", "Wiki/topics/application-strategy.md"]
+    },
+    {
+      "id": "wiki-networking",
+      "title": "Networking (topic)",
+      "kind": "wiki-topic",
+      "vaultPath": "Wiki/topics/networking.md",
+      "confidence": "high",
+      "concepts": ["c-coffee-chat", "c-referral-leverage"],
+      "frameworks": ["f-outreach-variants"],
+      "principles": [],
+      "linkedNotes": ["Wiki/concepts/coffee-chat.md", "Wiki/concepts/hidden-job-market.md"]
+    },
+    {
+      "id": "wiki-job-search-system",
+      "title": "Job Search System (topic)",
+      "kind": "wiki-topic",
+      "vaultPath": "Wiki/topics/job-search-system.md",
+      "confidence": "high",
+      "concepts": ["c-four-pillars", "c-ai-screening"],
+      "frameworks": ["f-hire"],
+      "principles": ["p-balanced-search", "p-volume-cold-fails", "p-targeted-tailored"],
+      "linkedNotes": ["Wiki/topics/application-strategy.md"]
+    },
+    {
+      "id": "wiki-application-strategy",
+      "title": "Application Strategy (topic)",
+      "kind": "wiki-topic",
+      "vaultPath": "Wiki/topics/application-strategy.md",
+      "confidence": "medium",
+      "concepts": ["c-apply-early", "c-application-funnel"],
+      "frameworks": ["f-posting-calendar", "f-application-funnel"],
+      "principles": ["p-apply-early"],
+      "linkedNotes": ["Wiki/concepts/apply-early.md"]
+    },
+    {
+      "id": "wiki-techtalk-tactics",
+      "title": "TechTalk Tactics (source note)",
+      "kind": "wiki-source",
+      "vaultPath": "Wiki/sources/techtalk-tactics.md",
+      "confidence": "high",
+      "concepts": [],
+      "frameworks": [],
+      "principles": [],
+      "linkedNotes": ["Wiki/TechTalk Tactics/_index.md"]
+    },
+    {
+      "id": "wiki-techtalk-masterclass",
+      "title": "TechTalk Masterclass — Age of AI (source note)",
+      "kind": "wiki-source",
+      "vaultPath": "Wiki/sources/techtalk-masterclass-age-of-ai.md",
+      "confidence": "high",
+      "concepts": [],
+      "frameworks": [],
+      "principles": [],
+      "linkedNotes": ["Wiki/sources/career-techtalk-library.md"]
+    }
+  ]
+}
