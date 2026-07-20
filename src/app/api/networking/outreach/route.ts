@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { callAIValidated } from "@/lib/ai";
+import { callAIValidated, aiShape } from "@/lib/ai";
 import { logger } from "@/lib/logger";
 import { buildOutreachPrompt } from "@/lib/prompts";
 import { checkNaturalness } from "@/lib/ai/naturalness-check";
 import { readBody, zShort, zText } from "@/lib/api";
 
-/** Outreach fields come back at the root for this prompt (not under `data`).
- *  An empty message is the failure worth catching — it used to ship as a
- *  "successful" 200 with nothing to send. */
-const OutreachResponse = z.object({
-  message: z.string().min(1),
-  questions: z.array(z.string()).optional(),
-  topics: z.array(z.string()).optional(),
-  followUp: z.string().optional(),
-});
+/** The prompt asks for these fields nested under `data`, but the model
+ *  sometimes flattens them to the root. `aiShape` tolerates both so the route
+ *  reads real content instead of silently shipping the empty fallback (a 200
+ *  with nothing to send — the failure this validation exists to catch). */
+const OutreachResponse = aiShape(
+  z.object({
+    message: z.string().min(1),
+    questions: z.array(z.string()).optional(),
+    topics: z.array(z.string()).optional(),
+    followUp: z.string().optional(),
+  }),
+);
 
 const OutreachSchema = z.object({
   type: z.enum(["recruiter", "hiringManager", "peer"]),

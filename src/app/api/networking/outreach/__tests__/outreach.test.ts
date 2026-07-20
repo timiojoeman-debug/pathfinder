@@ -5,6 +5,8 @@ import { describe, it, expect, vi } from 'vitest';
 // The route uses callAIValidated (schema-checked) rather than raw callAI.
 vi.mock('@/lib/ai', () => ({
   callAIValidated: vi.fn(),
+  // Passthrough: the route wraps its schema in aiShape at module load.
+  aiShape: <T>(schema: T): T => schema,
   AIError: class AIError extends Error {},
 }));
 vi.mock('@/lib/logger', () => ({

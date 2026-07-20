@@ -1,22 +1,26 @@
 import { NextResponse } from "next/server";
 import { readLoose } from "@/lib/api";
 import { z } from "zod";
-import { callAIValidated } from "@/lib/ai";
+import { callAIValidated, aiShape } from "@/lib/ai";
 import { logger } from "@/lib/logger";
 
-/** Questions come back at the root for this prompt (not under `data`). */
-const QuestionsResponse = z.object({
-  questions: z
-    .array(
-      z.object({
-        question: z.string().min(1),
-        category: z.string(),
-        answerTemplate: z.string().default(""),
-        tips: z.array(z.string()).optional(),
-      }),
-    )
-    .min(1),
-});
+/** The prompt nests `questions` under `data` and labels each item's kind
+ *  `type` (not `category`); the model sometimes flattens to the root.
+ *  `aiShape` tolerates both nestings, and the field is read as `type`. */
+const QuestionsResponse = aiShape(
+  z.object({
+    questions: z
+      .array(
+        z.object({
+          question: z.string().min(1),
+          type: z.string().default("General"),
+          answerTemplate: z.string().default(""),
+          tips: z.array(z.string()).optional(),
+        }),
+      )
+      .min(1),
+  }),
+);
 import { buildInterviewQuestionsPrompt } from "@/lib/prompts";
 
 type InterviewBody = {
@@ -74,7 +78,7 @@ export async function POST(req: Request) {
     );
 
     const questions = aiResult.questions.map((q) => ({
-      type: q.category,
+      type: q.type,
       question: q.question,
       answerTemplate: q.answerTemplate,
     }));

@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { callAIValidated, AIError } from '@/lib/ai';
+import { callAIValidated, AIError, aiShape } from '@/lib/ai';
 import { buildTitleVariantPrompt } from '@/lib/prompts/direction-prompts';
 import { readBody, zShort } from '@/lib/api';
 
-/** Variants come back at the root for this prompt (not under `data`). */
-const TitleVariantsResponse = z.object({
-  variants: z.array(z.object({ title: z.string(), note: z.string().default('') })).min(1),
-});
+/** This prompt returns `variants` at the root, but `aiShape` also tolerates
+ *  the model nesting it under `data` on some runs. */
+const TitleVariantsResponse = aiShape(
+  z.object({
+    variants: z.array(z.object({ title: z.string(), note: z.string().default('') })).min(1),
+  }),
+);
 
 const TitleVariantSchema = z.object({
   role: zShort(),
