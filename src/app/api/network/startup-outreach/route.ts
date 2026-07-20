@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildStartupOutreachPrompt } from '@/lib/prompts';
 import { checkNaturalness } from '@/lib/ai/naturalness-check';
 
@@ -18,11 +18,15 @@ export async function POST(req: Request) {
       companyName,
       companyDetail || ''
     );
-    const result = await callAI<Record<string, unknown>>({
+    const result = await callAIValidated(
+      {
       systemPrompt,
       userMessage: `Generate startup outreach for ${companyName}.`,
       temperature: 0.7,
-    });
+    },
+    aiEnvelope(["message"]),
+    "network/startup-outreach",
+    );
 
     const messageText = typeof result === 'object' && result !== null
       ? (result as Record<string, unknown>).message as string ?? ''

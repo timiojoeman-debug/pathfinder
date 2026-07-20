@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
 import { readLoose } from "@/lib/api";
-import { callAI } from "@/lib/ai";
+import { z } from "zod";
+import { callAIValidated } from "@/lib/ai";
+import { logger } from "@/lib/logger";
+
+/** Questions come back at the root for this prompt (not under `data`). */
+const QuestionsResponse = z.object({
+  questions: z
+    .array(
+      z.object({
+        question: z.string().min(1),
+        category: z.string(),
+        answerTemplate: z.string().default(""),
+        tips: z.array(z.string()).optional(),
+      }),
+    )
+    .min(1),
+});
 import { buildInterviewQuestionsPrompt } from "@/lib/prompts";
 
 type InterviewBody = {
@@ -48,24 +64,26 @@ export async function POST(req: Request) {
 
   try {
     const systemPrompt = buildInterviewQuestionsPrompt(cvData, targetRole);
-    const aiResult = await callAI<{
-      questions?: { question: string; category: string; answerTemplate: string; tips?: string[] }[];
-    }>({
+    const aiResult = await callAIValidated({
       systemPrompt,
       userMessage: `Generate ${count} random questions per type (${count * 4} total) across Behavioral, Technical, Situational, and CV-Specific. Vary the questions - do not repeat common ones.`,
       temperature: 0.7,
-    });
+    },
+      QuestionsResponse,
+      "interview/questions",
+    );
 
-    const questions = (aiResult.questions ?? []).map((q) => ({
+    const questions = aiResult.questions.map((q) => ({
       type: q.category,
       question: q.question,
       answerTemplate: q.answerTemplate,
     }));
 
-    return NextResponse.json({
-      questions: questions.length > 0 ? questions : FALLBACK_QUESTIONS.questions,
+    return NextResponse.json({ questions });
+  } catch (e) {
+    logger.error("interview/questions — AI unusable, serving fallback questions", {
+      error: e instanceof Error ? e.message : String(e),
     });
-  } catch {
     return NextResponse.json(FALLBACK_QUESTIONS);
   }
 }

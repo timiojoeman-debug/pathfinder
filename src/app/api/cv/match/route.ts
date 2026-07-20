@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildMatchScorePrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
@@ -13,11 +13,15 @@ export async function POST(req: Request) {
     }
 
     const systemPrompt = buildMatchScorePrompt(jobDescription);
-    const result = await callAI<Record<string, unknown>>({
+    const result = await callAIValidated(
+      {
       systemPrompt,
       userMessage: `CV data:\n${typeof cvData === 'string' ? cvData : JSON.stringify(cvData || {})}`,
       temperature: 0.3,
-    });
+    },
+    aiEnvelope(["matchScore", "matchedSkills"]),
+    "cv/match",
+    );
 
     return NextResponse.json(result);
   } catch (e) {

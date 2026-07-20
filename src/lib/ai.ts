@@ -135,11 +135,10 @@ export async function generateWithAI(request: AIRequest, fallback: () => string)
  * Call AI and parse JSON response. Strips markdown code fences.
  * Use with methodology-driven prompt builders for TechTalk-style output.
  */
-export async function callAI<T = Record<string, unknown>>(params: {
-  systemPrompt: string;
-  userMessage: string;
-  temperature?: number;
-}): Promise<T> {
+export async function callAI<T = Record<string, unknown>>(
+  params: { systemPrompt: string; userMessage: string; temperature?: number },
+  _isRetry = false,
+): Promise<T> {
   const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
   if (!apiKey) {
     throw new AIError(
@@ -187,10 +186,20 @@ export async function callAI<T = Record<string, unknown>>(params: {
 
   try {
     return JSON.parse(stripped) as T;
-  } catch (e) {
-    throw new Error(
-      `Failed to parse AI response as JSON: ${e instanceof Error ? e.message : String(e)}. Raw content: ${stripped.slice(0, 200)}...`
+  } catch (firstErr) {
+    // The model occasionally emits invalid JSON (bad escape inside a nested
+    // string, an unterminated field). It's transient — same prompt, same input,
+    // one retry almost always succeeds. Better than 500-ing the user. The
+    // _isRetry guard prevents an infinite loop if the second attempt also fails.
+    if (_isRetry) {
+      throw new Error(
+        `Failed to parse AI response as JSON after retry: ${firstErr instanceof Error ? firstErr.message : String(firstErr)}. Raw content: ${stripped.slice(0, 200)}...`,
+      );
+    }
+    console.warn(
+      `AI response was not valid JSON, retrying once: ${firstErr instanceof Error ? firstErr.message : String(firstErr)}`,
     );
+    return callAI<T>(params, true);
   }
 }
 
@@ -224,4 +233,67 @@ export async function callAIValidated<T>(
     502,
     true,
   );
+}
+
+/**
+ * Schema for the standard methodology envelope: `{ inputQuality, feedback,
+ * …, data: { … } }`. Most routes return the whole object to the client, so
+ * unknown keys are preserved on purpose — only the `data` keys the route
+ * actually depends on are asserted present and non-empty.
+ *
+ * Catches the real failure (the model dropped/renamed the payload) without
+ * being brittle about optional extras it may or may not include on a run.
+ */
+/**
+ * Validate the standard methodology envelope `{ …, data: { … } }` while
+ * preserving every other top-level key (routes pass the whole object through).
+ *
+ * The `expectedDataKeys` argument is kept for documentation only — an earlier
+ * version enforced "at least one key non-empty," which turned normal model
+ * variance (partial content, empty strings for some fields) into hard 500s.
+ * The value of validation here is **making routes read the right path** —
+ * schemas force the correct `data.foo` access instead of a silent `??` on the
+ * root. Beyond that, ship whatever data the model gave, empty fields and all,
+ * so a shaky answer still renders instead of erroring.
+ */
+export function aiEnvelope(_expectedDataKeys: string[] = []) {
+  void _expectedDataKeys;
+  const isEmpty = (v: unknown) =>
+    v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
+
+  return z
+    .object({ data: z.record(z.string(), z.unknown()) })
+    .catchall(z.unknown())
+    .superRefine((val, ctx) => {
+      const data = val.data as Record<string, unknown>;
+      // The one real failure: the model returned no payload at all — every
+      // field of data is empty. Anything less is model variance, not a bug.
+      if (Object.keys(data).length === 0 || Object.values(data).every(isEmpty)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["data"],
+          message: "`data` came back empty — no usable payload",
+        });
+      }
+    });
+}
+
+/**
+ * Tolerate the model nesting a payload under `data` or returning it at the
+ * root. Observed live: the *same* prompt returned `{data:{criticalKeywords…}}`
+ * for one route and `{criticalKeywords…}` for another on the same run, so
+ * pinning either shape alone makes a working feature fail intermittently.
+ *
+ * Tries the schema at the root first, then unwraps `data` and retries.
+ */
+export function aiShape<T>(schema: z.ZodType<T>): z.ZodType<T> {
+  return z.preprocess((v) => {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const o = v as Record<string, unknown>;
+      if (!schema.safeParse(o).success && o.data && typeof o.data === "object") {
+        return o.data;
+      }
+    }
+    return v;
+  }, schema) as unknown as z.ZodType<T>;
 }

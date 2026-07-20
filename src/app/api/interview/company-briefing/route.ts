@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildCompanyBriefingPrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
@@ -17,11 +17,15 @@ export async function POST(req: Request) {
       roleName || 'internship',
       studentProfile || 'Student'
     );
-    const result = await callAI<Record<string, unknown>>({
+    const result = await callAIValidated(
+      {
       systemPrompt,
       userMessage: `Generate company research briefing for ${companyName}.`,
       temperature: 0.7,
-    });
+    },
+    aiEnvelope(["companyOverview"]),
+    "interview/company-briefing",
+    );
 
     return NextResponse.json(result);
   } catch (e) {

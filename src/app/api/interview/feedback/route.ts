@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildPostInterviewPrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
@@ -20,11 +20,15 @@ export async function POST(req: Request) {
       wouldChange || '',
       previousInterviews || ''
     );
-    const result = await callAI<Record<string, unknown>>({
+    const result = await callAIValidated(
+      {
       systemPrompt,
       userMessage: `Analyse this ${interviewType} interview and generate feedback.`,
       temperature: 0.7,
-    });
+    },
+    aiEnvelope(["analysis"]),
+    "interview/feedback",
+    );
 
     return NextResponse.json(result);
   } catch (e) {

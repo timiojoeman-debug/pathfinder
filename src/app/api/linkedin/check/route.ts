@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from "@/lib/ai";
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +11,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Headline or about section required' }, { status: 400 });
     }
 
-    const result = await callAI<Record<string, unknown>>({
+    const result = await callAIValidated(
+      {
       systemPrompt: `You are PathFinder's AI career mentor reviewing LinkedIn profiles following TechTalk methodology.
 
 HEADLINE RULES:
@@ -66,7 +67,10 @@ Respond ONLY with valid JSON:
 }`,
       userMessage: `Headline: ${headline || 'Not provided'}\n\nAbout section: ${aboutSection || 'Not provided'}`,
       temperature: 0.3,
-    });
+    },
+    aiEnvelope(["suggestedHeadline"]),
+    "linkedin/check",
+    );
 
     return NextResponse.json(result);
   } catch (e) {

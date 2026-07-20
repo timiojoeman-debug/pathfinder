@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from '@/lib/ai';
 import { buildExploreRolesPrompt } from '@/lib/prompts';
 import { readBody, zText } from '@/lib/api';
 
@@ -19,19 +19,15 @@ export async function POST(req: Request) {
       .join('\n');
 
     const systemPrompt = buildExploreRolesPrompt(conversationHistory);
-    const result = await callAI<{
-      data: {
-        response: string;
-        extractedPreferences: { role: string; industry: string; techStack: string[]; location: string };
-        readyForStatement: boolean;
-        suggestedStatement: string | null;
-      };
-      nextQuestion: string;
-    }>({
-      systemPrompt,
-      userMessage: messages[messages.length - 1].content,
-      temperature: 0.7,
-    });
+    const result = await callAIValidated(
+      {
+        systemPrompt,
+        userMessage: messages[messages.length - 1].content,
+        temperature: 0.7,
+      },
+      aiEnvelope(['response']),
+      'direction/explore',
+    );
 
     return NextResponse.json(result);
   } catch (e) {

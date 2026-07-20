@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildProjectPrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
@@ -14,11 +14,15 @@ export async function POST(req: Request) {
       existingSkills || [],
       targetRole || 'Software Engineering Intern'
     );
-    const result = await callAI<Record<string, unknown>>({
+    const result = await callAIValidated(
+      {
       systemPrompt,
       userMessage: `Generate project ideas that close skill gaps and meet the 7 Qualities.`,
       temperature: 0.7,
-    });
+    },
+    aiEnvelope(["projects"]),
+    "project-builder/generate",
+    );
 
     return NextResponse.json(result);
   } catch (e) {

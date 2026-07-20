@@ -1,8 +1,22 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { callAI } from '@/lib/ai';
+import { callAIValidated } from '@/lib/ai';
 import { checkNaturalness } from '@/lib/ai/naturalness-check';
 import { readBody, zShort, zText } from '@/lib/api';
+
+/** The letter itself must come back non-empty — an empty string here used to
+ *  sail through as a "successful" generation. */
+const CoverLetterResponse = z
+  .object({
+    data: z
+      .object({
+        coverLetter: z.string().min(1),
+        assumptions: z.array(z.string()).default([]),
+        wordCount: z.number().optional(),
+      })
+      .catchall(z.unknown()),
+  })
+  .catchall(z.unknown());
 
 const CoverLetterSchema = z.object({
   cvData: z.unknown().optional(),
@@ -21,14 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Job description and company name are required' }, { status: 400 });
     }
 
-    const result = await callAI<{
-      data: {
-        coverLetter: string;
-        assumptions: string[];
-        wordCount: number;
-      };
-      nextSteps: string[];
-    }>({
+    const result = await callAIValidated({
       systemPrompt: `You are PathFinder's AI career mentor generating a tailored cover letter following TechTalk methodology.
 
 RULES:
@@ -66,9 +73,12 @@ Respond ONLY with valid JSON:
 }`,
       userMessage: `CV data:\n${typeof cvData === 'string' ? cvData : JSON.stringify(cvData || {})}`,
       temperature: 0.7,
-    });
+    },
+      CoverLetterResponse,
+      'cover-letter/generate',
+    );
 
-    const coverLetterText = result?.data?.coverLetter ?? '';
+    const coverLetterText = result.data.coverLetter;
     const naturalness = checkNaturalness(coverLetterText, {
       type: 'cover_letter',
       region: region === 'uk' || region === 'us' ? region : undefined,

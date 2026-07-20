@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { callAI } from "@/lib/ai";
+import { callAIValidated } from "@/lib/ai";
+import { logger } from "@/lib/logger";
 import { buildOutreachPrompt } from "@/lib/prompts";
 import { checkNaturalness } from "@/lib/ai/naturalness-check";
 import { readBody, zShort, zText } from "@/lib/api";
+
+/** Outreach fields come back at the root for this prompt (not under `data`).
+ *  An empty message is the failure worth catching — it used to ship as a
+ *  "successful" 200 with nothing to send. */
+const OutreachResponse = z.object({
+  message: z.string().min(1),
+  questions: z.array(z.string()).optional(),
+  topics: z.array(z.string()).optional(),
+  followUp: z.string().optional(),
+});
 
 const OutreachSchema = z.object({
   type: z.enum(["recruiter", "hiringManager", "peer"]),
@@ -69,18 +80,17 @@ export async function POST(req: Request) {
       contactType: body.type,
       roleName: body.roleTitle || "intern role",
     });
-    const aiResult = await callAI<{
-      message: string;
-      questions?: string[];
-      topics?: string[];
-      followUp?: string;
-    }>({
-      systemPrompt,
-      userMessage: `Generate the outreach message, 5 coffee chat questions, 5 conversation topics, and a follow-up template. Personalise using the contact profile.`,
-      temperature: 0.3,
-    });
+    const aiResult = await callAIValidated(
+      {
+        systemPrompt,
+        userMessage: `Generate the outreach message, 5 coffee chat questions, 5 conversation topics, and a follow-up template. Personalise using the contact profile.`,
+        temperature: 0.3,
+      },
+      OutreachResponse,
+      "networking/outreach",
+    );
 
-    const messageText = aiResult.message ?? FALLBACK_OUTREACH.message;
+    const messageText = aiResult.message;
     const naturalness = checkNaturalness(messageText, { type: 'outreach' });
 
     return NextResponse.json({
@@ -90,7 +100,10 @@ export async function POST(req: Request) {
       followUp: aiResult.followUp ?? FALLBACK_OUTREACH.followUp,
       naturalness,
     });
-  } catch {
+  } catch (e) {
+    logger.error("networking/outreach — AI unusable, serving fallback template", {
+      error: e instanceof Error ? e.message : String(e),
+    });
     return NextResponse.json(FALLBACK_OUTREACH);
   }
 }

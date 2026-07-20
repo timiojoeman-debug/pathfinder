@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildSTARPrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
@@ -13,11 +13,15 @@ export async function POST(req: Request) {
     }
 
     const systemPrompt = buildSTARPrompt(rawStory, category || 'challenge');
-    const result = await callAI<Record<string, unknown>>({
+    const result = await callAIValidated(
+      {
       systemPrompt,
       userMessage: `Evaluate and structure this STAR story.`,
       temperature: 0.3,
-    });
+    },
+    aiEnvelope(["situation", "result"]),
+    "interview/star-builder",
+    );
 
     return NextResponse.json(result);
   } catch (e) {

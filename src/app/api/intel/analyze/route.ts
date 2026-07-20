@@ -1,6 +1,32 @@
 import { NextResponse } from "next/server";
 import { readLoose } from "@/lib/api";
-import { callAI } from "@/lib/ai";
+import { z } from "zod";
+import { aiShape, callAIValidated } from "@/lib/ai";
+
+const IntelResponse = aiShape(
+  z.object({
+    roles: z
+      .array(
+        z.object({
+          company: z.string(),
+          fitReason: z.string(),
+          recommendedMove: z.string(),
+          requiredSkills: z.array(z.string()).default([]),
+        }),
+      )
+      .default([]),
+    priorityMoves: z
+      .array(
+        z.object({
+          action: z.string(),
+          why: z.string(),
+          impact: z.string(),
+          kind: z.string(),
+        }),
+      )
+      .min(1),
+  }),
+);
 
 type Role = { company: string; role: string; jobDescription: string };
 type Body = { roles?: Role[]; cvSummary?: string; direction?: string };
@@ -38,11 +64,15 @@ export async function POST(req: Request) {
     .join("\n\n");
 
   try {
-    const result = await callAI<AIResult>({
-      systemPrompt: SYSTEM,
-      userMessage: `STUDENT PROFILE:\n${profile}\n\nROLES TO ANALYSE:\n${roleList}`,
-      temperature: 0.3,
-    });
+    const result = await callAIValidated(
+      {
+        systemPrompt: SYSTEM,
+        userMessage: `STUDENT PROFILE:\n${profile}\n\nROLES TO ANALYSE:\n${roleList}`,
+        temperature: 0.3,
+      },
+      IntelResponse,
+      "intel/analyze",
+    );
     return NextResponse.json({
       source: "ai",
       roles: Array.isArray(result.roles) ? result.roles.slice(0, 12) : [],

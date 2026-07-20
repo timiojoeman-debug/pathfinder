@@ -2,13 +2,17 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // Mock the AI layer so the handler is exercised without hitting OpenAI.
+// The route uses callAIValidated (schema-checked) rather than raw callAI.
 vi.mock('@/lib/ai', () => ({
-  callAI: vi.fn(),
+  callAIValidated: vi.fn(),
   AIError: class AIError extends Error {},
+}));
+vi.mock('@/lib/logger', () => ({
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
 import { POST } from '../route';
-import { callAI } from '@/lib/ai';
+import { callAIValidated } from '@/lib/ai';
 
 function post(body: unknown): Request {
   return new Request('http://test/api/networking/outreach', {
@@ -25,7 +29,7 @@ describe('POST /api/networking/outreach', () => {
   });
 
   it('returns the AI-generated message and a naturalness read on success', async () => {
-    vi.mocked(callAI).mockResolvedValue({
+    vi.mocked(callAIValidated).mockResolvedValue({
       message: 'Hi Priya, I admire your team’s move to edge rendering...',
       questions: ['What makes a strong intern?'],
       topics: ['Recent launches'],
@@ -42,7 +46,7 @@ describe('POST /api/networking/outreach', () => {
     // Synchronous throw: callAI() throws before returning a promise, so the
     // route's try/catch catches it directly (no rejected promise for vitest to
     // flag as unhandled).
-    vi.mocked(callAI).mockImplementation(() => { throw new Error('AI unavailable'); });
+    vi.mocked(callAIValidated).mockImplementation(() => { throw new Error('AI unavailable'); });
     const res = await POST(post({ type: 'recruiter' }));
     expect(res.status).toBe(200);
     const body = await res.json();

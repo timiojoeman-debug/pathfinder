@@ -1,6 +1,33 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { callAI } from "@/lib/ai";
+import { aiShape, callAIValidated } from "@/lib/ai";
+
+/** These two prompts have been observed returning their payload both at the
+ *  root and nested under `data` — aiShape accepts either. */
+const AtsResponse = aiShape(
+  z.object({
+    criticalKeywords: z
+      .array(z.object({ keyword: z.string(), foundInCV: z.boolean().default(false), suggestedPlacement: z.string().default("") }))
+      .default([]),
+    atsChecklist: z
+      .array(z.object({ item: z.string(), passed: z.boolean().default(false), fix: z.string().default("") }))
+      .default([]),
+    overallATSScore: z.number().optional(),
+  }),
+);
+
+const MatchResponse = aiShape(
+  z.object({
+    matchScore: z.number(),
+    matchedSkills: z.array(z.string()).default([]),
+    missingSkills: z.array(z.string()).default([]),
+    nonNegotiables: z
+      .array(z.object({ requirement: z.string(), category: z.string().default(""), studentMeets: z.boolean().default(false), explanation: z.string().default("") }))
+      .optional(),
+    hasBlockers: z.boolean().optional(),
+    blockerWarning: z.string().nullable().optional(),
+  }),
+);
 import { buildATSAuditPrompt, buildMatchScorePrompt } from "@/lib/prompts";
 import { readBody, zShort, zText } from "@/lib/api";
 
@@ -57,27 +84,16 @@ export async function POST(req: Request) {
 
   try {
     const [atsResult, matchResult] = await Promise.all([
-      callAI<{
-        criticalKeywords: { keyword: string; foundInCV: boolean; suggestedPlacement: string }[];
-        atsChecklist: { item: string; passed: boolean; fix: string }[];
-        overallATSScore: number;
-      }>({
-        systemPrompt: buildATSAuditPrompt(jobDescription),
-        userMessage,
-        temperature: 0.3,
-      }),
-      callAI<{
-        matchScore: number;
-        matchedSkills: string[];
-        missingSkills: string[];
-        nonNegotiables?: { requirement: string; category: string; studentMeets: boolean; explanation: string }[];
-        hasBlockers?: boolean;
-        blockerWarning?: string | null;
-      }>({
-        systemPrompt: buildMatchScorePrompt(jobDescription),
-        userMessage,
-        temperature: 0.3,
-      }),
+      callAIValidated(
+        { systemPrompt: buildATSAuditPrompt(jobDescription), userMessage, temperature: 0.3 },
+        AtsResponse,
+        "jobs/analyze:ats",
+      ),
+      callAIValidated(
+        { systemPrompt: buildMatchScorePrompt(jobDescription), userMessage, temperature: 0.3 },
+        MatchResponse,
+        "jobs/analyze:match",
+      ),
     ]);
 
     const atsKeywords = (atsResult.criticalKeywords ?? [])

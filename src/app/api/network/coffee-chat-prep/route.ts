@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildCoffeeChatPrepPrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
@@ -19,11 +19,15 @@ export async function POST(req: Request) {
       studentProfile || 'Student seeking internship',
       coffeeChatsDone ?? 0
     );
-    const result = await callAI<Record<string, unknown>>({
+    const result = await callAIValidated(
+      {
       systemPrompt,
       userMessage: `Prepare a coffee chat with ${contactName} at ${contactCompany}.`,
       temperature: 0.7,
-    });
+    },
+    aiEnvelope(["openingScript", "conversationQuestions"]),
+    "network/coffee-chat-prep",
+    );
 
     return NextResponse.json(result);
   } catch (e) {

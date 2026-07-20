@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { callAI } from '@/lib/ai';
+import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildReferralPackagePrompt } from '@/lib/prompts';
 
 export async function POST(req: Request) {
@@ -19,11 +19,15 @@ export async function POST(req: Request) {
       chatNotes || '',
       cvStrengths || []
     );
-    const result = await callAI<Record<string, unknown>>({
+    const result = await callAIValidated(
+      {
       systemPrompt,
       userMessage: `Generate referral package for ${contactName} to refer the student for ${roleName}.`,
       temperature: 0.7,
-    });
+    },
+    aiEnvelope(["referralMessage"]),
+    "network/referral-package",
+    );
 
     return NextResponse.json(result);
   } catch (e) {

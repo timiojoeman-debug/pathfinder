@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { callAI, AIError } from '@/lib/ai';
+import { callAIValidated, AIError } from '@/lib/ai';
 import { buildTitleVariantPrompt } from '@/lib/prompts/direction-prompts';
 import { readBody, zShort } from '@/lib/api';
+
+/** Variants come back at the root for this prompt (not under `data`). */
+const TitleVariantsResponse = z.object({
+  variants: z.array(z.object({ title: z.string(), note: z.string().default('') })).min(1),
+});
 
 const TitleVariantSchema = z.object({
   role: zShort(),
@@ -26,13 +31,17 @@ export async function POST(req: Request) {
       industry || 'Technology'
     );
 
-    const result = await callAI<{ variants: { title: string; note: string }[] }>({
-      systemPrompt,
-      userMessage: `Generate job title variants for: ${role}`,
-      temperature: 0.3,
-    });
+    const result = await callAIValidated(
+      {
+        systemPrompt,
+        userMessage: `Generate job title variants for: ${role}`,
+        temperature: 0.3,
+      },
+      TitleVariantsResponse,
+      'direction/title-variants',
+    );
 
-    return NextResponse.json({ variants: result.variants || [] });
+    return NextResponse.json({ variants: result.variants });
   } catch (err) {
     if (err instanceof AIError) {
       return NextResponse.json(
