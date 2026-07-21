@@ -135,7 +135,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // Direction
       direction: {
         statement: null,

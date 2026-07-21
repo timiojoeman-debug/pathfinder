@@ -28,7 +28,6 @@ export function GlowCard({ children, delay = 0, style = {}, padded = true }: Glo
     <div
       ref={(el) => {
         cardRef.current = el;
-        // @ts-ignore - assigning to a ref tuple
         if (revRef) revRef.current = el;
       }}
       className="glow-card"

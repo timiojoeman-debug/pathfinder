@@ -7,7 +7,6 @@
  * the six phases read as one connected system.
  */
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePfStore, useProfile, useProgress } from "@/lib/pf/store";
 import { useAuthStore } from "@/lib/stores";

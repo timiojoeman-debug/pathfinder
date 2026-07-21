@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { useProfile, useProgress, useRecommendations } from "@/lib/pf/store";
-import { PHASE_HREF, PHASE_LABEL, relativeTime } from "@/lib/pf/events";
+import { PHASE_HREF, relativeTime } from "@/lib/pf/events";
 import { whatChanged } from "@/lib/pf/orchestrator";
 import { Reveal } from "./ui";
 

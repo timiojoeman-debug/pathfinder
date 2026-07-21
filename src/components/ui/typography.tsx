@@ -41,7 +41,6 @@ export function AnimBar({ width, delay = 0 }: { width: number; delay?: number })
   return (
     <div
       ref={(el) => {
-        // @ts-ignore
         if (ref) ref.current = el;
       }}
       style={{ height: "2px", borderRadius: "1px", background: "var(--c-100)", overflow: "hidden" }}
@@ -128,7 +127,6 @@ export function Heading({ children, sub, center = false }: { children: ReactNode
   return (
     <div
       ref={(el) => {
-        // @ts-ignore
         if (ref) ref.current = el;
       }}
       style={{

@@ -50,7 +50,7 @@ describe('Networking Strategy', () => {
 
   it('each variant has name and leadWith', () => {
     for (const key of Object.keys(NETWORKING_STRATEGY.outreachVariants)) {
-      const variant = (NETWORKING_STRATEGY.outreachVariants as Record<string, any>)[key];
+      const variant = (NETWORKING_STRATEGY.outreachVariants as Record<string, unknown>)[key];
       expect(variant).toHaveProperty('name');
       expect(variant).toHaveProperty('leadWith');
     }
@@ -63,7 +63,7 @@ describe('Networking Strategy', () => {
 
   it('each target group has searchTitles and approach', () => {
     for (const key of Object.keys(NETWORKING_STRATEGY.targetGroups)) {
-      const group = (NETWORKING_STRATEGY.targetGroups as Record<string, any>)[key];
+      const group = (NETWORKING_STRATEGY.targetGroups as Record<string, unknown>)[key];
       expect(group).toHaveProperty('searchTitles');
       expect(group).toHaveProperty('approach');
     }
@@ -89,7 +89,7 @@ describe('Coffee Chat', () => {
 
   it('each question bank category has questions', () => {
     for (const key of Object.keys(COFFEE_CHAT.questionBank)) {
-      const questions = (COFFEE_CHAT.questionBank as Record<string, any>)[key];
+      const questions = (COFFEE_CHAT.questionBank as Record<string, readonly unknown[]>)[key];
       expect(Array.isArray(questions)).toBe(true);
       expect(questions.length).toBeGreaterThan(0);
     }

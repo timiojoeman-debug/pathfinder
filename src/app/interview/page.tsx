@@ -20,18 +20,19 @@ const STAR_PROMPTS: { k: string; label: string; prompt: string }[] = [
 
 function LeetTab() {
   const s = usePfStore();
-  let solvedSum = 0;
+  // Each row carries its own solved count and the total is reduced from them,
+  // so the figure in the header can never drift from the rows beneath it.
   const rows = LEETCODE_PATTERNS.map(([name, total]) => {
-    const cur = Math.min(total, s.ivSolved[name] ?? 0);
-    solvedSum += cur;
-    const r = cur / total;
+    const solved = Math.min(total, s.ivSolved[name] ?? 0);
+    const r = solved / total;
     return {
-      name, total,
-      count: cur + "/" + total,
+      name, total, solved,
+      count: solved + "/" + total,
       pct: Math.round(r * 100) + "%",
       tone: r >= 0.65 ? "var(--strong)" : r >= 0.4 ? "var(--warn)" : "var(--faint)",
     };
   });
+  const solvedSum = rows.reduce((sum, p) => sum + p.solved, 0);
 
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", maxWidth: 720 }}>

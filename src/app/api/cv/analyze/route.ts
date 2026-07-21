@@ -112,7 +112,7 @@ export async function POST(req: Request) {
         }),
     );
 
-    let parsed: any;
+    let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(content);
     } catch {

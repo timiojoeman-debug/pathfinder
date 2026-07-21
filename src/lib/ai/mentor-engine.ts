@@ -2,7 +2,7 @@ import { createServerClient } from '@/lib/supabase/client';
 import { AIError } from '@/lib/ai';
 import { renderKnowledgeBlock, type Domain } from '@/lib/knowledge';
 import type {
-  UserContext, MentorResponse, InputQuality, MentorFeedbackItem,
+  UserContext, MentorResponse,
   UserPhase, ApplicationStatus, CVParsedData, CVAnalysisHistoryEntry
 } from '@/types/database';
 

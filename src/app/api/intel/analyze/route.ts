@@ -31,11 +31,6 @@ const IntelResponse = aiShape(
 type Role = { company: string; role: string; jobDescription: string };
 type Body = { roles?: Role[]; cvSummary?: string; direction?: string };
 
-type AIResult = {
-  roles: { company: string; fitReason: string; recommendedMove: string; requiredSkills: string[] }[];
-  priorityMoves: { action: string; why: string; impact: string; kind: "cv" | "networking" | "jobs" | "interview" | "direction" }[];
-};
-
 const SYSTEM = `You are a career-intelligence engine for a university student targeting software-engineering internships. Analyse each role against the student's profile. Be concrete, specific, and honest — no motivation, no filler, no hedging.
 
 Respond with STRICT JSON only, matching exactly:

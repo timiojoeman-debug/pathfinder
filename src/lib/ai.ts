@@ -111,7 +111,7 @@ async function callOpenAI(request: AIRequest): Promise<string> {
   const content =
     data?.choices?.[0]?.message?.content ??
     (Array.isArray(data?.choices?.[0]?.message?.content)
-      ? data.choices[0].message.content.map((p: any) => p.text).join("\n")
+      ? data.choices[0].message.content.map((p: { text?: string }) => p.text).join("\n")
       : "");
   return typeof content === "string" ? content : String(content);
 }
