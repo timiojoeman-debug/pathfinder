@@ -339,6 +339,34 @@ export const ONB_PROJ_OPTS: [string, number][] = [["Just started", 10], ["A coup
 export const ONB_OUTREACH_OPTS: [string, number][] = [["Haven't started", 8], ["A few contacts", 42], ["Regular warm intros", 80]];
 export const ONB_CADENCE_OPTS: [string, number][] = [["Not yet consistent", 8], ["Some weeks", 42], ["3+ / week reliably", 85]];
 
+/**
+ * Onboarding and the Direction wizard ask the same question in different
+ * vocabularies. These maps carry the Stage 00 answer into the direction chips
+ * so a student never re-picks a target they just chose.
+ *
+ * Product and Design have no Direction equivalent (that wizard only offers
+ * engineering tracks), so they map to null and the student picks a role there.
+ */
+export const ONB_TO_DIR_ROLE: Record<string, string | null> = {
+  "Software Engineering": "Full-Stack SWE",
+  "Data / ML": "Data / ML",
+  Product: null,
+  Design: null,
+};
+
+export const ONB_TO_DIR_INDUSTRY: Record<string, string> = {
+  Fintech: "Fintech",
+  "Travel Tech": "Travel Tech",
+  "Developer Tools": "Dev Tools",
+  Healthtech: "Healthtech",
+};
+
+export const ONB_TO_DIR_SIZE: Record<string, string> = {
+  "Seed–Series B startups": "Startups 0–50",
+  "Growth-stage scaleups": "Scaleups",
+  "Big Tech": "Big Tech",
+};
+
 /* ── Navigation / palette ──────────────────────────────────────────── */
 
 export const SCREEN_ROUTES: [string, string][] = [

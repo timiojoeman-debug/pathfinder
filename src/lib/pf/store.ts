@@ -13,6 +13,9 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   EMPTY_BOARD,
+  ONB_TO_DIR_INDUSTRY,
+  ONB_TO_DIR_ROLE,
+  ONB_TO_DIR_SIZE,
   OUTREACH_MESSAGES,
   type BoardCard,
   type BoardColumn,
@@ -266,7 +269,55 @@ export const usePfStore = create<PfState>()(
         set({ onbScanning: true });
         setTimeout(() => set((s) => ({ onbScanning: false, onb: { ...s.onb, step: 3 } })), 1300);
       },
-      finishOnb: () => set({ onbDone: true }),
+      /**
+       * Finishing Stage 00 has to hand its answers to the rest of the system,
+       * or the assessment is a dead end: the Command Centre derives everything
+       * from the Career Profile + event log, so an onboarding that only flips
+       * `onbDone` leaves the student staring at 0% and "No clear direction
+       * yet" seconds after telling us their target.
+       *
+       * So: carry the target into the direction chips (real input the student
+       * gave — it makes `directionSet` true and pre-fills the wizard), and log
+       * the baseline as events so the timeline and AI memory start non-empty.
+       *
+       * Deliberately NOT done: feeding the self-rated sliders into the CV /
+       * networking / interview pillars. Those are evidence-derived — claiming
+       * "CV 45%" before a CV exists is exactly the fabricated-progress problem
+       * we removed. Zeros there are correct until the student does the work.
+       */
+      finishOnb: () => {
+        const { onb } = get();
+        const role = ONB_TO_DIR_ROLE[onb.role ?? ""] ?? null;
+        const industry = ONB_TO_DIR_INDUSTRY[onb.industry ?? ""] ?? null;
+        const size = ONB_TO_DIR_SIZE[onb.stage ?? ""] ?? null;
+
+        // Never clobber a direction the student already built in the wizard.
+        set((s) => ({
+          onbDone: true,
+          dirRole: s.dirRole ?? role,
+          dirIndustry: s.dirIndustry ?? industry,
+          dirSize: s.dirSize ?? size,
+        }));
+
+        const { emit } = get();
+        emit("ProfileCreated", "direction", `Baseline captured — self-assessed readiness ${readinessFrom(onb)}%`, {
+          selfRatedCv: onb.cv ?? 0,
+          selfRatedProjects: onb.projects ?? 0,
+          selfRatedOutreach: onb.outreach ?? 0,
+          selfRatedCadence: onb.cadence ?? 0,
+          source: "onboarding",
+        });
+
+        const committed = get();
+        if (committed.dirRole && committed.dirIndustry) {
+          emit(
+            "CareerDirectionUpdated",
+            "direction",
+            `Target set: ${committed.dirRole} in ${committed.dirIndustry}`,
+            { role: committed.dirRole, industry: committed.dirIndustry },
+          );
+        }
+      },
       readiness: () => readinessFrom(get().onb),
 
       pickDirChip: (key, value) => set({ [key]: value, dirGenerated: false } as Partial<PfState>),
