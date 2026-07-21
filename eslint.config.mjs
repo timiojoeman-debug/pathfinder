@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Agent tooling vendored into the repo, not project source. Without these
+    // `npm run lint` reported ~18k problems from other people's skill scripts
+    // and drowned the ~30 real ones in src/.
+    ".claude/**",
+    ".agents/**",
   ]),
 ]);
 

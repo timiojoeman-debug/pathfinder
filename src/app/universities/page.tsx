@@ -12,8 +12,8 @@
  */
 
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties } from "react";
-import { applyTheme, getStoredTheme, setStoredTheme, type ThemeMode } from "@/lib/theme";
+import { type CSSProperties } from "react";
+import { setTheme, useThemeMode } from "@/lib/theme";
 import { Reveal } from "@/components/pf/ui";
 
 const mono = "var(--font-mono), 'JetBrains Mono', monospace";
@@ -93,23 +93,11 @@ const SAMPLE_PHASES = [
 ];
 
 export default function UniversitiesPage() {
-  const [mode, setMode] = useState<ThemeMode>("light");
+  // <html data-theme> is kept in sync globally by ThemeController (layout.tsx)
+  // plus the no-flash inline script, so this only needs to read the value.
+  const mode = useThemeMode();
 
-  useEffect(() => {
-    const t = getStoredTheme() ?? "light";
-    applyTheme(t);
-    setMode(t);
-    const sync = () => setMode(getStoredTheme() ?? "light");
-    window.addEventListener("pf:theme", sync);
-    return () => window.removeEventListener("pf:theme", sync);
-  }, []);
-
-  const toggleTheme = () => {
-    const next: ThemeMode = mode === "dark" ? "light" : "dark";
-    setStoredTheme(next);
-    applyTheme(next);
-    setMode(next);
-  };
+  const toggleTheme = () => setTheme(mode === "dark" ? "light" : "dark");
 
   const navLink: CSSProperties = { color: "inherit", textDecoration: "none", padding: "8px 12px", margin: "-8px 0", borderRadius: 9, transition: "color .2s var(--ease), background .2s var(--ease)" };
   const card: CSSProperties = { border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "26px 26px 28px", boxShadow: "var(--rim)", height: "100%" };

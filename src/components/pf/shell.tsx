@@ -12,7 +12,7 @@ import { CRUMBS } from "@/lib/pf/data";
 import { usePfStore, useProfile, useProgress, useSidebarReadiness } from "@/lib/pf/store";
 import { PHASE_LABEL, type PfPhase } from "@/lib/pf/events";
 import { useAuthStore } from "@/lib/stores";
-import { applyTheme, getStoredTheme, setStoredTheme, type ThemeMode } from "@/lib/theme";
+import { setTheme, useThemeMode } from "@/lib/theme";
 import { CommandPalette } from "./palette";
 import { Drawers } from "./drawers";
 import { ProfileSync } from "./profile-sync";
@@ -228,21 +228,9 @@ function Header({ onMenu }: { onMenu: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const openPalette = usePfStore((s) => s.openPalette);
-  const [mode, setMode] = useState<ThemeMode>("light");
+  const mode = useThemeMode();
 
-  useEffect(() => {
-    setMode(getStoredTheme() ?? "light");
-    const sync = () => setMode(getStoredTheme() ?? "light");
-    window.addEventListener("pf:theme", sync);
-    return () => window.removeEventListener("pf:theme", sync);
-  }, []);
-
-  const toggleTheme = () => {
-    const next: ThemeMode = mode === "dark" ? "light" : "dark";
-    setStoredTheme(next);
-    applyTheme(next);
-    setMode(next);
-  };
+  const toggleTheme = () => setTheme(mode === "dark" ? "light" : "dark");
 
   const crumb = CRUMBS[pathname ?? ""] ?? "PATHFINDER";
 

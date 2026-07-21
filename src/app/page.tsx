@@ -7,8 +7,8 @@
  */
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { applyTheme, getStoredTheme, setStoredTheme, type ThemeMode } from "@/lib/theme";
+import { useEffect, useRef, type CSSProperties } from "react";
+import { setTheme, useThemeMode } from "@/lib/theme";
 import { CountUp, Reveal } from "@/components/pf/ui";
 
 const mono = "var(--font-mono), 'JetBrains Mono', monospace";
@@ -362,24 +362,12 @@ function useParallaxTilt(rootRef: React.RefObject<HTMLDivElement | null>) {
 export default function Landing() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const globeRef = useRef<HTMLCanvasElement | null>(null);
-  const [mode, setMode] = useState<ThemeMode>("light");
-
-  useEffect(() => {
-    setMode(getStoredTheme() ?? "light");
-    const sync = () => setMode(getStoredTheme() ?? "light");
-    window.addEventListener("pf:theme", sync);
-    return () => window.removeEventListener("pf:theme", sync);
-  }, []);
+  const mode = useThemeMode();
 
   useNeuralGlobe(globeRef, rootRef);
   useParallaxTilt(rootRef);
 
-  const toggleTheme = () => {
-    const next: ThemeMode = mode === "dark" ? "light" : "dark";
-    setStoredTheme(next);
-    applyTheme(next);
-    setMode(next);
-  };
+  const toggleTheme = () => setTheme(mode === "dark" ? "light" : "dark");
 
   const navLink: CSSProperties = { color: "inherit", textDecoration: "none", padding: "8px 12px", margin: "-8px 0", borderRadius: 9, transition: "color .2s var(--ease), background .2s var(--ease)" };
   const kicker: CSSProperties = { fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--accent)" };

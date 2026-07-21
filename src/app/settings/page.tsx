@@ -8,9 +8,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuthStore } from "@/lib/stores";
-import { applyTheme, getStoredTheme, setStoredTheme, type ThemeMode } from "@/lib/theme";
+import { setTheme, useThemeMode } from "@/lib/theme";
 import { PageHeader, Panel, Kicker } from "@/components/pf/ui";
 
 function Row({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
@@ -36,21 +36,14 @@ export default function SettingsPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const [mode, setMode] = useState<ThemeMode>("light");
+  const mode = useThemeMode();
   const [exporting, setExporting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  useEffect(() => { setMode(getStoredTheme() ?? "light"); }, []);
-
-  const toggleTheme = () => {
-    const next: ThemeMode = mode === "dark" ? "light" : "dark";
-    setStoredTheme(next);
-    applyTheme(next);
-    setMode(next);
-  };
+  const toggleTheme = () => setTheme(mode === "dark" ? "light" : "dark");
 
   const exportData = async () => {
     setExporting(true);

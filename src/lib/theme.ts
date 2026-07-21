@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 /**
  * Intelligence Terminal — mode controller.
  * ONE identity, two modes: "light" (default) and "dark" (mission control).
@@ -26,4 +28,42 @@ export function applyTheme(mode: ThemeMode): void {
   if (typeof document !== "undefined") {
     document.documentElement.setAttribute("data-theme", mode);
   }
+}
+
+/** Theme changes arrive from this tab (`pf:theme`) or another one (`storage`). */
+function subscribeTheme(onChange: () => void): () => void {
+  window.addEventListener("pf:theme", onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener("pf:theme", onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+/**
+ * Read the stored theme as external state.
+ *
+ * localStorage plus the `pf:theme` event *is* an external store, so this is
+ * `useSyncExternalStore` rather than the useEffect + setState pattern it
+ * replaces. That pattern rendered once with the default and then corrected
+ * itself — a wasted render on every page, and an eslint
+ * `react-hooks/set-state-in-effect` error.
+ *
+ * The server snapshot is the "light" default so SSR and the first client
+ * render agree; the subscription corrects it immediately after hydration if
+ * storage says otherwise. Returning a string (not an object) keeps the
+ * snapshot referentially stable, which `useSyncExternalStore` requires.
+ */
+export function useThemeMode(): ThemeMode {
+  return useSyncExternalStore(
+    subscribeTheme,
+    () => getStoredTheme() ?? "light",
+    () => "light",
+  );
+}
+
+/** Persist a theme, apply it to <html>, and notify every subscriber. */
+export function setTheme(mode: ThemeMode): void {
+  setStoredTheme(mode);
+  applyTheme(mode);
 }
