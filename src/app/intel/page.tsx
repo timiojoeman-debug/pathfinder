@@ -15,6 +15,7 @@ import { CountUp, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 import { MemoryFeed, ProfileSummary, ProgressLadder, RecommendationStack } from "@/components/pf/journey";
 import { fitTone } from "@/lib/pf/logic";
+import { useIsHydrated } from "@/lib/hooks";
 
 const mono = "'JetBrains Mono',monospace";
 
@@ -25,15 +26,22 @@ export default function IntelPage() {
   const progress = useProgress();
   const user = useAuthStore((s) => s.user);
   const firstName = user?.email ? user.email.split("@")[0].replace(/[._]/g, " ").split(/\s+/)[0] : "";
-  const [today, setToday] = useState("");
-  const [partOfDay, setPartOfDay] = useState("morning");
-
-  useEffect(() => {
-    const now = new Date();
-    setToday(now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }));
-    const h = now.getHours();
-    setPartOfDay(h < 12 ? "morning" : h < 18 ? "afternoon" : "evening");
-  }, []);
+  // The date and the greeting depend on the reader's clock, so they can only be
+  // computed once we're on the client — otherwise the server would render one
+  // timezone's answer and hydration would disagree. Derived rather than pushed
+  // into state by an effect.
+  const hydrated = useIsHydrated();
+  const now = hydrated ? new Date() : null;
+  const today = now
+    ? now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : "";
+  const partOfDay = !now
+    ? "morning"
+    : now.getHours() < 12
+      ? "morning"
+      : now.getHours() < 18
+        ? "afternoon"
+        : "evening";
 
   const openOpportunity = (company: string) => {
     openJob(company);

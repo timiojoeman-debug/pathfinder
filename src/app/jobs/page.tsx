@@ -85,12 +85,17 @@ function AddRolePanel() {
 function AnalysisResult() {
   const s = usePfStore();
   const r = s.jfResult;
-  const [aiRead, setAiRead] = useState<AiJdRead | null>(null);
-  const [aiLetter, setAiLetter] = useState<AiLetter | null>(null);
+  // Each AI result is tagged with the input it was computed for, and the
+  // visible value is derived from that tag. The alternative — resetting to null
+  // at the top of the effect — is a synchronous setState in an effect, and it
+  // shows the previous job's answer for one frame before clearing it.
+  const [readFor, setReadFor] = useState<{ key: unknown; value: AiJdRead } | null>(null);
+  const [letterFor, setLetterFor] = useState<{ key: unknown; value: AiLetter } | null>(null);
+  const aiRead = readFor && readFor.key === r ? readFor.value : null;
+  const aiLetter = letterFor && letterFor.key === s.jfLetter ? letterFor.value : null;
 
   // AI enrichment of the deterministic analysis — silent fallback when offline.
   useEffect(() => {
-    setAiRead(null);
     if (!r) return;
     const st = usePfStore.getState();
     const controller = new AbortController();
@@ -106,7 +111,7 @@ function AnalysisResult() {
         const j = json as { matchScore?: number; auditChecklist?: unknown; blockerWarning?: string | null };
         const checklist = Array.isArray(j.auditChecklist) ? j.auditChecklist.filter((x): x is string => typeof x === "string").slice(0, 5) : [];
         if (checklist.length || j.blockerWarning) {
-          setAiRead({ score: typeof j.matchScore === "number" ? j.matchScore : null, checklist, warning: j.blockerWarning ?? null });
+          setReadFor({ key: r, value: { score: typeof j.matchScore === "number" ? j.matchScore : null, checklist, warning: j.blockerWarning ?? null } });
         }
       })
       .catch(() => { /* deterministic result stays */ });
@@ -115,7 +120,7 @@ function AnalysisResult() {
 
   // AI cover letter via the active site's generator; local draft as fallback.
   useEffect(() => {
-    if (!s.jfLetter) { setAiLetter(null); return; }
+    if (!s.jfLetter) return;
     const st = usePfStore.getState();
     const controller = new AbortController();
     fetch("/api/cover-letter/generate", {
@@ -131,7 +136,7 @@ function AnalysisResult() {
         if (typeof text === "string" && text.trim().length > 80) {
           const paras = text.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean);
           const assumptions = Array.isArray(data?.assumptions) ? data.assumptions.filter((x): x is string => typeof x === "string") : [];
-          setAiLetter({ paras, assumptions, words: text.split(/\s+/).length });
+          setLetterFor({ key: st.jfLetter, value: { paras, assumptions, words: text.split(/\s+/).length } });
         }
       })
       .catch(() => { /* local letter renders */ });

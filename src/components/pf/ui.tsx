@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { usePrefersReducedMotion } from "@/lib/hooks";
 
 /* ── Scroll reveal ─────────────────────────────────────────────────── */
 
@@ -55,38 +56,58 @@ export function Reveal({ children, style, className, as: Tag = "div" }: {
 
 /* ── Count-up number ───────────────────────────────────────────────── */
 
+/**
+ * A number that counts up to `value` the first time it scrolls into view.
+ *
+ * The displayed number is *derived* from an eased 0..1 progress value rather
+ * than pushed into state. The reduced-motion branch used to call setDisplay
+ * synchronously inside the effect, which is a cascading render (and an eslint
+ * error); reading the preference as external state makes it a plain
+ * derivation instead.
+ */
 export function CountUp({ value, style, className }: { value: number; style?: CSSProperties; className?: string }) {
   const ref = useRef<HTMLSpanElement | null>(null);
-  const [display, setDisplay] = useState(0);
+  const reduce = usePrefersReducedMotion();
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    // Reduced motion: the derived value below already shows the final number.
+    if (reduce) return;
     const el = ref.current;
     if (!el) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || !("IntersectionObserver" in window)) {
-      setDisplay(value);
-      return;
-    }
+
     let raf = 0;
+    const run = () => {
+      const t0 = performance.now();
+      const step = (t: number) => {
+        const p = Math.min((t - t0) / 1100, 1);
+        setProgress(1 - Math.pow(1 - p, 3));
+        if (p < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    };
+
+    // Without IntersectionObserver there is nothing to wait for — just run.
+    if (!("IntersectionObserver" in window)) {
+      run();
+      return () => cancelAnimationFrame(raf);
+    }
+
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
           if (!e.isIntersecting) return;
           io.unobserve(e.target);
-          const t0 = performance.now();
-          const step = (t: number) => {
-            const p = Math.min((t - t0) / 1100, 1);
-            setDisplay(Math.round(value * (1 - Math.pow(1 - p, 3))));
-            if (p < 1) raf = requestAnimationFrame(step);
-          };
-          raf = requestAnimationFrame(step);
+          run();
         });
       },
       { threshold: 0.12 },
     );
     io.observe(el);
     return () => { io.disconnect(); cancelAnimationFrame(raf); };
-  }, [value]);
+  }, [value, reduce]);
+
+  const display = reduce ? value : Math.round(value * progress);
 
   return (
     <span ref={ref} className={className} style={style}>

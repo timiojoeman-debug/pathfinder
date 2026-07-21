@@ -316,8 +316,14 @@ export function AppChrome({ children }: { children: ReactNode }) {
     void usePfStore.persist.rehydrate();
   }, []);
 
-  // Close the mobile drawer whenever the route changes.
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  // Close the mobile drawer whenever the route changes. Adjusted during render
+  // rather than in an effect: an effect would paint the new route with the
+  // drawer still open for one frame, then close it.
+  const [drawerPath, setDrawerPath] = useState(pathname);
+  if (pathname !== drawerPath) {
+    setDrawerPath(pathname);
+    setMobileOpen(false);
+  }
 
   if (!isApp) return <>{children}</>;
 
