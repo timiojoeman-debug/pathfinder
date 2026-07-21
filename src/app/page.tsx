@@ -46,13 +46,30 @@ const ACTIONS = [
   { text: "Practice system design — interview soon", tag: "prep" },
 ];
 
-const TESTIMONIALS = [
-  { quote: "Zero responses to four interviews in three weeks. Completely different outcome.", name: "Sarah Chen", role: "Stanford · CS", initials: "SC" },
-  { quote: "The next-action feature removed all the paralysis. I just do what it says.", name: "Marcus Johnson", role: "Stripe · SWE Intern", initials: "MJ" },
-  { quote: "CV score from 54 to 91. More useful than any career counsellor.", name: "Priya Patel", role: "Georgia Tech · CS", initials: "PP" },
+/**
+ * What PathFinder actually coaches. This replaced a marquee of university
+ * names (Stanford, MIT, Imperial and friends) which implied institutional
+ * endorsements that do not exist -- the same reason this page carries no
+ * testimonials and no outcome statistics.
+ */
+const COVERAGE = [
+  "Career direction",
+  "ATS-ready CVs",
+  "Referral outreach",
+  "Coffee chats",
+  "STAR stories",
+  "Pattern drills",
+  "Mock interviews",
+  "Application tracking",
 ];
 
-const UNIS = ["Stanford", "MIT", "Georgia Tech", "Berkeley", "Waterloo", "Imperial", "ETH Zürich", "Edinburgh"];
+/** The metrics the product actually tracks for you. Stated as what gets
+ *  measured, not as results we have not yet earned the right to claim. */
+const TRACKED = [
+  { title: "Interview rate", note: "Applications that turn into conversations \u2014 the number that actually matters." },
+  { title: "Referrals opened", note: "Warm paths into a team, counted separately from cold applications." },
+  { title: "Readiness", note: "Derived from evidence you have logged \u2014 never from what you say about yourself." },
+];
 
 const PHASES = [
   { n: "01", label: "Phase 01 · Discovery", title: "Career Direction", href: "/direction", desc: "Surface your strengths, values and fit — the AI helps you name a direction worth pursuing.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5 5-2z" /></svg> },
@@ -383,7 +400,7 @@ export default function Landing() {
         <nav style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13.5, fontWeight: 500, color: "var(--muted)" }}>
           <a href="#product" className="pf-hover-row" style={navLink}>Product</a>
           <a href="#phases" className="pf-hover-row" style={navLink}>Phases</a>
-          <a href="#results" className="pf-hover-row" style={navLink}>Results</a>
+          <a href="#results" className="pf-hover-row" style={navLink}>Approach</a>
           <Link href="/universities" className="pf-hover-row" style={navLink}>For universities</Link>
         </nav>
         <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
@@ -511,7 +528,7 @@ export default function Landing() {
       <section style={{ marginTop: "clamp(60px,7vw,90px)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", padding: "22px 0", overflow: "hidden", position: "relative", background: "var(--panel)" }}>
         <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", background: "linear-gradient(90deg,var(--panel),transparent 12%,transparent 88%,var(--panel))" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 60, width: "max-content", animation: "pfMarquee 32s linear infinite", fontFamily: mono, fontSize: 15, fontWeight: 500, letterSpacing: ".02em", color: "var(--faint)" }}>
-          {[...UNIS, ...UNIS].map((u, i) => (
+          {[...COVERAGE, ...COVERAGE].map((u, i) => (
             <span key={u + i}>{u}</span>
           ))}
         </div>
@@ -574,40 +591,27 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Results ── */}
+      {/* ── What we track ──
+          Replaced a "Measured outcomes" block that claimed 3× more callbacks,
+          89% landing an interview and a 14-day average response, plus three
+          named testimonials. None of it was real. A product that tells students
+          not to embellish their CV cannot embellish its own landing page. */}
       <section id="results" style={{ padding: "0 clamp(20px,5vw,56px) clamp(70px,9vw,110px)", maxWidth: 1120, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <span style={kicker}>Measured outcomes</span>
-          <h2 style={{ fontSize: "clamp(32px,4.5vw,46px)", fontWeight: 800, letterSpacing: "-.04em", margin: "16px 0 0" }}>
-            Structure beats <span style={serifItalic}>luck.</span>
+          <span style={kicker}>Honest status</span>
+          <h2 style={{ fontSize: "clamp(32px,4.5vw,46px)", fontWeight: 800, letterSpacing: "-.04em", margin: "16px 0 14px" }}>
+            No numbers we haven&apos;t <span style={serifItalic}>earned.</span>
           </h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 16 }}>
-          {[
-            { v: 3, suffix: "×", note: "More interview callbacks" },
-            { v: 89, suffix: "%", note: "Land ≥ 1 interview" },
-            { v: 14, suffix: "d", note: "Avg. first response" },
-          ].map((s) => (
-            <Reveal key={s.note} style={{ border: "1px solid var(--line)", borderRadius: 18, padding: 34, background: "var(--panel)", textAlign: "center", boxShadow: "var(--rim)" }}>
-              <div style={{ fontFamily: mono, fontSize: "clamp(40px,5vw,58px)", fontWeight: 700, letterSpacing: "-.04em", lineHeight: 1 }}>
-                <CountUp value={s.v} />
-                <span style={{ color: "var(--accent)" }}>{s.suffix}</span>
-              </div>
-              <div style={{ fontSize: 14, color: "var(--muted)", marginTop: 10 }}>{s.note}</div>
-            </Reveal>
-          ))}
+          <p style={{ fontSize: 17, color: "var(--muted)", maxWidth: "42rem", margin: "0 auto", lineHeight: 1.6 }}>
+            PathFinder is new. Rather than borrow university logos or invent testimonials, here is what it measures for you — and what we will publish once there is real data behind it.
+          </p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
-          {TESTIMONIALS.map((t) => (
-            <Reveal key={t.initials} style={{ border: "1px solid var(--line)", borderRadius: 18, padding: 26, background: "var(--panel)", boxShadow: "var(--rim)", transition: "transform .3s var(--ease),background .3s var(--ease)" }}>
-              <p style={{ fontSize: 18, lineHeight: 1.62, color: "var(--fg)", margin: "0 0 22px", fontFamily: "var(--font-serif), 'Instrument Serif', serif", fontStyle: "italic" }}>&quot;{t.quote}&quot;</p>
-              <div style={{ display: "flex", alignItems: "center", gap: 11, borderTop: "1px dashed var(--lineStrong)", paddingTop: 18 }}>
-                <span style={{ width: 38, height: 38, borderRadius: 10, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: mono, fontSize: 12, fontWeight: 600 }}>{t.initials}</span>
-                <div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{t.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{t.role}</div>
-                </div>
-              </div>
+          {TRACKED.map((t) => (
+            <Reveal key={t.title} style={{ border: "1px solid var(--line)", borderRadius: 18, padding: 34, background: "var(--panel)", boxShadow: "var(--rim)" }}>
+              <div style={{ fontFamily: mono, fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)" }}>Tracked</div>
+              <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-.02em", margin: "12px 0 10px" }}>{t.title}</div>
+              <div style={{ fontSize: 14.5, color: "var(--muted)", lineHeight: 1.6 }}>{t.note}</div>
             </Reveal>
           ))}
         </div>
