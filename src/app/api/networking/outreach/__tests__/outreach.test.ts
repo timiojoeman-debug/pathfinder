@@ -1,20 +1,44 @@
 // @vitest-environment node
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the AI layer so the handler is exercised without hitting OpenAI.
-// The route uses callAIValidated (schema-checked) rather than raw callAI.
-vi.mock('@/lib/ai', () => ({
+// Stub only the network call. `aiShape` stays real: the mentor engine returns
+// its payload nested under `data`, and unwrapping that is exactly the behaviour
+// under test — a passthrough stub would hide it.
+vi.mock('@/lib/ai', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/ai')>()),
   callAIValidated: vi.fn(),
-  // Passthrough: the route wraps its schema in aiShape at module load.
-  aiShape: <T>(schema: T): T => schema,
-  AIError: class AIError extends Error {},
 }));
 vi.mock('@/lib/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
+// The route prefers the mentor engine (real user context + methodology
+// retrieved from pgvector) and drops to a direct call when it can't be used.
+vi.mock('@/lib/ai/mentor-engine', () => ({ runMentorEngine: vi.fn() }));
+vi.mock('@/lib/auth', () => ({ getAuthUser: vi.fn() }));
+vi.mock('@/lib/supabase/client', () => ({ isSupabaseConfigured: vi.fn(() => true) }));
 
 import { POST } from '../route';
 import { callAIValidated } from '@/lib/ai';
+import { runMentorEngine } from '@/lib/ai/mentor-engine';
+import { getAuthUser } from '@/lib/auth';
+
+const SIGNED_IN = { userId: 'user-1', email: 'a@b.c', role: 'student' };
+
+/** What the mentor engine returns: the methodology envelope, payload in `data`. */
+const MENTOR_ENVELOPE = {
+  inputQuality: 'strong',
+  methodologyReference: 'TechTalk Networking Strategy',
+  feedback: [],
+  strengths: [],
+  nextSteps: [],
+  shouldRepeatAnalysis: false,
+  data: {
+    message: 'Hi Priya, I saw your team shipped edge rendering last month...',
+    questions: ['What makes a strong intern here?'],
+    topics: ['Recent launches'],
+    followUp: 'Following up gently.',
+  },
+};
 
 function post(body: unknown): Request {
   return new Request('http://test/api/networking/outreach', {
@@ -56,5 +80,57 @@ describe('POST /api/networking/outreach', () => {
     expect(body.message).toBe('');
     expect(body.questions).toHaveLength(5);
     expect(body.topics).toHaveLength(5);
+  });
+  describe('mentor engine tiering', () => {
+    beforeEach(() => {
+      vi.mocked(getAuthUser).mockResolvedValue(SIGNED_IN);
+      vi.mocked(runMentorEngine).mockReset();
+      vi.mocked(callAIValidated).mockReset();
+    });
+
+    it('routes a signed-in student through the mentor engine, reading the payload out of `data`', async () => {
+      vi.mocked(runMentorEngine).mockResolvedValue(MENTOR_ENVELOPE as never);
+
+      const body = await (await POST(post({ type: 'recruiter', recipientName: 'Priya' }))).json();
+
+      expect(body.message).toContain('Hi Priya');
+      // The engine was used, so no direct one-shot call was needed.
+      expect(callAIValidated).not.toHaveBeenCalled();
+      expect(vi.mocked(runMentorEngine).mock.calls[0][0]).toMatchObject({
+        userId: 'user-1',
+        feature: 'outreach-recruiter',
+      });
+    });
+
+    it('picks the persona-specific RAG feature', async () => {
+      vi.mocked(runMentorEngine).mockResolvedValue(MENTOR_ENVELOPE as never);
+      await POST(post({ type: 'hiringManager' }));
+      expect(vi.mocked(runMentorEngine).mock.calls[0][0].feature).toBe('outreach-hiring-manager');
+    });
+
+    it('falls back to a direct call when the engine throws, rather than serving the template', async () => {
+      vi.mocked(runMentorEngine).mockRejectedValue(new Error('supabase down'));
+      vi.mocked(callAIValidated).mockResolvedValue({
+        message: 'Direct-call message that still works.',
+        questions: [], topics: [], followUp: '',
+      });
+
+      const body = await (await POST(post({ type: 'recruiter' }))).json();
+
+      expect(callAIValidated).toHaveBeenCalled();
+      expect(body.message).toBe('Direct-call message that still works.');
+    });
+
+    it('skips the engine entirely for a guest', async () => {
+      vi.mocked(getAuthUser).mockResolvedValue(null);
+      vi.mocked(callAIValidated).mockResolvedValue({
+        message: 'Guest message.', questions: [], topics: [], followUp: '',
+      });
+
+      await POST(post({ type: 'peer' }));
+
+      expect(runMentorEngine).not.toHaveBeenCalled();
+      expect(callAIValidated).toHaveBeenCalled();
+    });
   });
 });

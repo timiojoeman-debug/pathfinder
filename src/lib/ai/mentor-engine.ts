@@ -1,12 +1,28 @@
-import { createServerClient } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/client';
 import { AIError } from '@/lib/ai';
 import { renderKnowledgeBlock, type Domain } from '@/lib/knowledge';
+import { logger } from '@/lib/logger';
 import type {
   UserContext, MentorResponse,
   UserPhase, ApplicationStatus, CVParsedData, CVAnalysisHistoryEntry
 } from '@/types/database';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+/**
+ * Service-role client for every engine query.
+ *
+ * The app authenticates with its own JWT, so Postgres `auth.uid()` is null and
+ * the RLS policies reject the anon client outright — which is why these
+ * queries returned nothing while appearing to work: supabase-js resolves with
+ * `{ data: null, error }` rather than throwing, so a blocked read looks
+ * identical to "this student has no data". The rest of the data layer already
+ * uses the service role for exactly this reason; see supabase/client.ts.
+ */
+function engineDb() {
+  return createAdminClient();
+}
+
 
 // Maps a mentor feature to a knowledge domain so the educational layer can
 // inject relevant, citation-bearing TechTalk knowledge into the prompt.
@@ -61,7 +77,7 @@ const FEATURE_CONFIG: Record<string, { temperature: number; methodologyType: 'st
 
 // Step 1: Build UserContext from database
 export async function buildUserContext(userId: string): Promise<UserContext> {
-  const db = createServerClient();
+  const db = engineDb();
 
   const [
     profileResult,
@@ -189,7 +205,7 @@ async function retrieveMethodology(feature: string, userInput: string): Promise<
     if (!embedding) return '';
 
     // Query methodology chunks
-    const db = createServerClient();
+    const db = engineDb();
     const { data: chunks } = await db.rpc('match_methodology', {
       query_embedding: embedding,
       match_threshold: 0.5,
@@ -374,8 +390,12 @@ async function storeInteraction(
   inputSummary: string
 ): Promise<void> {
   try {
-    const db = createServerClient();
-    await db.from('ai_interactions').insert({
+    const db = engineDb();
+    // supabase-js resolves with { error } instead of throwing, so an unchecked
+    // insert fails in complete silence — which is how this table stayed empty
+    // while the engine was running fine. The row is what gives the mentor its
+    // memory ("last time you..."), so a failure has to be visible.
+    const { error } = await db.from('ai_interactions').insert({
       user_id: userId,
       feature,
       input_quality: response.inputQuality,
@@ -385,15 +405,26 @@ async function storeInteraction(
       output_summary: (response.feedback?.[0]?.issue || response.strengths?.[0] || '').slice(0, 500),
       feedback_items_count: response.feedback?.length || 0,
     });
+    if (error) {
+      logger.error('mentor engine — failed to store AI interaction', {
+        feature,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      });
+    }
   } catch (e) {
-    console.error('Failed to store AI interaction:', e);
+    logger.error('mentor engine — storing AI interaction threw', {
+      feature,
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
 }
 
 // Get previous interactions for context
 async function getPreviousInteractions(userId: string, feature: string): Promise<string> {
   try {
-    const db = createServerClient();
+    const db = engineDb();
     const { data } = await db
       .from('ai_interactions')
       .select('input_quality, score, output_summary, created_at')

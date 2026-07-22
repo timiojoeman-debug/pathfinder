@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { callAIValidated, aiShape } from "@/lib/ai";
+import { runMentorEngine } from "@/lib/ai/mentor-engine";
+import { getAuthUser } from "@/lib/auth";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { logger } from "@/lib/logger";
 import { buildOutreachPrompt } from "@/lib/prompts";
 import { checkNaturalness } from "@/lib/ai/naturalness-check";
@@ -18,6 +21,17 @@ const OutreachResponse = aiShape(
     followUp: z.string().optional(),
   }),
 );
+
+/**
+ * The mentor engine registers each persona separately, all as RAG features in
+ * the networking domain — so routing through it retrieves the outreach
+ * methodology already embedded in `methodology_chunks`.
+ */
+const MENTOR_FEATURE = {
+  recruiter: "outreach-recruiter",
+  hiringManager: "outreach-hiring-manager",
+  peer: "outreach-peer",
+} as const;
 
 const OutreachSchema = z.object({
   type: z.enum(["recruiter", "hiringManager", "peer"]),
@@ -83,15 +97,61 @@ export async function POST(req: Request) {
       contactType: body.type,
       roleName: body.roleTitle || "intern role",
     });
-    const aiResult = await callAIValidated(
-      {
-        systemPrompt,
-        userMessage: `Generate the outreach message, 5 coffee chat questions, 5 conversation topics, and a follow-up template. Personalise using the contact profile.`,
-        temperature: 0.3,
-      },
-      OutreachResponse,
-      "networking/outreach",
-    );
+    const userMessage =
+      "Generate the outreach message, 5 coffee chat questions, 5 conversation topics, and a follow-up template. Personalise using the contact profile.";
+
+    // Three tiers, each strictly better than the one below it:
+    //   1. mentor engine — this student's real context (direction, CV skills,
+    //      who they have already contacted) plus the outreach methodology
+    //      retrieved from pgvector, with the exchange logged to ai_interactions
+    //      so later phases can say "last time you...";
+    //   2. a direct one-shot call — no context, no methodology, still real AI;
+    //   3. the fallback template, in the catch below.
+    // Any failure in tier 1 drops to tier 2 rather than failing the request.
+    let aiResult: z.infer<typeof OutreachResponse> | null = null;
+
+    try {
+      // Reading the session can itself fail (no request context, expired
+      // cookie); that must cost us the context, not the whole response.
+      const user = await getAuthUser();
+      if (user?.userId && isSupabaseConfigured()) {
+        const mentor = await runMentorEngine({
+          userId: user.userId,
+          feature: MENTOR_FEATURE[body.type],
+          featurePrompt: systemPrompt,
+          userMessage,
+        });
+        // The engine returns the methodology envelope; aiShape reads the
+        // outreach payload out of `data`.
+        const parsed = OutreachResponse.safeParse(mentor);
+        if (parsed.success) {
+          aiResult = parsed.data;
+          // Which tier served the response is worth knowing: the engine
+          // failing is invisible otherwise, since tier 2 still returns
+          // perfectly good copy.
+          logger.info("networking/outreach — served by mentor engine", {
+            feature: MENTOR_FEATURE[body.type],
+          });
+        } else {
+          logger.warn("networking/outreach — mentor engine returned an unusable shape, falling back to a direct call", {
+            issue: parsed.error.issues[0]?.message,
+          });
+        }
+      }
+    } catch (e) {
+      logger.warn("networking/outreach — mentor engine unavailable, falling back to a direct call", {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+
+    if (!aiResult) {
+      logger.info("networking/outreach — served by a direct call (no mentor context)");
+      aiResult = await callAIValidated(
+        { systemPrompt, userMessage, temperature: 0.3 },
+        OutreachResponse,
+        "networking/outreach",
+      );
+    }
 
     const messageText = aiResult.message;
     const naturalness = checkNaturalness(messageText, { type: 'outreach' });

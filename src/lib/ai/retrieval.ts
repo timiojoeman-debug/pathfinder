@@ -1,4 +1,4 @@
-import { createServerClient, createAdminClient } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/client';
 import { CV_BLUEPRINT } from '@/lib/methodology/cv-blueprint';
 import { NETWORKING_STRATEGY } from '@/lib/methodology/networking';
 import { COFFEE_CHAT } from '@/lib/methodology/coffee-chat';
@@ -35,7 +35,7 @@ export async function retrieveRelevantMethodology(
 ): Promise<string> {
   try {
     const embedding = await getEmbedding(`${topic}: ${userInput}`);
-    const db = createServerClient();
+    const db = createAdminClient();
 
     // Threshold tuned empirically against the seeded corpus: with
     // text-embedding-3-small, relevant-but-differently-worded matches land
