@@ -4,18 +4,19 @@
 
 PathFinder is an AI-powered internship navigation platform for university students. It guides users through 6 phases: career direction, CV optimization, job discovery, networking, interview prep, and application tracking.
 
+Product emphasis is deliberately weighted toward the two phases that convert: **networking/referrals and interview readiness**. The readiness score in `lib/pf/progress.ts` reflects that weighting.
+
 ## Tech Stack
 
 - **Framework**: Next.js 16.1.6, React 19.2.3, TypeScript 5
-- **Styling**: Tailwind CSS 4
-- **State**: Zustand 5 (app-store.ts, auth-store.ts) + localStorage fallback
-- **Database**: Supabase PostgreSQL with pgvector (schema in src/lib/supabase/schema.sql, not yet deployed)
-- **AI**: OpenAI GPT-4o via direct fetch (src/lib/ai/mentor-engine.ts), text-embedding-3-small for RAG
-- **Auth**: Custom JWT (jose) + PBKDF2 password hashing (src/lib/auth.ts)
+- **Styling**: Tailwind CSS 4, plus a warm-paper design system scoped to `.pf` (`data-theme` light/dark)
+- **State**: Zustand 5 — `lib/pf/store.ts` (the live app, persisted to localStorage) and `lib/stores/*` (app-store, auth-store)
+- **Database**: Supabase PostgreSQL with pgvector — **deployed**; migrations in `supabase/migrations/`
+- **AI**: OpenAI via direct fetch — `gpt-4.1-mini` for route handlers (`lib/ai.ts`), `gpt-4o` in `lib/ai/mentor-engine.ts`, `text-embedding-3-small` for RAG
+- **Auth**: Custom JWT (jose) + PBKDF2 password hashing (`lib/auth.ts`)
 - **File parsing**: pdf-parse (PDF), mammoth (DOCX)
-- **3D**: React Three Fiber + Three.js (dashboard visuals)
-- **Testing**: Vitest 4 + Testing Library
-- **Validation**: Zod 4
+- **Testing**: Vitest 4 + Testing Library (jsdom)
+- **Validation**: Zod 4 — on request bodies *and* on AI responses
 
 ## Commands
 
@@ -24,74 +25,102 @@ npm run dev          # Start dev server (localhost:3000)
 npm run build        # Production build
 npm run test         # Run tests (vitest watch)
 npm run test:run     # Run tests once
-npm run lint         # ESLint
+npm run lint         # ESLint — currently clean; CI fails on any error
 ```
+
+CI (`.github/workflows/ci.yml`) runs `npm ci`, `tsc --noEmit`, `test:run`, `lint`, and `build`.
 
 ## Architecture
 
-### API Routes (src/app/api/)
+### AI response handling (read before touching an AI route)
 
-All routes are Next.js Route Handlers (POST unless noted). Auth routes handle JWT cookies. AI routes call OpenAI and return structured JSON with graceful fallbacks when the API key is missing.
+`callAI<T>()` is a **compile-time cast only** — nothing checks that the model returned shape `T`. A route that reads `result.foo ?? fallback` against a wrong shape ships an empty HTTP 200: no content, no error, no log. That failure mode shipped several broken features before it was caught.
 
-- `/auth/{signup,login,logout,me}` — JWT-based auth with httpOnly cookies
-- `/direction/{route,explore,title-variants}` — Career direction wizard
+So AI routes use **`callAIValidated(params, schema, context)`**, which parses the response with Zod and throws `AIError` on a mismatch, letting the route's existing `catch` serve its real fallback *and* log the problem. Two helpers in `lib/ai.ts`:
+
+- `aiShape(schema)` — tolerates the payload arriving at the root **or** nested under `data`. The same prompt genuinely varies between runs; pinning one shape makes a working feature fail intermittently.
+- `aiEnvelope()` — validates the methodology envelope `{ …, data: { … } }`, hard-failing only when `data` is entirely empty.
+
+**When adding an AI route, check what the prompt actually asks for.** Most prompt builders nest the payload under `data`; a schema that expects it at the root will fail every time and silently serve the fallback.
+
+### API Routes (`src/app/api/`)
+
+Route Handlers, POST unless noted. Auth routes set httpOnly JWT cookies. Middleware applies rate limits (auth 10/min, AI 30/min, `AI_DAILY_QUOTA` 60/day).
+
+- `/auth/{signup,login,logout,me}` — JWT auth with httpOnly cookies
+- `/auth/password-reset/{request,confirm}`, `/auth/verify-email/{request,confirm}`
+- `/account/{export,delete}` — GDPR data export and account deletion
+- `/profile` — profile read/write
+- `/direction`, `/direction/{explore,title-variants}` — career direction wizard
 - `/cv/{analyze,ats-audit,match,projects}` — CV upload, parsing, AI analysis
-- `/jobs/{search,analyze}` — Job search (Adzuna/JSearch APIs)
-- `/networking/{outreach,analyze-profile}` — AI-generated outreach messages
-- `/network/{coffee-chat-prep,follow-up,referral-package,startup-outreach}` — Networking prep
-- `/interview/{questions,company-briefing,feedback,star-builder,star-tweak,rate-solution,random-problem}` — Interview prep
-- `/cover-letter/generate` — Cover letter generation
-- `/project-builder/generate` — Skill-gap project ideas
-- `/analytics/dashboard` — Usage analytics
-- `/linkedin/check` — LinkedIn profile analysis
-- `/health` — Health check (GET)
+- `/jobs/{search,analyze}` — job search (Adzuna/JSearch) and JD analysis
+- `/intel/analyze` — opportunity/priority-move analysis for the command centre
+- `/networking/{outreach,analyze-profile}` — AI-generated outreach
+- `/network/{coffee-chat-prep,follow-up,referral-package,startup-outreach}` — networking prep
+- `/interview/{questions,company-briefing,feedback,star-builder,star-tweak,rate-solution,random-problem}`
+- `/cover-letter/generate`, `/project-builder/generate`, `/linkedin/check`
+- `/analytics/dashboard`
+- `/health` — health check (GET); probes OpenAI and Supabase
 
-### Core Libraries (src/lib/)
+### Career-OS (`src/lib/pf/`)
 
-- `ai/mentor-engine.ts` — Central AI orchestration: builds UserContext from DB, selects methodology (static vs RAG), calls OpenAI
-- `ai/retrieval.ts` — RAG pipeline: embeds methodology chunks via pgvector, retrieves relevant context
-- `ai/naturalness-check.ts` — Rule-based AI-written text detector
-- `auth.ts` — JWT creation/verification, PBKDF2 password hashing, cookie management
-- `supabase/client.ts` — Supabase client (anon for client, service-role for server)
-- `supabase/schema.sql` — Full DDL with 11 tables, RLS policies, pgvector indexes
-- `db/*.ts` — Typed data access layer (profiles, cvs, applications, contacts, stories, interviews, interactions)
-- `prompts/*.ts` — AI prompt builders per feature
-- `methodology/*.ts` — Career frameworks (Four Pillars, CV Blueprint, Coffee Chat, Networking, Interview Prep)
-- `stores/*.ts` — Zustand stores (app-store, auth-store)
+The spine of the app. Nothing derived is stored twice:
 
-### Frontend Pages (src/app/)
+- `events.ts` — append-only typed event log; every meaningful action appends one
+- `profile.ts` — `deriveProfile()`: one normalized view computed from store state + events
+- `progress.ts` — `computeProgress()`: every progress number in the product, weighted toward networking/interview
+- `recommendations.ts` — ranks the single next action
+- `store.ts` — the Zustand store (persisted, `skipHydration`)
+- `logic.ts`, `data.ts`, `orchestrator.ts` — pure derivation helpers, static content, AI orchestration
 
-- `page.tsx` — Marketing landing page with 3D hero
-- `dashboard/page.tsx` — Main dashboard with phase pipeline
-- `direction/page.tsx` — Phase 1: wizard + explore modes
-- `cv/page.tsx` — Phase 2: CV upload and analysis
-- `jobs/page.tsx` — Phase 3: job discovery
-- `networking/page.tsx` — Phase 4: outreach tools
-- `interview/page.tsx` — Phase 5: interview prep + LeetCode tracker
-- `tracker/page.tsx` — Phase 6: application kanban
+**Progress must stay evidence-derived.** Self-reported input (e.g. the Stage-00 sliders) never feeds the CV/networking/interview pillars — showing "CV 45%" before a CV exists is fabricated progress. Onboarding hands over its *target* (which is real input) and logs baseline events; the pillars stay at zero until real work exists.
+
+### Other core libraries (`src/lib/`)
+
+- `ai.ts` — OpenAI calls, `callAIValidated`, `aiShape`, `aiEnvelope`, `AIError`
+- `ai/mentor-engine.ts` — builds UserContext from the DB, picks methodology (static vs RAG), calls OpenAI
+- `ai/retrieval.ts` — RAG: embeds/retrieves methodology chunks via pgvector
+- `ai/naturalness-check.ts` — rule-based AI-written text detector
+- `auth.ts` — JWT create/verify, PBKDF2 hashing, cookies
+- `api.ts` — `readBody`/`readLoose` request validation helpers
+- `hooks.ts` — `useIsHydrated`, `usePrefersReducedMotion` (both `useSyncExternalStore`)
+- `theme.ts` — `useThemeMode`, `setTheme`; `ThemeController` in `layout.tsx` owns `<html data-theme>`
+- `rate-limit.ts`, `logger.ts`
+- `supabase/client.ts` — anon client for the browser, service-role for the server
+- `db/*.ts` — typed data access layer
+- `prompts/*.ts`, `methodology/*.ts`, `knowledge/*.ts`
+
+### Frontend Pages (`src/app/`)
+
+- `page.tsx` — marketing landing; ASCII neural-globe hero on a 2D canvas (no WebGL)
+- `start/` — Stage 00 onboarding: target + baseline, then hands off to the Career-OS
+- `intel/` — command centre (readiness, next action, event log, opportunity pipeline)
+- `direction/`, `cv/`, `jobs/`, `networking/`, `interview/`, `tracker/` — the six phases
+- `universities/` — B2B2C pitch to university career services
+- `settings/`, `login/`, `forgot-password/`, `reset-password/`, `verify-email/`, `privacy/`, `terms/`
+
+**Marketing copy must stay honest.** No invented testimonials, partner logos, or outcome statistics — a product that tells students not to embellish their CV cannot embellish its own landing page. Illustrative UI mockups are fine when labelled as such.
 
 ## Database
 
-Schema is defined in `src/lib/supabase/schema.sql` but not yet deployed. Currently using localStorage fallback. Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector).
+Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector).
 
-RLS is configured so students can only access their own data. methodology_chunks is publicly readable.
+RLS restricts students to their own rows; `methodology_chunks` is publicly readable. The server uses the service-role key and scopes queries by `user_id` at the application layer.
+
+RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedding-3-small) retrieved via the `match_methodology` RPC.
 
 ## Testing
 
-Only 2 test files exist currently:
-- `src/lib/ai/__tests__/naturalness-check.test.ts`
-- `src/lib/methodology/__tests__/methodology.test.ts`
+14 test files / 145 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), `CountUp`, and the health/outreach route handlers.
 
-Priority test targets: auth.ts, mentor-engine.ts, API route handlers, db layer.
+Still thin: most route handlers, and the phase pages themselves.
 
 ## Environment Variables
 
-See `.env.example`. Required: `OPENAI_API_KEY`. For full functionality: Supabase credentials, JWT_SECRET, job API keys. The app gracefully falls back when keys are missing.
+See `.env.example`. Required: `OPENAI_API_KEY`, `JWT_SECRET` (auth throws at startup without it), Supabase credentials. Optional: job API keys, `NEXT_PUBLIC_APP_URL`. The app degrades gracefully when optional keys are missing.
 
 ## Known Issues
 
-- Supabase not connected (localStorage fallback active)
-- No CI/CD pipeline
-- Minimal test coverage
-- No Vercel deployment config
-- JWT_SECRET has a hardcoded dev fallback in auth.ts
+- Test coverage is well below the 80% target, especially for route handlers
+- `universities/` still points at a placeholder `partnerships@pathfinder.app` mailbox
+- `NEXT_PUBLIC_APP_URL` is unset in production, so absolute links fall back to relative
