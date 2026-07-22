@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     // and drowned the ~30 real ones in src/.
     ".claude/**",
     ".agents/**",
+    // Generated coverage report — not source.
+    "coverage/**",
   ]),
 ]);
 

@@ -30,15 +30,17 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Test
-        run: npm run test:run
+      # Runs the suite and enforces the coverage ratchet in vitest.config.ts.
+      # The thresholds sit just under current coverage, so this fails only if
+      # coverage goes backwards.
+      - name: Test + coverage ratchet
+        run: npm run test:coverage
 
-      # Non-blocking for now: the repo carries pre-existing lint debt
-      # (~1.3k errors in legacy modules). Surface it without failing the
-      # build; paying it down is tracked as Phase-1 tech debt.
-      - name: Lint (non-blocking)
+      # Was non-blocking while the repo carried ~1.3k lint errors. That debt is
+      # paid off — `npm run lint` now reports nothing — so this is a hard gate
+      # again; letting it slide is how it accumulated the first time.
+      - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Build
         # No secrets needed: Supabase/JWT are resolved lazily and the app is

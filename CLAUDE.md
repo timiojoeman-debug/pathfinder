@@ -25,10 +25,11 @@ npm run dev          # Start dev server (localhost:3000)
 npm run build        # Production build
 npm run test         # Run tests (vitest watch)
 npm run test:run     # Run tests once
+npm run test:coverage # Run tests + enforce the coverage ratchet
 npm run lint         # ESLint — currently clean; CI fails on any error
 ```
 
-CI (`.github/workflows/ci.yml`) runs `npm ci`, `tsc --noEmit`, `test:run`, `lint`, and `build`.
+CI (`.github/workflows/ci.yml`) runs `npm ci`, `tsc --noEmit`, `test:coverage`, `lint`, and `build`. All are hard gates.
 
 ## Architecture
 
@@ -115,7 +116,9 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-14 test files / 145 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), `CountUp`, and the health/outreach route handlers.
+16 test files / 160 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), `CountUp`, email link resolution, and the health / outreach / jobs-search route handlers.
+
+`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (≈19% lines, 13% branches), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 
 Still thin: most route handlers, and the phase pages themselves.
 
