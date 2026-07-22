@@ -46,8 +46,33 @@ export async function sendEmail({ to, subject, html, text }: EmailInput): Promis
   }
 }
 
+/**
+ * Base URL for links inside emails (verification, password reset).
+ *
+ * This used to fall back straight to localhost, so a deployment without
+ * NEXT_PUBLIC_APP_URL set — which is how it shipped — mailed real users a
+ * "reset your password" button pointing at http://localhost:3000. Vercel
+ * injects the host on every deployment, so derive it rather than depending on
+ * someone remembering to configure it.
+ *
+ * Order: an explicit override wins; then the stable production domain (right
+ * for emails, which outlive any single deployment); then the per-deployment
+ * URL so preview builds mail working links too.
+ */
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+
+  const vercelHost =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || process.env.VERCEL_URL?.trim();
+  if (vercelHost) return `https://${vercelHost.replace(/\/$/, "")}`;
+
+  if (process.env.NODE_ENV === "production") {
+    logger.error(
+      "appUrl() fell back to localhost in production — email links will be unusable. Set NEXT_PUBLIC_APP_URL.",
+    );
+  }
+  return "http://localhost:3000";
 }
 
 const shell = (heading: string, body: string, cta: { label: string; href: string }) => `

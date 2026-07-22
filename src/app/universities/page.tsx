@@ -5,10 +5,11 @@
  * career services: PathFinder as the AI readiness-coaching layer a university
  * gives every student, with a staff view of cohort readiness.
  *
- * Integrity note: this is pre-launch. It presents the value proposition and a
- * pilot offer — deliberately NO fabricated partner logos, testimonials, or
- * placement statistics. The cohort dashboard shown is labelled illustrative.
- * Wire CONTACT_MAILTO to a real inbox before going live.
+ * Integrity note: this is pre-launch. It presents the value proposition
+ * deliberately WITHOUT fabricated partner logos, testimonials, or placement
+ * statistics. The cohort dashboard shown is labelled illustrative, and the
+ * page says outright that pilots are not open yet rather than routing people
+ * to a contact address that does not exist.
  */
 
 import Link from "next/link";
@@ -26,8 +27,13 @@ const serifItalic: CSSProperties = {
 };
 const kicker: CSSProperties = { fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--accent)" };
 
-// TODO: point at a real partnerships inbox before launch.
-const CONTACT_MAILTO = "mailto:partnerships@pathfinder.app?subject=PathFinder%20for%20universities%20%E2%80%94%20pilot%20enquiry";
+/**
+ * Every CTA here used to be a mailto: to partnerships@pathfinder.app — an
+ * address that does not exist, so all five buttons were dead ends. Rather than
+ * invent a contact route, the page states plainly that pilots are not open
+ * yet. Restore real CTAs once there is an inbox to receive them.
+ */
+const PILOT_STATUS = "Pilot programme not open yet";
 
 const PROBLEMS = [
   {
@@ -106,7 +112,6 @@ export default function UniversitiesPage() {
   const lead: CSSProperties = { fontSize: 17, color: "var(--muted)", lineHeight: 1.6, maxWidth: "38rem" };
 
   const primaryBtn: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 9, height: 52, padding: "0 26px", borderRadius: 13, background: "var(--fg)", color: "var(--bg)", fontSize: 15.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 10px 26px rgba(56,44,32,.16),var(--rim)" };
-  const ghostBtn: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 9, height: 52, padding: "0 22px", borderRadius: 13, background: "var(--panel)", color: "var(--fg)", border: "1px solid var(--lineStrong)", fontSize: 15.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" };
 
   return (
     <div className="pf pf-landing" style={{ position: "relative", width: "100%", background: "var(--bg)", overflow: "hidden", color: "var(--fg)" }}>
@@ -134,9 +139,9 @@ export default function UniversitiesPage() {
             {mode === "dark" ? "Paper" : "Night"}
           </button>
           <Link href="/" className="pf-hide-mobile" style={{ ...navLink, fontSize: 13.5, fontWeight: 600, color: "var(--muted)" }}>For students →</Link>
-          <a href={CONTACT_MAILTO} style={{ display: "flex", alignItems: "center", height: 39, padding: "0 18px", borderRadius: 11, background: "var(--fg)", color: "var(--bg)", fontSize: 13.5, fontWeight: 600, textDecoration: "none", boxShadow: "var(--rim)" }}>
-            Book a pilot
-          </a>
+          <span style={{ display: "flex", alignItems: "center", height: 39, padding: "0 18px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: "var(--muted)", fontSize: 13, fontWeight: 600 }}>
+            {PILOT_STATUS}
+          </span>
         </div>
       </header>
 
@@ -150,8 +155,7 @@ export default function UniversitiesPage() {
           Your team can’t run 1:1 readiness coaching for thousands of students. PathFinder is the AI layer that does — referrals, interviews, CVs — with a staff view of exactly who’s ready and who needs a nudge.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <a href={CONTACT_MAILTO} style={primaryBtn}>Book a pilot →</a>
-          <a href="#how" style={ghostBtn}>See how it works</a>
+          <a href="#how" style={primaryBtn}>See how it works →</a>
         </div>
         <p style={{ fontFamily: mono, fontSize: 11.5, letterSpacing: ".04em", color: "var(--faint)", marginTop: 26 }}>
           Complements your existing tools · your branding · students never pay
@@ -277,7 +281,9 @@ export default function UniversitiesPage() {
               <div style={{ fontFamily: mono, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)" }}>Start here</div>
               <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", margin: "8px 0 4px" }}>Cohort pilot</div>
               <p style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.55, margin: "0 0 18px" }}>One department or year group, one term. We measure the readiness lift together.</p>
-              <a href={CONTACT_MAILTO} style={{ ...primaryBtn, height: 46, width: "100%", justifyContent: "center" }}>Contact us for pricing</a>
+              <div style={{ height: 46, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 11, border: "1px dashed var(--lineStrong)", color: "var(--muted)", fontSize: 13.5, fontWeight: 600 }}>
+                {PILOT_STATUS}
+              </div>
             </div>
           </div>
         </Reveal>
@@ -305,9 +311,11 @@ export default function UniversitiesPage() {
           Bring readiness coaching to <span style={serifItalic}>every</span> student.
         </h2>
         <p style={{ ...lead, margin: "0 auto 30px", textAlign: "center" }}>
-          Book a 30-minute call. We’ll scope a pilot cohort and show you the dashboard your careers team would see.
+          PathFinder for universities is still being built. When pilots open we’ll scope a cohort with you and show your careers team the dashboard they’d get.
         </p>
-        <a href={CONTACT_MAILTO} style={{ ...primaryBtn, height: 56, fontSize: 16.5, padding: "0 32px" }}>Book a pilot →</a>
+        <span style={{ display: "inline-flex", alignItems: "center", height: 56, padding: "0 32px", borderRadius: 13, border: "1px dashed var(--lineStrong)", color: "var(--muted)", fontSize: 16.5, fontWeight: 600 }}>
+          {PILOT_STATUS}
+        </span>
       </section>
 
       {/* ── Footer ── */}
@@ -323,7 +331,6 @@ export default function UniversitiesPage() {
           <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>For students</Link>
           <Link href="/privacy" style={{ color: "inherit", textDecoration: "none" }}>Privacy</Link>
           <Link href="/terms" style={{ color: "inherit", textDecoration: "none" }}>Terms</Link>
-          <a href={CONTACT_MAILTO} style={{ color: "inherit", textDecoration: "none" }}>Contact</a>
         </nav>
       </footer>
     </div>
