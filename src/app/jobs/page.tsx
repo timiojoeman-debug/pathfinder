@@ -265,18 +265,25 @@ export default function JobsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roleType: q, cvSummary: s.cvText }),
       });
-      const json: unknown = res.ok ? await res.json() : null;
-      const raw = (json as { jobs?: unknown } | null)?.jobs;
+      const json = (res.ok ? await res.json() : null) as
+        | { jobs?: unknown; configured?: boolean; message?: string }
+        | null;
+      const raw = json?.jobs;
       const mapped = Array.isArray(raw) ? raw.map((j) => toSavedJob(j as Parameters<typeof toSavedJob>[0])) : [];
-      if (mapped.length) {
-        setLiveJobs(mapped);
-      } else {
-        setLiveJobs([]);
-        setSearchNote("Live search unavailable — showing curated matches");
+      setLiveJobs(mapped);
+      if (!mapped.length) {
+        // Say what actually happened. This used to read "showing curated
+        // matches", which was only ever true because the matches were invented.
+        setSearchNote(
+          json?.message ??
+            (json?.configured === false
+              ? "Live job search isn't connected yet — add roles manually below."
+              : `No live results for "${q}". Try a broader title, or add the role manually below.`),
+        );
       }
     } catch {
       setLiveJobs([]);
-      setSearchNote("Live search unavailable — showing curated matches");
+      setSearchNote("Couldn't reach job search just now. Add the role manually below and PathFinder will score it.");
     } finally {
       setSearching(false);
     }

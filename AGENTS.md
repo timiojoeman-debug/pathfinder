@@ -53,7 +53,11 @@ Route Handlers, POST unless noted. Auth routes set httpOnly JWT cookies. Middlew
 - `/profile` — profile read/write
 - `/direction`, `/direction/{explore,title-variants}` — career direction wizard
 - `/cv/{analyze,ats-audit,match,projects}` — CV upload, parsing, AI analysis
-- `/jobs/{search,analyze}` — job search (Adzuna/JSearch) and JD analysis
+- `/jobs/{search,analyze}` — job search and JD analysis. `search` returns real
+  Adzuna listings when `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` are set, and an empty
+  list with `configured: false` otherwise. **It must never return placeholder
+  listings** — it previously shipped three invented companies with
+  `example.com` apply links. Tests in `__tests__/search.test.ts` enforce that.
 - `/intel/analyze` — opportunity/priority-move analysis for the command centre
 - `/networking/{outreach,analyze-profile}` — AI-generated outreach
 - `/network/{coffee-chat-prep,follow-up,referral-package,startup-outreach}` — networking prep
