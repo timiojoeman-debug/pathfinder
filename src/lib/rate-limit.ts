@@ -1,12 +1,18 @@
 /**
- * Lightweight sliding-window rate limiter.
+ * Rate limiting, shared across serverless instances.
  *
- * This is an in-memory implementation: correct and effective within a single
- * running instance (dev, a single container, a warm serverless isolate). For
- * multi-instance / fully-serverless production you MUST back this with a shared
- * store — swap `hit()` for `@upstash/ratelimit` + Upstash Redis (the interface
- * below is intentionally a drop-in shape). Until then this still stops naive
- * brute-force and cost-bomb floods, which is the Phase-0 requirement.
+ * This was an in-memory Map. That is correct within one process, but on Vercel
+ * each instance keeps its own copy, so the real limit became
+ * (instances x limit): 11 rapid signups against production returned a single
+ * 429 where the configured limit was 10/min in total. Counters now live in
+ * Postgres (Supabase, already deployed — no new service to run) behind an
+ * atomic upsert, so every instance increments the same row.
+ *
+ * The in-memory implementation is kept as a fallback: when Supabase is not
+ * configured (local dev, CI) or the counter query fails, we degrade to
+ * per-instance limiting rather than failing the request. Weaker than the shared
+ * counter, but a rate limiter must not take the site down when its own storage
+ * is unavailable.
  */
 
 interface Window {
@@ -31,36 +37,119 @@ export interface RateLimitResult {
   limit: number;
   remaining: number;
   retryAfter: number; // seconds until the window resets
+  /** Whether the shared store answered. False means per-instance fallback. */
+  shared: boolean;
 }
 
-/**
- * Record a hit for `key` and report whether it's within `limit` per `windowMs`.
- */
-export function hit(key: string, limit: number, windowMs: number): RateLimitResult {
+/** Per-instance counter. Used directly in dev, and as the fallback in prod. */
+export function hitLocal(key: string, limit: number, windowMs: number): RateLimitResult {
   const now = Date.now();
   sweep(now);
   const existing = buckets.get(key);
 
   if (!existing || existing.resetAt <= now) {
     buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true, limit, remaining: limit - 1, retryAfter: 0 };
+    return { ok: true, limit, remaining: limit - 1, retryAfter: 0, shared: false };
   }
 
   existing.count += 1;
   const remaining = Math.max(0, limit - existing.count);
   const ok = existing.count <= limit;
-  return { ok, limit, remaining, retryAfter: Math.ceil((existing.resetAt - now) / 1000) };
+  return {
+    ok,
+    limit,
+    remaining,
+    retryAfter: Math.ceil((existing.resetAt - now) / 1000),
+    shared: false,
+  };
 }
 
-/** Per-route-class limits (requests per minute). Auth is deliberately strict. */
+/** A slow limiter must not become the site's latency floor. */
+const STORE_TIMEOUT_MS = 1500;
+
+function sharedStoreConfig(): { url: string; key: string } | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && key ? { url, key } : null;
+}
+
+/**
+ * Increment the shared counter for `key`.
+ *
+ * Called from middleware, which runs on the Edge runtime — hence a plain fetch
+ * to PostgREST rather than the Supabase SDK. Returns null when the store is
+ * unavailable so the caller can fall back rather than failing the request.
+ */
+async function hitShared(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<RateLimitResult | null> {
+  const cfg = sharedStoreConfig();
+  if (!cfg) return null;
+
+  try {
+    const res = await fetch(`${cfg.url}/rest/v1/rpc/rate_limit_hit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: cfg.key,
+        Authorization: `Bearer ${cfg.key}`,
+      },
+      body: JSON.stringify({ p_key: key, p_window_ms: windowMs }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(STORE_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+
+    const rows = (await res.json()) as { hits?: number; reset_at?: string }[] | null;
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row || typeof row.hits !== "number" || !row.reset_at) return null;
+
+    const resetMs = new Date(row.reset_at).getTime() - Date.now();
+    return {
+      ok: row.hits <= limit,
+      limit,
+      remaining: Math.max(0, limit - row.hits),
+      retryAfter: Math.max(0, Math.ceil(resetMs / 1000)),
+      shared: true,
+    };
+  } catch {
+    // Timeout, network error, malformed response — fall back, never throw.
+    return null;
+  }
+}
+
+/**
+ * Record a hit for `key` and report whether it's within `limit` per `windowMs`.
+ * Uses the shared store when available, otherwise the per-instance counter.
+ */
+export async function hit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+  const shared = await hitShared(key, limit, windowMs);
+  return shared ?? hitLocal(key, limit, windowMs);
+}
+
+/**
+ * Per-route-class limits (requests per minute).
+ *
+ * `auth` is deliberately strict because it guards credentials. It covers only
+ * the endpoints that accept or issue them — session reads like /api/auth/me are
+ * classified as `api`, since the client calls that on navigation and throttling
+ * it at 10/min would lock a browsing user out of their own session. That was
+ * survivable only because the old per-instance limiter rarely fired.
+ */
 export const LIMITS = {
   auth: { limit: 10, windowMs: 60_000 },
   ai: { limit: 30, windowMs: 60_000 },
   api: { limit: 120, windowMs: 60_000 },
 } as const;
 
+/** Auth endpoints that read the current session rather than accept credentials. */
+const SESSION_READ_ROUTES = new Set(["/api/auth/me", "/api/auth/logout"]);
+
 /** Classify a pathname into a limit bucket. */
 export function classifyRoute(pathname: string): keyof typeof LIMITS {
+  if (SESSION_READ_ROUTES.has(pathname)) return "api";
   if (pathname.startsWith("/api/auth/")) return "auth";
   if (
     pathname.startsWith("/api/cv/") ||
@@ -80,30 +169,22 @@ export function classifyRoute(pathname: string): keyof typeof LIMITS {
 }
 
 /* ── Per-user daily AI quota ────────────────────────────────────────────
-   Protects against a single authenticated user cost-bombing the OpenAI
-   budget. In-memory + per-instance like the limiter above; back it with a
-   shared store (Upstash/DB) for multi-instance production. Resets at UTC
-   midnight. */
+   Caps OpenAI spend from any single account. Shares the same counter table,
+   so it holds across instances too: the window is the milliseconds remaining
+   until the next UTC midnight, which pins the first call of the day to that
+   expiry and lets every later call inherit it. */
 
-interface DailyWindow { count: number; day: number }
-const dailyBuckets = new Map<string, DailyWindow>();
-
-function utcDay(now: number): number {
-  return Math.floor(now / 86_400_000);
+function msUntilUtcMidnight(now: number): number {
+  const day = Math.floor(now / 86_400_000);
+  return (day + 1) * 86_400_000 - now;
 }
 
 /** Per-key daily counter. `retryAfter` counts down to the next UTC midnight. */
-export function hitDaily(key: string, limit: number): RateLimitResult {
+export async function hitDaily(key: string, limit: number): Promise<RateLimitResult> {
   const now = Date.now();
-  const day = utcDay(now);
-  const w = dailyBuckets.get(key);
-  if (!w || w.day !== day) {
-    dailyBuckets.set(key, { count: 1, day });
-    return { ok: true, limit, remaining: limit - 1, retryAfter: 0 };
-  }
-  w.count += 1;
-  const msToMidnight = (day + 1) * 86_400_000 - now;
-  return { ok: w.count <= limit, limit, remaining: Math.max(0, limit - w.count), retryAfter: Math.ceil(msToMidnight / 1000) };
+  // Namespaced by day so a stale row from yesterday can never be inherited.
+  const dayKey = `${key}:${Math.floor(now / 86_400_000)}`;
+  return hit(dayKey, limit, msUntilUtcMidnight(now));
 }
 
 /** Free-tier daily AI-call budget per user (override with AI_DAILY_QUOTA). */

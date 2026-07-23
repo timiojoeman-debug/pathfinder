@@ -46,7 +46,13 @@ So AI routes use **`callAIValidated(params, schema, context)`**, which parses th
 
 ### API Routes (`src/app/api/`)
 
-Route Handlers, POST unless noted. Auth routes set httpOnly JWT cookies. Middleware applies rate limits (auth 10/min, AI 30/min, `AI_DAILY_QUOTA` 60/day).
+Route Handlers, POST unless noted. Auth routes set httpOnly JWT cookies. Middleware applies rate limits
+(auth 10/min, AI 30/min, general 120/min, `AI_DAILY_QUOTA` 60/day). Counters live in the
+`rate_limit_buckets` table via the `rate_limit_hit` RPC, so they hold **across serverless instances** —
+an in-memory Map gave each instance its own counter and the effective limit was (instances × limit).
+If the store is unreachable the limiter degrades to per-instance counting rather than failing requests.
+**`/api/auth/me` and `/api/auth/logout` are deliberately in the general bucket**: the client calls
+`me` on navigation, and throttling it at the credential limit locks a browsing user out of their own session.
 
 - `/auth/{signup,login,logout,me}` — JWT auth with httpOnly cookies
 - `/auth/password-reset/{request,confirm}`, `/auth/verify-email/{request,confirm}`
@@ -108,7 +114,7 @@ The spine of the app. Nothing derived is stored twice:
 
 ## Database
 
-Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector).
+Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`, `0005_rate_limit`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector), rate_limit_buckets.
 
 RLS restricts students to their own rows; `methodology_chunks` is publicly readable. The server uses the service-role key and scopes queries by `user_id` at the application layer.
 
@@ -116,9 +122,9 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-16 test files / 160 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), `CountUp`, email link resolution, and the health / outreach / jobs-search route handlers.
+17 test files / 174 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), `CountUp`, email link resolution, and the health / outreach / jobs-search route handlers.
 
-`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (≈19% lines, 13% branches), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
+`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (≈20% lines, 15% branches), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 
 Still thin: most route handlers, and the phase pages themselves.
 

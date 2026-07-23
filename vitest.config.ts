@@ -29,8 +29,8 @@ export default defineConfig({
       thresholds: {
         // A ratchet, not the goal.
         //
-        // Measured at the time of writing: 18.85% lines, 18.17% statements,
-        // 15.48% functions, 13.43% branches. These sit a whisker below that,
+        // Measured at the time of writing: 20.09% lines, 19.31% statements,
+        // 16.20% functions, 14.66% branches. These sit a whisker below that,
         // so coverage cannot silently regress while staying green today —
         // a threshold set to an aspirational 80% would fail on every run and
         // simply get ignored.
@@ -38,10 +38,10 @@ export default defineConfig({
         // Raise these as tests land. The biggest gaps are route handlers
         // (most are at 0%), lib/pf/store.ts (~8%), lib/prompts (~10%) and
         // lib/stores (0%).
-        lines: 18,
-        statements: 18,
-        functions: 15,
-        branches: 13,
+        lines: 20,
+        statements: 19,
+        functions: 16,
+        branches: 14,
       },
     },
   },

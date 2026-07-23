@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
   // ── Rate limiting (applies to every /api/* request, before auth) ──
   const bucket = classifyRoute(pathname);
   const { limit, windowMs } = LIMITS[bucket];
-  const rl = hit(`${clientIp(request)}:${bucket}`, limit, windowMs);
+  const rl = await hit(`${clientIp(request)}:${bucket}`, limit, windowMs);
   if (!rl.ok) {
     return NextResponse.json(
       { error: 'Too many requests — slow down and try again shortly.' },
@@ -86,7 +86,7 @@ export async function middleware(request: NextRequest) {
 
     // Per-user daily AI quota — caps OpenAI cost from any single account.
     if (bucket === 'ai') {
-      const quota = hitDaily(`aiq:${userId}`, AI_DAILY_QUOTA);
+      const quota = await hitDaily(`aiq:${userId}`, AI_DAILY_QUOTA);
       if (!quota.ok) {
         return NextResponse.json(
           { error: `You've reached today's AI limit (${AI_DAILY_QUOTA} requests). It resets at midnight UTC.` },
