@@ -97,7 +97,7 @@ function JobDrawer({ company }: { company: string }) {
                 <circle cx="28" cy="28" r="23" fill="none" stroke="var(--panel3)" strokeWidth="5" />
                 <circle cx="28" cy="28" r="23" fill="none" stroke={jd.tone} strokeWidth="5" strokeLinecap="round" strokeDasharray="144" strokeDashoffset={jd.dash} />
               </svg>
-              <div className="pf-mono" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: jd.tone }}>{jd.fit}</div>
+              <div className="pf-mono" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: jd.tone }}>{jd.fitKnown === false ? "—" : jd.fit}</div>
             </div>
             <CloseBtn onClose={closeDrawers} />
           </div>

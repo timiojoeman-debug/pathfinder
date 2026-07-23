@@ -52,6 +52,10 @@ export interface SavedJob {
   role: string;
   meta: string;
   fit: number;
+  /** False when nothing could be scored (e.g. a job-board snippet listing no
+   *  requirements). `fit` is then meaningless and must render as "—", never as
+   *  a number. Absent means scored, so existing saved jobs are unaffected. */
+  fitKnown?: boolean;
   dash: number;
   tone: string;
   tags: string[];

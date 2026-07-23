@@ -143,4 +143,50 @@ describe('POST /api/jobs/search', () => {
     expect(body.message).toMatch(/unavailable/i);
     expectNothingInvented(body);
   });
+  describe('listings with nothing to score against', () => {
+    beforeEach(() => {
+      process.env.ADZUNA_APP_ID = 'id';
+      process.env.ADZUNA_APP_KEY = 'key';
+    });
+
+    it('returns a null score rather than a confident-looking number', async () => {
+      // Adzuna sends a ~500-char snippet, usually company blurb naming no
+      // technologies. Scoring that 50 made every real job render "Long shot".
+      vi.stubGlobal('fetch', vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          results: [{
+            title: 'Software Engineering Intern',
+            description: "We're a profitable video game start-up in London with 15 million monthly players.",
+            redirect_url: 'https://www.adzuna.co.uk/jobs/details/1',
+            company: { display_name: 'Bloxd' },
+          }],
+        }),
+      })));
+
+      const body = await (await POST(post({ roleType: 'intern', cvSummary: 'Go Postgres React' }))).json();
+      expect(body.jobs).toHaveLength(1);
+      expect(body.jobs[0].matchScore).toBeNull();
+      expect(body.jobs[0].atsKeywords).toEqual([]);
+      // The listing itself is still real and still shown.
+      expect(body.jobs[0].company).toBe('Bloxd');
+    });
+
+    it('sorts scored listings above unscored ones', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          results: [
+            { title: 'A', description: 'company blurb only', redirect_url: 'https://x.test/a' },
+            { title: 'B', description: 'react and typescript required', redirect_url: 'https://x.test/b' },
+          ],
+        }),
+      })));
+
+      const body = await (await POST(post({ roleType: 'intern', cvSummary: 'react typescript' }))).json();
+      expect(body.jobs[0].title).toBe('B');
+      expect(body.jobs[0].matchScore).toBe(100);
+      expect(body.jobs[1].matchScore).toBeNull();
+    });
+  });
 });

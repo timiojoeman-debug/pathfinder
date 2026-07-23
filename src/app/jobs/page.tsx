@@ -16,17 +16,24 @@ interface AiJdRead { score: number | null; checklist: string[]; warning: string 
 interface AiLetter { paras: string[]; assumptions: string[]; words: number }
 
 /** Map a /api/jobs/search listing onto the design's job-card shape. */
-function toSavedJob(j: { title?: string; company?: string; location?: string; source?: string; description?: string; matchScore?: number; atsKeywords?: string[] }): SavedJob {
-  const fit = Math.max(20, Math.min(95, Math.round(j.matchScore ?? 60)));
+function toSavedJob(j: { title?: string; company?: string; location?: string; source?: string; description?: string; matchScore?: number | null; atsKeywords?: string[] }): SavedJob {
+  // A job-board snippet often names no requirements at all, so there is nothing
+  // to score against. Defaulting to a number labelled genuine roles "Long shot"
+  // and talked students out of applying — confidence derived from nothing.
+  const fitKnown = typeof j.matchScore === "number";
+  const fit = fitKnown ? Math.max(20, Math.min(95, Math.round(j.matchScore as number))) : 0;
   return {
     company: j.company ?? "Unknown",
     role: j.title ?? "Internship",
     meta: [j.location, j.source].filter(Boolean).join(" · ") || "Live result",
     fit,
-    dash: Math.round(144 * (1 - fit / 100)),
-    tone: fitTone(fit),
-    tags: j.atsKeywords && j.atsKeywords.length ? j.atsKeywords.slice(0, 3) : ["Live"],
-    verdict: fit >= 70 ? "Strong match" : fit >= 55 ? "Reach — tailor hard" : "Long shot",
+    fitKnown,
+    dash: fitKnown ? Math.round(144 * (1 - fit / 100)) : 144, // 144 = empty ring
+    tone: fitKnown ? fitTone(fit) : "var(--faint)",
+    tags: j.atsKeywords && j.atsKeywords.length ? j.atsKeywords.slice(0, 3) : ["Not scored"],
+    verdict: fitKnown
+      ? (fit >= 70 ? "Strong match" : fit >= 55 ? "Reach — tailor hard" : "Long shot")
+      : "Fit unknown — paste the full JD below to score it",
     action: "+ Save",
     jdText: j.description ?? "",
   };
@@ -352,7 +359,7 @@ export default function JobsPage() {
                       <circle cx="28" cy="28" r="23" fill="none" stroke="var(--panel3)" strokeWidth="5" />
                       <circle cx="28" cy="28" r="23" fill="none" stroke={j.tone} strokeWidth="5" strokeLinecap="round" strokeDasharray="144" strokeDashoffset={j.dash} />
                     </svg>
-                    <div className="pf-mono" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: j.tone }}>{j.fit}</div>
+                    <div className="pf-mono" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: j.tone }}>{j.fitKnown === false ? "—" : j.fit}</div>
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
@@ -421,7 +428,7 @@ export default function JobsPage() {
                     <circle cx="28" cy="28" r="23" fill="none" stroke="var(--panel3)" strokeWidth="5" />
                     <circle cx="28" cy="28" r="23" fill="none" stroke={j.tone} strokeWidth="5" strokeLinecap="round" strokeDasharray="144" strokeDashoffset={j.dash} />
                   </svg>
-                  <div className="pf-mono" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: j.tone }}>{j.fit}</div>
+                  <div className="pf-mono" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: j.tone }}>{j.fitKnown === false ? "—" : j.fit}</div>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>

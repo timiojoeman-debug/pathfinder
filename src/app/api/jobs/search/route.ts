@@ -36,7 +36,8 @@ type JobListing = {
   source: string;
   description: string;
   url: string;
-  matchScore: number;
+  /** null when the listing gave us nothing to score against — never a guess. */
+  matchScore: number | null;
   atsKeywords: string[];
 };
 
@@ -66,7 +67,7 @@ const KEYWORD_CANDIDATES = [
  * the job actually asks for are counted, so the score reads as "how much of
  * what they want can you evidence" rather than "how many buzzwords do you own".
  */
-function computeMatchScore(cv: string, jobDescription: string): { score: number; keywords: string[] } {
+function computeMatchScore(cv: string, jobDescription: string): { score: number | null; keywords: string[] } {
   const normalizedCv = cv.toLowerCase();
   const normalizedDesc = jobDescription.toLowerCase();
 
@@ -79,9 +80,12 @@ function computeMatchScore(cv: string, jobDescription: string): { score: number;
     }
   }
 
-  // No recognised keywords means the fit is genuinely unknown — a neutral 50
-  // is honest, where a high score would be invented confidence.
-  const score = keywords.length ? Math.round((hits / keywords.length) * 100) : 50;
+  // Adzuna returns a ~500-character *snippet*, not the full ad, and it is
+  // usually company blurb — so most listings mention none of these keywords.
+  // That is not a 50% match, it is no evidence at all, and saying "50" put a
+  // confident number on nothing (every real job then rendered as "Long shot").
+  // Return null and let the UI say the fit is unknown.
+  const score = keywords.length ? Math.round((hits / keywords.length) * 100) : null;
   return { score, keywords: keywords.slice(0, 5) };
 }
 
@@ -150,7 +154,7 @@ async function searchAdzuna(
   return results
     .map((r) => mapAdzunaResult(r as AdzunaResult, cvSummary))
     .filter((j): j is JobListing => j !== null)
-    .sort((a, b) => b.matchScore - a.matchScore);
+    .sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1));
 }
 
 export async function POST(req: Request) {
