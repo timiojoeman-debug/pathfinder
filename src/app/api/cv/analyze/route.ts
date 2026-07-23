@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generateWithAI, AIError } from "@/lib/ai";
 import { buildCVAnalysisPrompt } from "@/lib/prompts";
 import mammoth from "mammoth";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -11,14 +12,22 @@ async function extractTextFromFile(file: File): Promise<string> {
 
   if (name.endsWith(".pdf")) {
     try {
-      const pdfParse = (await import("pdf-parse")).default;
+      // Import the library module directly, not the package entry point.
+      // pdf-parse@1.1.1's index.js runs a debug block that reads a bundled
+      // test fixture whenever `module.parent` is falsy — which is always true
+      // under ESM — so `import("pdf-parse")` throws ENOENT before it parses
+      // anything. Every PDF upload failed, and the friendly "Could not read
+      // this PDF" response made it look like the student's file was at fault.
+      const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
       const data = await pdfParse(buffer);
       if (!data?.text || data.text.trim().length < 50) {
         return ''; // Will be caught below as "empty extraction"
       }
       return data.text;
     } catch (err) {
-      console.error('PDF parse error:', err);
+      logger.error("cv/analyze — PDF extraction failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
       return ''; // Will be caught below
     }
   }

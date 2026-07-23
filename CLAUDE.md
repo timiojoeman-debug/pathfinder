@@ -96,7 +96,11 @@ The spine of the app. Nothing derived is stored twice:
 - `api.ts` — `readBody`/`readLoose` request validation helpers
 - `hooks.ts` — `useIsHydrated`, `usePrefersReducedMotion` (both `useSyncExternalStore`)
 - `theme.ts` — `useThemeMode`, `setTheme`; `ThemeController` in `layout.tsx` owns `<html data-theme>`
-- `rate-limit.ts`, `logger.ts`
+- `rate-limit.ts` — shared counters (see the API-routes note above)
+- `logger.ts` — structured logs; **`logger.error` also persists to `error_events`**, so a
+  production failure is a query rather than a log-tail. Context is redacted for
+  credential-shaped keys before storage. Use `logger.*` and never raw `console.*`, or the
+  error is invisible — that is how a broken PDF parser hid behind a friendly 422.
 - `supabase/client.ts` — anon client for the browser, service-role for the server
 - `db/*.ts` — typed data access layer
 - `prompts/*.ts`, `methodology/*.ts`, `knowledge/*.ts`
@@ -114,7 +118,7 @@ The spine of the app. Nothing derived is stored twice:
 
 ## Database
 
-Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`, `0005_rate_limit`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector), rate_limit_buckets.
+Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`, `0005_rate_limit`, `0006_error_events`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector), rate_limit_buckets, error_events.
 
 RLS restricts students to their own rows; `methodology_chunks` is publicly readable. The server uses the service-role key and scopes queries by `user_id` at the application layer.
 
@@ -122,7 +126,7 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-17 test files / 174 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), `CountUp`, email link resolution, and the health / outreach / jobs-search route handlers.
+18 test files / 182 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), `CountUp`, email link resolution, and the health / outreach / jobs-search route handlers.
 
 `npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (≈20% lines, 15% branches), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 

@@ -218,7 +218,9 @@ async function retrieveMethodology(feature: string, userInput: string): Promise<
       ).join('\n\n');
     }
   } catch (e) {
-    console.error('RAG retrieval failed:', e);
+    logger.error('mentor engine — RAG retrieval failed', {
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
 
   return '';

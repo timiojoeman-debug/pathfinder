@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 export type AIRequest = {
   systemPrompt: string;
@@ -103,7 +104,8 @@ async function callOpenAI(request: AIRequest): Promise<string> {
 
   if (!res.ok) {
     const errText = await res.text();
-    console.error("OpenAI error", errText);
+    // Truncated: provider errors can echo the whole request payload back.
+    logger.error("OpenAI API error", { status: res.status, error: errText.slice(0, 300) });
     handleOpenAIErrorResponse(res, errText);
   }
 
@@ -126,7 +128,9 @@ export async function generateWithAI(request: AIRequest, fallback: () => string)
       throw err;
     }
     // For other AIErrors (rate limit, server down) and unexpected errors, use fallback
-    console.error("OpenAI request failed, using fallback", err);
+    logger.error("OpenAI request failed, serving fallback", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return { content: fallback() };
   }
 }
@@ -196,9 +200,9 @@ export async function callAI<T = Record<string, unknown>>(
         `Failed to parse AI response as JSON after retry: ${firstErr instanceof Error ? firstErr.message : String(firstErr)}. Raw content: ${stripped.slice(0, 200)}...`,
       );
     }
-    console.warn(
-      `AI response was not valid JSON, retrying once: ${firstErr instanceof Error ? firstErr.message : String(firstErr)}`,
-    );
+    logger.warn("AI response was not valid JSON, retrying once", {
+      error: firstErr instanceof Error ? firstErr.message : String(firstErr),
+    });
     return callAI<T>(params, true);
   }
 }

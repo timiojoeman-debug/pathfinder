@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { callAIValidated, AIError, aiShape } from '@/lib/ai';
 import { buildTitleVariantPrompt } from '@/lib/prompts/direction-prompts';
 import { readBody, zShort } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 /** This prompt returns `variants` at the root, but `aiShape` also tolerates
  *  the model nesting it under `data` on some runs. */
@@ -52,7 +53,9 @@ export async function POST(req: Request) {
         { status: err.status || 503 }
       );
     }
-    console.error('Title variants error:', err);
+    logger.error('direction/title-variants failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json({ error: 'Failed to generate title variants' }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { NETWORKING_STRATEGY } from '@/lib/methodology/networking';
 import { COFFEE_CHAT } from '@/lib/methodology/coffee-chat';
 import { FOUR_PILLARS } from '@/lib/methodology/four-pillars';
 import { INTERVIEW_PREP } from '@/lib/methodology/interview-prep';
+import { logger } from '@/lib/logger';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/embeddings';
 
@@ -184,7 +185,10 @@ export async function embedDocumentChunks(): Promise<void> {
         embedding,
       }, { onConflict: 'title' });
     } catch (e) {
-      console.error(`Failed to embed chunk "${chunk.title}":`, e);
+      logger.error('retrieval — failed to embed methodology chunk', {
+        title: chunk.title,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 }
