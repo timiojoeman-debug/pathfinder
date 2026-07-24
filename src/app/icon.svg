@@ -1,12 +1,28 @@
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PathFinder">
-  <!-- Favicon: the PathFinder mark reduced to its simplest form. The amber bowl
-       is "the path" forming the P; its counter is a right-pointing arrow (the
-       big logo's motion, expressed as negative space) that survives to ~32px and
-       harmlessly reads as a plain P at 16px. Warm-paper palette: cream stem,
-       amber bowl, warm-brown tile — matched to pf-theme.css, not the pure-black
-       brand board. -->
-  <rect width="64" height="64" rx="15" fill="#2B2115"/>
+  <!-- Favicon: the PathFinder mark reduced for small sizes but kept warm and
+       dimensional. Cream stem + amber-gradient bowl form the P; the bowl's
+       counter is a curved hook (the "path" of the big logo, as negative space).
+       Gradient, a soft glow and a top rim carry depth that a flat two-tone lost.
+       Verified legible to 16px. Palette matched to pf-theme.css (warm paper),
+       not the pure-black brand board. -->
+  <defs>
+    <linearGradient id="pf-tile" x1="0" y1="0" x2="0" y2="64">
+      <stop offset="0" stop-color="#352A1C"/><stop offset="1" stop-color="#1E1610"/>
+    </linearGradient>
+    <linearGradient id="pf-amber" x1="24" y1="15" x2="44" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EEB16B"/><stop offset="1" stop-color="#A85E33"/>
+    </linearGradient>
+    <radialGradient id="pf-glow" cx="38" cy="24" r="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D2894C" stop-opacity=".28"/><stop offset="1" stop-color="#D2894C" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="pf-rim" x1="0" y1="0" x2="0" y2="64">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".18"/><stop offset=".5" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#pf-tile)"/>
+  <rect width="64" height="64" rx="15" fill="url(#pf-glow)"/>
   <rect x="18" y="15" width="9" height="34" rx="2.5" fill="#F7F1E4"/>
-  <path d="M27 15 h9 a12.5 12.5 0 0 1 0 25 h-9 z" fill="#D2894C"/>
-  <path d="M27 22 h6 l5 5.5 l-5 5.5 h-6 z" fill="#2B2115"/>
+  <path d="M27 15 h9 a12.5 12.5 0 0 1 0 25 h-9 z" fill="url(#pf-amber)"/>
+  <path d="M27 21.5 h7 a6 6 0 0 1 4.6 9.9 l-3.1 -2.2 a2.4 2.4 0 0 0 -1.7 -4.1 h-5.8 z" fill="#221A12"/>
+  <rect x=".6" y=".6" width="62.8" height="62.8" rx="14.4" fill="none" stroke="url(#pf-rim)"/>
 </svg>
