@@ -33,6 +33,7 @@ import {
   type JfResult,
   type OnbState,
 } from "./logic";
+import { categoryOf, LEETCODE_CATEGORIES, LEETCODE_PROBLEMS } from "./leetcode";
 import { makeEvent, type PfEvent, type PfEventType, type PfPhase } from "./events";
 import { deriveProfile, type CareerProfile, type ProfileInput } from "./profile";
 import { computeProgress, type ProgressReport } from "./progress";
@@ -117,7 +118,11 @@ interface PfState {
 
   /* interview */
   ivTab: string;
+  /** Per-category solved counts. A projection of `ivProblems`, kept in the
+   *  store because the profile and progress derivations read it. */
   ivSolved: Record<string, number>;
+  /** Solved problems by slug — the source of truth for LeetCode progress. */
+  ivProblems: Record<string, boolean>;
   fbCompany: string;
   fbRating: number;
   fbNote: string;
@@ -164,7 +169,8 @@ interface PfState {
 
   generateOutreach: () => void;
 
-  bumpPattern: (name: string, total: number, def: number) => void;
+  /** Mark a problem solved, or un-mark it if it already was. */
+  toggleProblem: (slug: string) => void;
   saveFeedback: () => void;
 
   moveCard: (key: string, toId: BoardColumn["id"]) => void;
@@ -242,6 +248,7 @@ export const usePfStore = create<PfState>()(
 
       ivTab: "leetcode",
       ivSolved: {},
+      ivProblems: {},
       fbCompany: "",
       fbRating: 0,
       fbNote: "",
@@ -425,11 +432,37 @@ export const usePfStore = create<PfState>()(
         get().emit("RecruiterContacted", "networking", `Outreach sent to ${company} (${s.netPersona})`, { company, persona: s.netPersona });
       },
 
-      bumpPattern: (name, total, def) => {
-        set((s) => ({
-          ivSolved: { ...s.ivSolved, [name]: Math.min(total, (s.ivSolved[name] ?? def) + 1) },
-        }));
-        get().emit("LeetCodeSolved", "interview", `Solved a ${name} problem`, { pattern: name });
+      toggleProblem: (slug) => {
+        const problem = LEETCODE_PROBLEMS.find((p) => p.slug === slug);
+        if (!problem) return;
+        const wasSolved = !!get().ivProblems[slug];
+
+        set((s) => {
+          const ivProblems = { ...s.ivProblems };
+          if (wasSolved) delete ivProblems[slug];
+          else ivProblems[slug] = true;
+
+          // `ivSolved` is a pure projection of `ivProblems`, recomputed rather
+          // than incremented so the per-category counts can never drift from
+          // the ticked problems. Recomputing every category also retires the
+          // legacy counts that were logged against the five invented patterns.
+          const ivSolved: Record<string, number> = {};
+          for (const c of LEETCODE_CATEGORIES) {
+            ivSolved[c.name] = c.problems.filter((p) => ivProblems[p.slug]).length;
+          }
+          return { ivProblems, ivSolved };
+        });
+
+        // Only solving is an event. Un-ticking is a correction to the log, not
+        // an achievement to record.
+        if (!wasSolved) {
+          const category = categoryOf(slug) ?? "LeetCode";
+          get().emit("LeetCodeSolved", "interview", `Solved ${problem.name} (${category})`, {
+            slug,
+            pattern: category,
+            difficulty: problem.difficulty,
+          });
+        }
       },
       saveFeedback: () => {
         const s = get();
@@ -573,6 +606,7 @@ export const usePfStore = create<PfState>()(
         netGenerated: s.netGenerated,
         ivTab: s.ivTab,
         ivSolved: s.ivSolved,
+        ivProblems: s.ivProblems,
         ivFeedback: s.ivFeedback,
         diags: s.diags,
         board: s.board,

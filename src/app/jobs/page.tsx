@@ -9,8 +9,18 @@
 import { useEffect, useState } from "react";
 import { buildCoverLetter, fitTone, targetKeywords } from "@/lib/pf/logic";
 import { usePfStore, type SavedJob } from "@/lib/pf/store";
-import { Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
+import { Chip, Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
+
+/** Work modes the search can genuinely narrow on. "On-site" is absent because
+ *  adverts rarely say it, so searching the term would hide the roles it means
+ *  to find. */
+type WorkMode = "any" | "remote" | "hybrid";
+const WORK_MODES: [WorkMode, string][] = [
+  ["any", "Any mode"],
+  ["remote", "Remote"],
+  ["hybrid", "Hybrid"],
+];
 
 interface AiJdRead { score: number | null; checklist: string[]; warning: string | null }
 interface AiLetter { paras: string[]; assumptions: string[]; words: number }
@@ -256,6 +266,9 @@ export default function JobsPage() {
   const jobsAll = [...s.savedJobs];
 
   const [query, setQuery] = useState("");
+  const [location, setLocation] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [workMode, setWorkMode] = useState<WorkMode>("any");
   const [searching, setSearching] = useState(false);
   const [liveJobs, setLiveJobs] = useState<SavedJob[]>([]);
   const [searchNote, setSearchNote] = useState<string | null>(null);
@@ -270,7 +283,13 @@ export default function JobsPage() {
       const res = await fetch("/api/jobs/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roleType: q, cvSummary: s.cvText }),
+        body: JSON.stringify({
+          roleType: q,
+          cvSummary: s.cvText,
+          location: location.trim() || undefined,
+          industry: industry.trim() || undefined,
+          workMode: workMode === "any" ? undefined : workMode,
+        }),
       });
       const json = (res.ok ? await res.json() : null) as
         | { jobs?: unknown; configured?: boolean; message?: string }
@@ -327,8 +346,51 @@ export default function JobsPage() {
           />
           {searching && <span className="pf-anim-spin" style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid var(--panel3)", borderTopColor: "var(--accent)", flexShrink: 0 }} />}
         </div>
-        <span className="pf-mono" style={{ fontSize: 11, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel)", borderRadius: 9, padding: "0 14px", height: 46, display: "flex", alignItems: "center" }}>Fit ≥ 60</span>
-        <span className="pf-mono" style={{ fontSize: 11, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel)", borderRadius: 9, padding: "0 14px", height: 46, display: "flex", alignItems: "center" }}>Startup 2–50</span>
+        <button
+          onClick={() => void runSearch()}
+          disabled={!query.trim() || searching}
+          style={{
+            cursor: !query.trim() || searching ? "default" : "pointer", height: 46, padding: "0 22px", borderRadius: 12,
+            border: "none", background: !query.trim() || searching ? "var(--panel3)" : "var(--accent)",
+            color: !query.trim() || searching ? "var(--faint)" : "#F7F1E4", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap",
+          }}
+        >
+          {searching ? "Searching…" : "Search"}
+        </button>
+      </Reveal>
+
+      {/* Filters. These are the ones the search actually honours — the two
+          pills that used to sit here ("Fit ≥ 60", "Startup 2–50") looked like
+          controls but filtered nothing, and there is no company-size data
+          behind the second one to filter on. */}
+      <Reveal style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+        <input
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
+          placeholder="Location — e.g. London"
+          className="pf-input"
+          style={{ height: 42, padding: "0 14px", flex: "1 1 170px", minWidth: 0, fontSize: 13 }}
+        />
+        <input
+          value={industry}
+          onChange={(e) => setIndustry(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
+          placeholder="Industry — e.g. fintech"
+          className="pf-input"
+          style={{ height: 42, padding: "0 14px", flex: "1 1 170px", minWidth: 0, fontSize: 13 }}
+        />
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {WORK_MODES.map(([value, label]) => (
+            <Chip key={value} size="sm" label={label} on={workMode === value} onClick={() => setWorkMode(value)} />
+          ))}
+        </div>
+        {workMode !== "any" && (
+          <span style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.45, flex: "1 1 100%" }}>
+            Work mode narrows by keyword — job boards don&apos;t expose it as a field, so check the
+            advert before assuming a role is {workMode}.
+          </span>
+        )}
       </Reveal>
 
       {searchNote && (

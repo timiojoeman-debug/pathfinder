@@ -18,14 +18,32 @@ import { logger } from "@/lib/logger";
  * made up.
  */
 
+/**
+ * `companySize` used to be accepted here and silently ignored — Adzuna exposes
+ * no company-size data, and the listing payload carries none either, so there
+ * was nothing to filter on. It is gone rather than validated-and-dropped,
+ * because a field the schema accepts reads as a field the search honours.
+ */
 const SearchSchema = z.object({
   location: zShort().optional(),
   roleType: zShort().optional(),
   industry: zShort().optional(),
   workMode: zShort().optional(),
-  companySize: zShort().optional(),
   cvSummary: zText().optional(),
 });
+
+/**
+ * Work mode is a keyword narrowing, not a hard filter.
+ *
+ * Adzuna has no work-mode field, but it full-text searches the advert, so
+ * adding "remote" to the query genuinely biases results toward remote roles.
+ * On-site is deliberately absent: few adverts say "on-site", so searching for
+ * it would exclude most of the roles it is meant to find.
+ */
+const WORK_MODE_TERMS: Record<string, string> = {
+  remote: "remote",
+  hybrid: "hybrid",
+};
 
 type JobListing = {
   id: string;
@@ -167,7 +185,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ jobs: [], configured: false, message: NOT_CONFIGURED_MESSAGE });
   }
 
-  const what = [body.roleType, body.industry].filter(Boolean).join(" ").trim() || "intern";
+  const workModeTerm = body.workMode ? WORK_MODE_TERMS[body.workMode.trim().toLowerCase()] : undefined;
+  const what = [body.roleType, body.industry, workModeTerm].filter(Boolean).join(" ").trim() || "intern";
 
   try {
     const jobs = await searchAdzuna(creds, what, body.location, body.cvSummary ?? "");

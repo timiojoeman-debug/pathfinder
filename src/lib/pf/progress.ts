@@ -6,6 +6,7 @@
  */
 
 import { toneFor } from "./logic";
+import { LEETCODE_TOTAL } from "./leetcode";
 import type { CareerProfile } from "./profile";
 import type { PfPhase } from "./events";
 
@@ -61,7 +62,7 @@ function networkingPct(p: CareerProfile): number {
 
 /** Interview readiness: LeetCode coverage blended with reflections logged. */
 function interviewPct(p: CareerProfile): number {
-  const leet = (p.leetSolved / 75) * 70;
+  const leet = (p.leetSolved / LEETCODE_TOTAL) * 70;
   const reflect = Math.min(1, p.interviewsLogged / 3) * 30;
   return clamp(leet + reflect);
 }

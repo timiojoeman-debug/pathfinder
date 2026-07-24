@@ -8,6 +8,7 @@
  */
 
 import { KEYWORD_VOCAB, type BoardColumn } from "./data";
+import { LEETCODE_CATEGORIES, LEET_ON_TRACK } from "./leetcode";
 import { analyzeCvText, directionStatement, targetKeywords, trackerDerived } from "./logic";
 import type { PfEvent, PfPhase } from "./events";
 import type { ChatMsg, InterviewFeedback, SavedJob } from "./store";
@@ -95,16 +96,6 @@ export interface CareerProfile {
   events: PfEvent[];
 }
 
-// Pattern list only supplies the names + per-pattern totals; a new user has
-// solved 0 until they log real progress (no seeded defaults).
-const LEET_PATTERNS: [string, number][] = [
-  ["Two Pointers", 10],
-  ["Sliding Window", 10],
-  ["BFS / DFS", 10],
-  ["Dynamic Programming", 10],
-  ["Graphs", 15],
-];
-
 /** Skills *evidenced in the CV* — kept disjoint from missing/target skills so
  *  the profile never claims a skill is both present and absent. */
 function detectSkills(cvText: string): string[] {
@@ -155,12 +146,21 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
   ];
 
   // Interview — solved counts come only from real logged progress.
+  //
+  // A category is "weak" below half solved, but the list is deliberately
+  // lopsided (Tries and Intervals hold one problem each), so a single untouched
+  // problem would otherwise report as a weak pattern with the same weight as
+  // an untouched thirteen. Categories below MIN_WEAK_SIZE are judged only on
+  // whether they have been started at all.
+  const MIN_WEAK_SIZE = 3;
   let leetSolved = 0;
   const weakPatterns: string[] = [];
-  LEET_PATTERNS.forEach(([name, total]) => {
+  LEETCODE_CATEGORIES.forEach(({ name, problems }) => {
+    const total = problems.length;
     const cur = Math.min(total, s.ivSolved[name] ?? 0);
     leetSolved += cur;
-    if (cur / total < 0.5) weakPatterns.push(name);
+    const weak = total < MIN_WEAK_SIZE ? cur === 0 : cur / total < 0.5;
+    if (weak) weakPatterns.push(name);
   });
 
   const targetCompanies = gatherTargetCompanies(s.board, s.savedJobs);
@@ -176,7 +176,7 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
   else weaknesses.push("Portfolio is thin");
   if (s.netSent > 8) strengths.push("Actively networking");
   else weaknesses.push("Little networking activity");
-  if (leetSolved >= 45) strengths.push("Technical prep on track");
+  if (leetSolved >= LEET_ON_TRACK) strengths.push("Technical prep on track");
   if (weakPatterns.length) weaknesses.push(`Weak LeetCode patterns: ${weakPatterns.join(", ")}`);
   if (derived.offers > 0) strengths.push("Offer in hand");
 
@@ -189,7 +189,7 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
         ? "jobs"
         : s.netSent <= 8
           ? "networking"
-          : leetSolved < 45
+          : leetSolved < LEET_ON_TRACK
             ? "interview"
             : "tracker";
 

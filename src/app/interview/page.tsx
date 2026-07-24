@@ -5,60 +5,15 @@
  * builder, likely questions, company briefing and post-interview reflections.
  */
 
-import { IV_TABS, LEETCODE_PATTERNS } from "@/lib/pf/data";
+import { IV_TABS } from "@/lib/pf/data";
 import { usePfStore } from "@/lib/pf/store";
 import { PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 import { StarTab } from "@/components/pf/interview/star-tab";
 import { QuestionsTab } from "@/components/pf/interview/questions-tab";
 import { BriefingTab } from "@/components/pf/interview/briefing-tab";
+import { LeetTab } from "@/components/pf/interview/leetcode-tab";
 import { FeedbackAnalysis } from "@/components/pf/interview/feedback-analysis";
-
-function LeetTab() {
-  const s = usePfStore();
-  // Each row carries its own solved count and the total is reduced from them,
-  // so the figure in the header can never drift from the rows beneath it.
-  const rows = LEETCODE_PATTERNS.map(([name, total]) => {
-    const solved = Math.min(total, s.ivSolved[name] ?? 0);
-    const r = solved / total;
-    return {
-      name, total, solved,
-      count: solved + "/" + total,
-      pct: Math.round(r * 100) + "%",
-      tone: r >= 0.65 ? "var(--strong)" : r >= 0.4 ? "var(--warn)" : "var(--faint)",
-    };
-  });
-  const solvedSum = rows.reduce((sum, p) => sum + p.solved, 0);
-
-  return (
-    <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", maxWidth: 720 }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "20px 24px 12px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>LeetCode patterns · NeetCode 75</h2>
-        <span className="pf-mono" style={{ fontSize: 10.5, color: "var(--muted)" }}>{solvedSum} / 75 solved</span>
-      </div>
-      {rows.map((p) => (
-        <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 13, padding: "9px 24px", borderTop: "1px solid var(--line2)" }}>
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{p.name}</span>
-          <span style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--panel3)", overflow: "hidden", maxWidth: 150 }}>
-            <span className="pf-anim-grow" style={{ display: "block", height: "100%", width: p.pct, background: p.tone }} />
-          </span>
-          <span className="pf-mono" style={{ fontSize: 11.5, fontWeight: 700, color: p.tone, width: 44, textAlign: "right" }}>{p.count}</span>
-          <button
-            onClick={() => s.bumpPattern(p.name, p.total, 0)}
-            title="Log a solved problem"
-            className="pf-mono"
-            style={{ cursor: "pointer", width: 28, height: 28, borderRadius: 8, border: "1px solid var(--line)", background: "var(--panel2)", color: "var(--accent)", fontSize: 14, fontWeight: 700 }}
-          >
-            +
-          </button>
-        </div>
-      ))}
-      <div style={{ padding: "12px 24px", fontSize: 11.5, color: "var(--faint)" }}>
-        Tick <span className="pf-mono" style={{ color: "var(--accent)" }}>+</span> each time you solve a problem — progress persists between sessions.
-      </div>
-    </Reveal>
-  );
-}
 
 function FeedbackTab() {
   const s = usePfStore();

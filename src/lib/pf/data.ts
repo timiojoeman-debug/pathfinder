@@ -288,16 +288,8 @@ export const COFFEE_CHAT_FRAMEWORK = [
 
 export const IV_TABS: [string, string][] = [["leetcode", "LeetCode"], ["star", "STAR"], ["questions", "Questions"], ["briefing", "Briefing"], ["feedback", "Feedback"]];
 
-/** [name, total, defaultSolved] */
-export const LEETCODE_PATTERNS: [string, number, number][] = [
-  ["Two Pointers", 10, 9],
-  ["Sliding Window", 10, 8],
-  ["BFS / DFS", 10, 7],
-  ["Dynamic Programming", 10, 4],
-  ["Graphs", 15, 5],
-];
-
-export const LEETCODE_BASE_SOLVED = 19;
+// The LeetCode list lives in `./leetcode.ts` — 18 real categories and 100 real
+// problems, replacing the five invented patterns that used to sit here.
 
 export const INTERVIEW_QUESTIONS = [
   { type: "BEHAVIOURAL", tone: "var(--accent)", q: "Tell me about a time you disagreed with a teammate.", a: "Use your PR-review STAR story — conflict, the process you proposed, and the measurable calm that followed." },

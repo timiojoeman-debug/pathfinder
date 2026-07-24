@@ -102,6 +102,11 @@ If the store is unreachable the limiter degrades to per-instance counting rather
   list with `configured: false` otherwise. **It must never return placeholder
   listings** — it previously shipped three invented companies with
   `example.com` apply links. Tests in `__tests__/search.test.ts` enforce that.
+  Filters: `location` maps to Adzuna's `where`; `roleType`, `industry` and
+  `workMode` are concatenated into `what`. Work mode is a **keyword narrowing,
+  not a hard filter** (no job board exposes it as a field), and the UI says so.
+  `companySize` was removed rather than left validated-and-ignored — Adzuna has
+  no company-size data, so any control for it would be decorative.
 - `/intel/analyze` — opportunity/priority-move analysis for the command centre
 - `/networking/{outreach,analyze-profile}` — AI-generated outreach
 - `/network/{coffee-chat-prep,follow-up,referral-package,startup-outreach}` — networking prep
@@ -120,6 +125,11 @@ The spine of the app. Nothing derived is stored twice:
 - `recommendations.ts` — ranks the single next action
 - `store.ts` — the Zustand store (persisted, `skipHydration`)
 - `logic.ts`, `data.ts`, `orchestrator.ts` — pure derivation helpers, static content, AI orchestration
+- `leetcode.ts` — the NeetCode list: 18 categories, 100 real problems with verified
+  LeetCode numbers and links. Progress is keyed by problem `slug`, and `ivSolved`
+  (per-category counts) is a **projection** of `ivProblems`, recomputed on every
+  toggle — never incremented, so the counts cannot drift from the ticked problems.
+  `LEETCODE_TOTAL` and `LEET_ON_TRACK` are derived; do not hardcode 75 or 45 again.
 
 **Progress must stay evidence-derived.** Self-reported input (e.g. the Stage-00 sliders) never feeds the CV/networking/interview pillars — showing "CV 45%" before a CV exists is fabricated progress. Onboarding hands over its *target* (which is real input) and logs baseline events; the pillars stay at zero until real work exists.
 
@@ -163,9 +173,9 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-22 test files / 213 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search route handlers.
+24 test files / 229 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the LeetCode data and `toggleProblem` projection, the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search route handlers.
 
-`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈21.1% lines / 15.0% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
+`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈21.5% lines / 15.1% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 
 Still thin: most route handlers, and the phase pages themselves.
 
