@@ -9,14 +9,9 @@ import { IV_TABS, LEETCODE_PATTERNS } from "@/lib/pf/data";
 import { usePfStore } from "@/lib/pf/store";
 import { PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
-
-/** STAR scaffold prompts — guidance, not a preset story. */
-const STAR_PROMPTS: { k: string; label: string; prompt: string }[] = [
-  { k: "S", label: "Situation", prompt: "Set the scene in one sentence — where were you and what was at stake?" },
-  { k: "T", label: "Task", prompt: "What was your specific responsibility or goal?" },
-  { k: "A", label: "Action", prompt: "What did you do? Lead with \"I…\" verbs and be concrete." },
-  { k: "R", label: "Result", prompt: "The measurable outcome — a number, or what changed because of you." },
-];
+import { StarTab } from "@/components/pf/interview/star-tab";
+import { QuestionsTab } from "@/components/pf/interview/questions-tab";
+import { BriefingTab } from "@/components/pf/interview/briefing-tab";
 
 function LeetTab() {
   const s = usePfStore();
@@ -60,48 +55,6 @@ function LeetTab() {
       <div style={{ padding: "12px 24px", fontSize: 11.5, color: "var(--faint)" }}>
         Tick <span className="pf-mono" style={{ color: "var(--accent)" }}>+</span> each time you solve a problem — progress persists between sessions.
       </div>
-    </Reveal>
-  );
-}
-
-function StarTab() {
-  return (
-    <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", maxWidth: 720 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>STAR story builder</h2>
-      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Draft one story per prompt — e.g. &quot;a time you handled conflict&quot;. Keep it to four crisp beats.</span>
-      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-        {STAR_PROMPTS.map((st) => (
-          <div key={st.k} style={{ border: "1px solid var(--line)", borderRadius: 11, padding: "12px 14px", background: "var(--panel2)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5 }}>
-              <span className="pf-mono" style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>{st.k}</span>
-              <span style={{ fontSize: 12, fontWeight: 700 }}>{st.label}</span>
-            </div>
-            <div style={{ fontSize: 12.5, color: "var(--faint)", lineHeight: 1.55, fontStyle: "italic" }}>{st.prompt}</div>
-          </div>
-        ))}
-      </div>
-    </Reveal>
-  );
-}
-
-function QuestionsTab() {
-  return (
-    <Reveal style={{ border: "1px dashed var(--lineStrong)", borderRadius: 18, background: "var(--panel)", padding: "32px 24px", maxWidth: 720, textAlign: "center" }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 6px" }}>No tailored questions yet</h2>
-      <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: "48ch", margin: "0 auto" }}>
-        Set your <strong>career direction</strong> and analyze a role in Opportunity Discovery — likely behavioural, technical and role questions will generate here from that context.
-      </p>
-    </Reveal>
-  );
-}
-
-function BriefingTab() {
-  return (
-    <Reveal style={{ border: "1px dashed var(--lineStrong)", borderRadius: 18, background: "var(--panel)", padding: "32px 24px", maxWidth: 720, textAlign: "center" }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 6px" }}>No company briefing yet</h2>
-      <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: "48ch", margin: "0 auto" }}>
-        Save a role in Opportunity Discovery, then generate a briefing here — what the company does, likely questions, and the angle that fits your profile.
-      </p>
     </Reveal>
   );
 }

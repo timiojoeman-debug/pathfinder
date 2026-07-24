@@ -44,6 +44,24 @@ So AI routes use **`callAIValidated(params, schema, context)`**, which parses th
 
 **When adding an AI route, check what the prompt actually asks for.** Most prompt builders nest the payload under `data`; a schema that expects it at the root will fail every time and silently serve the fallback.
 
+### Wiring an AI route into a page
+
+Client-side AI calls go through **`useAiTask(endpoint)`** (`lib/pf/use-ai.ts`), never a bare
+`fetch` in a component. It owns loading, error text, and aborting a superseded request, and it
+maps two statuses that a raw error string handles badly:
+
+- **401** — every phase page works logged-out (state is local) but every AI route sits behind the
+  auth cookie, so "not signed in" is the first response many students will see. It surfaces as
+  `needsAuth`, rendered as guidance with a sign-in link, not as a red failure.
+- **429** — the AI bucket is 30/min with a real daily quota, so this gets its own wording.
+
+Panels are built from the primitives in `components/pf/ai-panel.tsx` (`GenerateButton`, `AiError`,
+`AiSection`, `AiList`, `AiTag`, `AiCaveat`) so every generate surface behaves the same way, and
+every generated block carries a caveat line — AI output here is a first draft, and the product
+cannot ask students to be honest about their CV while presenting guesses as facts.
+
+Each wired action emits an `AiConsulted` event so the work shows up in the Career-OS event log.
+
 ### API Routes (`src/app/api/`)
 
 Route Handlers, POST unless noted. Auth routes set httpOnly JWT cookies. Middleware applies rate limits
@@ -126,9 +144,9 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-18 test files / 182 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), `CountUp`, email link resolution, and the health / outreach / jobs-search route handlers.
+19 test files / 191 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), the `useAiTask` client hook, `CountUp`, email link resolution, and the health / outreach / jobs-search route handlers.
 
-`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (≈20% lines, 15% branches), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
+`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈20.6% lines / 15.3% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 
 Still thin: most route handlers, and the phase pages themselves.
 
@@ -139,5 +157,12 @@ See `.env.example`. Required: `OPENAI_API_KEY`, `JWT_SECRET` (auth throws at sta
 ## Known Issues
 
 - Test coverage is well below the 80% target, especially for route handlers
+- **AI routes still with no UI call site**: `/cv/{ats-audit,match,projects}`,
+  `/project-builder/generate`, `/intel/analyze`, `/linkedin/check`,
+  `/networking/analyze-profile`, `/network/{coffee-chat-prep,follow-up,referral-package,startup-outreach}`,
+  `/interview/{feedback,star-tweak,rate-solution,random-problem}`, `/analytics/dashboard`.
+  They are built and tested but unreachable from the product — wire them through
+  `useAiTask` + `components/pf/ai-panel.tsx` rather than writing new panels from scratch.
+  (`/interview/{questions,company-briefing,star-builder}` were wired this way and are live.)
 - `universities/` still points at a placeholder `partnerships@pathfinder.app` mailbox
 - `NEXT_PUBLIC_APP_URL` is unset in production, so absolute links fall back to relative
