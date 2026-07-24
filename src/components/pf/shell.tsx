@@ -294,7 +294,11 @@ const APP_ROUTES = ["/start", "/intel", "/direction", "/cv", "/jobs", "/networki
 function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
+    // Must match the 860px breakpoint in globals.css. If the CSS turns the
+    // sidebar into an off-canvas drawer at a width where this still reports
+    // desktop, the menu button toggles collapse instead of opening the drawer
+    // and navigation becomes unreachable.
+    const mq = window.matchMedia("(max-width: 860px)");
     const update = () => setIsMobile(mq.matches);
     update();
     mq.addEventListener("change", update);

@@ -1118,3 +1118,94 @@ body::after {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Mobile / responsive layer ──────────────────────────────────────────
+   The app shell referenced .pf-sidebar, .pf-main, .pf-scrim-mobile and
+   .pf-hide-mobile, but none of them were ever defined. On a phone the sidebar
+   therefore kept its desktop `position: sticky` and sat on top of the page
+   content — the Settings screen rendered as overlapping, unreadable text.
+   Phase pages also used inline `repeat(3,1fr)` grids with no fallback, so
+   cards ran off the right edge.
+
+   Breakpoint is 860px: below it the sidebar becomes an off-canvas drawer,
+   toggled by the header menu button via [data-mobile-open]. */
+
+/* Nothing may cause a horizontal scrollbar on a phone. */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+@media (max-width: 860px) {
+  /* Off-canvas drawer. Fixed (not sticky) so it overlays deliberately rather
+     than fighting the document flow, and slid out of view until opened. */
+  .pf-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100dvh !important;   /* dvh: excludes mobile browser chrome */
+    width: 268px !important;
+    z-index: 70;
+    transform: translateX(-100%);
+    transition: transform 0.28s var(--ease);
+    box-shadow: 0 0 40px rgba(30, 22, 12, 0.28);
+  }
+  .pf-sidebar[data-mobile-open="1"] { transform: translateX(0); }
+
+  /* Dim + click-catcher behind the open drawer. */
+  .pf-scrim-mobile {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: var(--scrim, rgba(30, 22, 12, 0.45));
+    backdrop-filter: blur(2px);
+  }
+
+  /* The drawer is an overlay, so main content owns the full width. */
+  .pf-main { padding: 22px 16px 56px !important; }
+
+  .pf-hide-mobile { display: none !important; }
+
+  /* Multi-column layouts collapse rather than overflow. This is the fix for
+     the phase cards, "tracked" cards and next-action rows running off-screen:
+     they are inline styles, so the override has to be broad and !important. */
+  .pf [style*="repeat(3,1fr)"],
+  .pf [style*="repeat(3, 1fr)"],
+  .pf [style*="repeat(2,1fr)"],
+  .pf [style*="repeat(2, 1fr)"],
+  .pf-landing [style*="repeat(3,1fr)"],
+  .pf-landing [style*="repeat(3, 1fr)"],
+  .pf-landing [style*="repeat(2,1fr)"],
+  .pf-landing [style*="repeat(2, 1fr)"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Every other multi-column split found in the phase pages and the landing
+     hero: the "career position report" card (230px 1fr / 1.6fr 54px 1.2fr /
+     1fr 1.05fr) was clipping its right-hand column off the screen. Listed
+     explicitly because these are inline styles with bespoke track sizes. */
+  .pf [style*="0.9fr"], .pf [style*="1.1fr"],
+  .pf [style*="1.05fr"], .pf [style*="230px 1fr"], .pf [style*="54px"],
+  .pf-landing [style*="0.9fr"], .pf-landing [style*="1.1fr"],
+  .pf-landing [style*="1.05fr"], .pf-landing [style*="230px 1fr"],
+  .pf-landing [style*="54px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* The centre rail of the 3-track report split is a decorative divider that
+     only makes sense side-by-side. */
+  .pf-landing [style*="1.6fr 54px 1.2fr"] > *:nth-child(2) { display: none; }
+
+  /* Wide fixed-width panels (the landing "career position report") shrink
+     instead of forcing the page sideways. */
+  .pf-landing [style*="maxWidth"] { max-width: 100% !important; }
+}
+
+/* Phones proper: tighten type and spacing. */
+@media (max-width: 560px) {
+  .pf-main { padding: 18px 14px 48px !important; }
+
+  /* Long single words (URLs, company names) must wrap, not overflow. */
+  .pf, .pf-landing { overflow-wrap: anywhere; }
+
+  /* Tap targets: 44px is the accessible minimum. */
+  .pf button, .pf a[role="button"] { min-height: 44px; }
+}
