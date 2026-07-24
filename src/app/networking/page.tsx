@@ -21,6 +21,7 @@ import { useAuthStore } from "@/lib/stores";
 import { Chip, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 import { ContactWorkspace } from "@/components/pf/networking/contact-workspace";
+import { ProfileResearch } from "@/components/pf/networking/profile-research";
 import { StartupPanel } from "@/components/pf/networking/startup-panel";
 import { NaturalnessBadge, type Naturalness } from "@/components/pf/networking/naturalness-note";
 
@@ -96,6 +97,7 @@ export default function NetworkingPage() {
 
       <NextStep />
 
+      <ProfileResearch />
       <ContactWorkspace />
       <StartupPanel />
 

@@ -108,7 +108,8 @@ If the store is unreachable the limiter degrades to per-instance counting rather
   `companySize` was removed rather than left validated-and-ignored — Adzuna has
   no company-size data, so any control for it would be decorative.
 - `/intel/analyze` — opportunity/priority-move analysis for the command centre
-- `/networking/{outreach,analyze-profile}` — AI-generated outreach
+- `/networking/{outreach,analyze-profile}` — AI outreach and contact research
+  (`analyze-profile` reads a pasted profile; live in `profile-research.tsx`)
 - `/network/{coffee-chat-prep,follow-up,referral-package,startup-outreach}` — networking prep
 - `/interview/{questions,company-briefing,feedback,star-builder,star-tweak,rate-solution,random-problem}`
 - `/cover-letter/generate`, `/project-builder/generate`, `/linkedin/check`
@@ -181,9 +182,9 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-25 test files / 234 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the LeetCode data and `toggleProblem` projection, the assistant slice's advisory boundary, the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search route handlers.
+26 test files / 238 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the LeetCode data and `toggleProblem` projection, the assistant slice's advisory boundary, the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search / rate-solution route handlers.
 
-`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈21.1% lines / 14.8% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
+`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈21.4% lines / 14.9% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 
 Still thin: most route handlers, and the phase pages themselves.
 
@@ -194,14 +195,36 @@ See `.env.example`. Required: `OPENAI_API_KEY`, `JWT_SECRET` (auth throws at sta
 ## Known Issues
 
 - Test coverage is well below the 80% target, especially for route handlers
-- **AI routes still with no UI call site**: `/cv/projects`, `/networking/analyze-profile`,
-  `/interview/{star-tweak,rate-solution,random-problem}`, `/analytics/dashboard`.
-  They are built and tested but unreachable from the product — wire them through
-  `useAiTask` + `components/pf/ai-panel.tsx` rather than writing new panels from scratch.
-  Live examples to copy: `components/pf/interview/{questions,briefing,star}-tab.tsx`,
+- **AI routes left unwired on purpose** (not oversights — do not "fix" by wiring
+  without re-reading why):
+  - `/cv/projects` — redundant with `/project-builder/generate`, which is already
+    live in `components/pf/cv/projects-panel.tsx` with richer output. A second
+    project generator is a worse product, not a missing feature.
+  - `/interview/star-tweak` — a strict subset of `/interview/star-builder`
+    (tightened beats + tips, no feedback/questions/quality). The STAR tab already
+    covers it; wiring it adds a button with no new capability.
+  - `/interview/random-problem` — asks the model to invent a problem **and its
+    LeetCode URL**. A hallucinated link is exactly the fabrication the 100-problem
+    `leetcode.ts` list was built to remove, so the "surprise me" use case is served
+    client-side from the real list in `components/pf/interview/practice-panel.tsx`
+    instead, and this route stays dark.
+  - `/analytics/dashboard` — a stub `GET` returning `{message: …}`. Analytics are
+    already derived client-side by `progress.ts`; there is nothing to render until
+    it actually queries Supabase.
+  Live wiring examples to copy for genuinely new routes:
+  `components/pf/interview/{questions,briefing,star}-tab.tsx`,
+  `components/pf/interview/{practice,feedback-analysis}.tsx`,
   `components/pf/cv/{tailor,projects,linkedin}-panel.tsx`,
-  `components/pf/networking/{contact-workspace,startup-panel}.tsx`,
+  `components/pf/networking/{contact-workspace,startup-panel,profile-research}.tsx`,
   `components/pf/intel/analysis-panel.tsx`.
+- **`generateWithAI(fallback)` can serve a fabricated result as a 200.** Its
+  fallback fires on any transient AI failure, so a route that fabricates content in
+  that fallback ships it silently. `/interview/rate-solution` (a fixed `rating: 8`)
+  and `/networking/analyze-profile` (generic "common ground" about a real person)
+  both did this and were moved to `callAIValidated` + a 500 on failure — a rating
+  or a shared connection invented when the model was down is the same
+  confidence-over-no-evidence the product forbids everywhere else. Prefer
+  `callAIValidated` for anything that scores or asserts.
 - The mentor assistant (`components/pf/assistant.tsx`) is **advisory by decision,
   not by omission**. It has no tool calling and writes nothing to the store;
   `__tests__/assistant-slice.test.ts` guards that boundary. Giving it write
