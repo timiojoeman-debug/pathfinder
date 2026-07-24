@@ -385,7 +385,7 @@ export default function Landing() {
           </div>
           <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.02em" }}>PathFinder</span>
         </div>
-        <nav style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13.5, fontWeight: 500, color: "var(--muted)" }}>
+        <nav className="pf-hide-mobile" style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13.5, fontWeight: 500, color: "var(--muted)" }}>
           <a href="#product" className="pf-hover-row" style={navLink}>Product</a>
           <a href="#phases" className="pf-hover-row" style={navLink}>Phases</a>
           <a href="#results" className="pf-hover-row" style={navLink}>Approach</a>
@@ -632,9 +632,11 @@ export default function Landing() {
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>PathFinder</span>
         </div>
         <div style={{ display: "flex", gap: 26, fontSize: 13, color: "var(--faint)" }}>
+          {/* The header nav is hidden on phones, so this is the only route to
+              the universities page on mobile — it must live here. */}
+          <Link href="/universities" style={{ color: "inherit", textDecoration: "none" }}>For universities</Link>
           <Link href="/privacy" style={{ color: "inherit", textDecoration: "none" }}>Privacy</Link>
           <Link href="/terms" style={{ color: "inherit", textDecoration: "none" }}>Terms</Link>
-          <a href="mailto:support@pathfinder.app" style={{ color: "inherit", textDecoration: "none" }}>Contact</a>
         </div>
         <span style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: ".08em", color: "var(--faint)" }}>© 2026 PATHFINDER · CAREER INTELLIGENCE OS</span>
       </footer>

@@ -1175,7 +1175,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .pf-landing [style*="repeat(3, 1fr)"],
   .pf-landing [style*="repeat(2,1fr)"],
   .pf-landing [style*="repeat(2, 1fr)"] {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   /* Every other multi-column split found in the phase pages and the landing
@@ -1187,12 +1187,29 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .pf-landing [style*="0.9fr"], .pf-landing [style*="1.1fr"],
   .pf-landing [style*="1.05fr"], .pf-landing [style*="230px 1fr"],
   .pf-landing [style*="54px"] {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   /* The centre rail of the 3-track report split is a decorative divider that
      only makes sense side-by-side. */
   .pf-landing [style*="1.6fr 54px 1.2fr"] > *:nth-child(2) { display: none; }
+
+  /* `1fr` is shorthand for `minmax(auto, 1fr)`, and `auto` will not shrink
+     below the content's min-content width — so a card with a long unbreakable
+     row kept a 471px track inside a 353px container and spilled over the edge.
+     `minmax(0, 1fr)` lets the track shrink; `min-width: 0` does the same job
+     for grid and flex children, which otherwise refuse to go below min-content
+     and are the usual cause of "one word per line" columns. */
+  .pf [style*="display: grid"] > *,
+  .pf [style*="display:grid"] > *,
+  .pf [style*="display: flex"] > *,
+  .pf [style*="display:flex"] > *,
+  .pf-landing [style*="display: grid"] > *,
+  .pf-landing [style*="display:grid"] > *,
+  .pf-landing [style*="display: flex"] > *,
+  .pf-landing [style*="display:flex"] > * {
+    min-width: 0;
+  }
 
   /* Wide fixed-width panels (the landing "career position report") shrink
      instead of forcing the page sideways. */
@@ -1203,8 +1220,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
 @media (max-width: 560px) {
   .pf-main { padding: 18px 14px 48px !important; }
 
-  /* Long single words (URLs, company names) must wrap, not overflow. */
-  .pf, .pf-landing { overflow-wrap: anywhere; }
+  /* Long single words (URLs, company names) must wrap rather than overflow.
+     `break-word`, NOT `anywhere`: `anywhere` also feeds into intrinsic
+     min-content sizing, so every flex/grid item shrinks to the width of one
+     character — it turned the nav into "P r o d u c t" stacked vertically.
+     `break-word` breaks only a word that genuinely cannot fit. */
+  .pf, .pf-landing { overflow-wrap: break-word; }
 
   /* Tap targets: 44px is the accessible minimum. */
   .pf button, .pf a[role="button"] { min-height: 44px; }
