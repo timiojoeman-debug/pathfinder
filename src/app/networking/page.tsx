@@ -20,6 +20,9 @@ import { usePfStore } from "@/lib/pf/store";
 import { useAuthStore } from "@/lib/stores";
 import { Chip, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
+import { ContactWorkspace } from "@/components/pf/networking/contact-workspace";
+import { StartupPanel } from "@/components/pf/networking/startup-panel";
+import { NaturalnessBadge, type Naturalness } from "@/components/pf/networking/naturalness-note";
 
 const PERSONA_API_TYPE: Record<OutreachPersona, "recruiter" | "hiringManager" | "peer"> = {
   "Recruiter": "recruiter",
@@ -28,7 +31,7 @@ const PERSONA_API_TYPE: Record<OutreachPersona, "recruiter" | "hiringManager" | 
   "Startup founder": "peer",
 };
 
-interface AiOutreach { paras: string[]; followUp: string | null }
+interface AiOutreach { paras: string[]; followUp: string | null; naturalness: Naturalness | null }
 
 export default function NetworkingPage() {
   const s = usePfStore();
@@ -58,11 +61,14 @@ export default function NetworkingPage() {
         }),
       });
       const json: unknown = res.ok ? await res.json() : null;
-      const j = json as { message?: string; followUp?: string } | null;
+      const j = json as { message?: string; followUp?: string; naturalness?: Naturalness } | null;
       if (j?.message && j.message.trim().length > 60) {
         setAiMsg({
           paras: j.message.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean),
           followUp: typeof j.followUp === "string" && j.followUp.trim() ? j.followUp : null,
+          // The route scores every message it generates; showing the real
+          // verdict is the only honest version of the badge in the header.
+          naturalness: j.naturalness ?? null,
         });
       }
     } catch {
@@ -89,6 +95,9 @@ export default function NetworkingPage() {
       </PageHeader>
 
       <NextStep />
+
+      <ContactWorkspace />
+      <StartupPanel />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 18 }}>
         {NETWORK_PERSONA_ANGLES.map((p) => (
@@ -133,7 +142,9 @@ export default function NetworkingPage() {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="#F7F1E4"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
             </span>
             <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>AI outreach · tailored to {netMsg.to}</span>
-            <span className="pf-mono" style={{ fontSize: 10, fontWeight: 700, color: "var(--strong)", border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)", borderRadius: 6, padding: "3px 9px", whiteSpace: "nowrap" }}>reads natural</span>
+            {/* Only claimed once a message has actually been scored — the
+                template shown before that has no verdict to report. */}
+            <NaturalnessBadge result={aiMsg?.naturalness} />
           </div>
 
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", padding: "14px 22px 0" }}>

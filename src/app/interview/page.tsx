@@ -12,6 +12,7 @@ import { NextStep } from "@/components/pf/next-step";
 import { StarTab } from "@/components/pf/interview/star-tab";
 import { QuestionsTab } from "@/components/pf/interview/questions-tab";
 import { BriefingTab } from "@/components/pf/interview/briefing-tab";
+import { FeedbackAnalysis } from "@/components/pf/interview/feedback-analysis";
 
 function LeetTab() {
   const s = usePfStore();
@@ -104,6 +105,8 @@ function FeedbackTab() {
           Save reflection
         </button>
       </div>
+
+      <FeedbackAnalysis />
 
       {s.ivFeedback.length === 0 && (
         <div style={{ border: "1px dashed var(--lineStrong)", borderRadius: 14, padding: "18px 20px", fontSize: 13, color: "var(--muted)" }}>

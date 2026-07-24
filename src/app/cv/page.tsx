@@ -12,6 +12,9 @@ import { usePfStore } from "@/lib/pf/store";
 import { analyzeCvText, linkedInIssues } from "@/lib/pf/logic";
 import { Kicker, PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
+import { TailorPanel } from "@/components/pf/cv/tailor-panel";
+import { ProjectsPanel } from "@/components/pf/cv/projects-panel";
+import { LinkedInPanel } from "@/components/pf/cv/linkedin-panel";
 
 const mono = "'JetBrains Mono',monospace";
 
@@ -308,6 +311,10 @@ export default function CvPage() {
             </Reveal>
           </div>
 
+          {/* Tailoring + project ideas — the AI layer over the local analysis */}
+          <TailorPanel />
+          <ProjectsPanel />
+
           {/* LinkedIn quick check */}
           <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", marginBottom: 18 }}>
             <a onClick={() => set({ cvLinkedIn: !cvLinkedIn })} style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", textDecoration: "none", color: "var(--fg)" }}>
@@ -325,6 +332,7 @@ export default function CvPage() {
                     <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)" }}>{li.text}</span>
                   </div>
                 ))}
+                <LinkedInPanel />
               </div>
             )}
           </Reveal>

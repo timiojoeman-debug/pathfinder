@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { aiEnvelope, callAIValidated } from "@/lib/ai";
+import { aiEnvelope, callAIValidated, envelopeMessage } from "@/lib/ai";
 import { buildStartupOutreachPrompt } from '@/lib/prompts';
 import { checkNaturalness } from '@/lib/ai/naturalness-check';
 
@@ -28,10 +28,8 @@ export async function POST(req: Request) {
     "network/startup-outreach",
     );
 
-    const messageText = typeof result === 'object' && result !== null
-      ? (result as Record<string, unknown>).message as string ?? ''
-      : '';
-    const naturalness = checkNaturalness(messageText, { type: 'outreach' });
+    // See the note in `envelopeMessage` — the payload is under `data`.
+    const naturalness = checkNaturalness(envelopeMessage(result), { type: 'outreach' });
 
     return NextResponse.json({ ...result, naturalness });
   } catch (e) {

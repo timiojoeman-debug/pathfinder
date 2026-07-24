@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
-import { aiEnvelope, callAIValidated } from "@/lib/ai";
+import { aiEnvelope, callAIValidated, envelopeMessage } from "@/lib/ai";
 import { buildFollowUpPrompt } from '@/lib/prompts';
 import { checkNaturalness } from '@/lib/ai/naturalness-check';
 
@@ -24,10 +24,9 @@ export async function POST(req: Request) {
     "network/follow-up",
     );
 
-    const messageText = typeof result === 'object' && result !== null
-      ? (result as Record<string, unknown>).message as string ?? ''
-      : '';
-    const naturalness = checkNaturalness(messageText, { type: 'outreach' });
+    // `aiEnvelope` puts the payload under `data` — reading `message` off the
+    // root scored an empty string every time and reported it as natural.
+    const naturalness = checkNaturalness(envelopeMessage(result), { type: 'outreach' });
 
     return NextResponse.json({ ...result, naturalness });
   } catch (e) {

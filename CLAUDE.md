@@ -62,6 +62,25 @@ cannot ask students to be honest about their CV while presenting guesses as fact
 
 Each wired action emits an `AiConsulted` event so the work shows up in the Career-OS event log.
 
+Three traps that have each cost a session:
+
+- **Not every route is an envelope, and not every field is under `data`.** Open the route and its
+  prompt builder before writing the client type. `/intel/analyze` uses `aiShape` and answers at the
+  root; `/cv/match` returns `nonNegotiables`/`hasBlockers` *beside* the envelope, and
+  `/linkedin/check` returns `keywordAnalysis` the same way. Use `envelopeMessage()` from `lib/ai.ts`
+  when reading a message server-side — reading it off the root is what silently scored every
+  outreach message against an empty string.
+- **Body field names are not guessable.** `/project-builder/generate` wants `skillGaps`, not
+  `missingSkills`; `/interview/star-builder` wants `rawStory` as an object of the four beats, not a
+  string. A wrong name is silently ignored and the model answers from an empty prompt.
+- **A 200 is not always a result.** `/intel/analyze` degrades to
+  `{source:"heuristic",roles:[],priorityMoves:[]}` on any failure, which `useAiTask` sees as
+  success. Check `source` and say the analysis degraded rather than rendering an empty panel.
+
+Prompt context strings (`studentProfile`, `cvStrengths`) come from `lib/pf/ai-context.ts`, not from
+per-call-site prose — building them inline drifted immediately and gave the same student a different
+description on each page.
+
 ### API Routes (`src/app/api/`)
 
 Route Handlers, POST unless noted. Auth routes set httpOnly JWT cookies. Middleware applies rate limits
@@ -144,9 +163,9 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-19 test files / 191 tests. Covered: `auth.ts`, the AI validation layer, the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff), the `useAiTask` client hook, `CountUp`, email link resolution, and the health / outreach / jobs-search route handlers.
+22 test files / 213 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search route handlers.
 
-`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈20.6% lines / 15.3% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
+`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈21.1% lines / 15.0% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 
 Still thin: most route handlers, and the phase pages themselves.
 
@@ -157,12 +176,13 @@ See `.env.example`. Required: `OPENAI_API_KEY`, `JWT_SECRET` (auth throws at sta
 ## Known Issues
 
 - Test coverage is well below the 80% target, especially for route handlers
-- **AI routes still with no UI call site**: `/cv/{ats-audit,match,projects}`,
-  `/project-builder/generate`, `/intel/analyze`, `/linkedin/check`,
-  `/networking/analyze-profile`, `/network/{coffee-chat-prep,follow-up,referral-package,startup-outreach}`,
-  `/interview/{feedback,star-tweak,rate-solution,random-problem}`, `/analytics/dashboard`.
+- **AI routes still with no UI call site**: `/cv/projects`, `/networking/analyze-profile`,
+  `/interview/{star-tweak,rate-solution,random-problem}`, `/analytics/dashboard`.
   They are built and tested but unreachable from the product — wire them through
   `useAiTask` + `components/pf/ai-panel.tsx` rather than writing new panels from scratch.
-  (`/interview/{questions,company-briefing,star-builder}` were wired this way and are live.)
+  Live examples to copy: `components/pf/interview/{questions,briefing,star}-tab.tsx`,
+  `components/pf/cv/{tailor,projects,linkedin}-panel.tsx`,
+  `components/pf/networking/{contact-workspace,startup-panel}.tsx`,
+  `components/pf/intel/analysis-panel.tsx`.
 - `universities/` still points at a placeholder `partnerships@pathfinder.app` mailbox
 - `NEXT_PUBLIC_APP_URL` is unset in production, so absolute links fall back to relative

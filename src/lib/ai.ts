@@ -301,3 +301,21 @@ export function aiShape<T>(schema: z.ZodType<T>): z.ZodType<T> {
     return v;
   }, schema) as unknown as z.ZodType<T>;
 }
+
+/**
+ * Pull the generated message text out of an envelope response.
+ *
+ * The outreach routes post-process their message (the naturalness check) before
+ * returning it. Reading `message` off the envelope root looks right and is
+ * wrong — `aiEnvelope` nests the payload under `data`, so the root lookup
+ * yielded `""` and every message was scored as flawlessly natural. Falls back
+ * to the root anyway, because `aiShape` routes genuinely do answer there.
+ */
+export function envelopeMessage(result: unknown, key = "message"): string {
+  if (!result || typeof result !== "object") return "";
+  const root = result as Record<string, unknown>;
+  const data = root.data;
+  const nested = data && typeof data === "object" ? (data as Record<string, unknown>)[key] : undefined;
+  const value = nested ?? root[key];
+  return typeof value === "string" ? value : "";
+}

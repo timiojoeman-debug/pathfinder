@@ -13,6 +13,7 @@ import { useAuthStore } from "@/lib/stores";
 import { CountUp, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 import { MemoryFeed, ProfileSummary, ProgressLadder, RecommendationStack } from "@/components/pf/journey";
+import { IntelAnalysisPanel } from "@/components/pf/intel/analysis-panel";
 import { fitTone } from "@/lib/pf/logic";
 import { useIsHydrated } from "@/lib/hooks";
 
@@ -129,6 +130,10 @@ export default function IntelPage() {
       <div style={{ marginBottom: 18 }}>
         <ProgressLadder />
       </div>
+
+      {/* AI read of the saved pipeline — sits above the deterministic ranking,
+          which stays correct whether or not the analysis runs. */}
+      <IntelAnalysisPanel />
 
       {/* Opportunity pipeline — from the profile's target companies */}
       <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
