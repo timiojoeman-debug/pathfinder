@@ -122,7 +122,7 @@ export default function UniversitiesPage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
           </div>
           <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.02em" }}>PathFinder</span>
-          <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accent)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", borderRadius: 6, padding: "3px 7px", marginLeft: 4 }}>For universities</span>
+          <span className="pf-hide-mobile" style={{ fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accent)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", borderRadius: 6, padding: "3px 7px", marginLeft: 4 }}>For universities</span>
         </Link>
         <nav className="pf-hide-mobile" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 500, color: "var(--muted)" }}>
           <a href="#problem" className="pf-hover-row" style={navLink}>Why</a>
@@ -139,7 +139,7 @@ export default function UniversitiesPage() {
             {mode === "dark" ? "Paper" : "Night"}
           </button>
           <Link href="/" className="pf-hide-mobile" style={{ ...navLink, fontSize: 13.5, fontWeight: 600, color: "var(--muted)" }}>For students →</Link>
-          <span style={{ display: "flex", alignItems: "center", height: 39, padding: "0 18px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: "var(--muted)", fontSize: 13, fontWeight: 600 }}>
+          <span className="pf-hide-mobile" style={{ display: "flex", alignItems: "center", height: 39, padding: "0 18px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: "var(--muted)", fontSize: 13, fontWeight: 600 }}>
             {PILOT_STATUS}
           </span>
         </div>

@@ -1200,15 +1200,34 @@ html, body { max-width: 100%; overflow-x: hidden; }
      `minmax(0, 1fr)` lets the track shrink; `min-width: 0` does the same job
      for grid and flex children, which otherwise refuse to go below min-content
      and are the usual cause of "one word per line" columns. */
+  /* Grid children only. Applying this to flex children as well was too broad:
+     it let items shrink below their content instead of wrapping, which split
+     the readiness figure "74" across two lines and broke the wordmark into
+     "PathFin / der". Flex rows are handled by wrapping instead, below. */
   .pf [style*="display: grid"] > *,
   .pf [style*="display:grid"] > *,
-  .pf [style*="display: flex"] > *,
-  .pf [style*="display:flex"] > *,
   .pf-landing [style*="display: grid"] > *,
-  .pf-landing [style*="display:grid"] > *,
-  .pf-landing [style*="display: flex"] > *,
-  .pf-landing [style*="display:flex"] > * {
+  .pf-landing [style*="display:grid"] > * {
     min-width: 0;
+  }
+
+  /* Horizontal flex rows wrap onto a second line rather than crushing their
+     children. This is what keeps the header (wordmark + badges + actions) and
+     the readiness row (figure + verdict) readable in 390px. */
+  .pf [style*="display: flex"]:not([style*="column"]),
+  .pf [style*="display:flex"]:not([style*="column"]),
+  .pf-landing [style*="display: flex"]:not([style*="column"]),
+  .pf-landing [style*="display:flex"]:not([style*="column"]) {
+    flex-wrap: wrap;
+  }
+
+  /* Never break inside a word that is short enough to fit: the wordmark, a
+     readiness score, a percentage. Only genuinely long strings may break. */
+  .pf h1, .pf h2, .pf h3, .pf button,
+  .pf-landing h1, .pf-landing h2, .pf-landing h3, .pf-landing button,
+  .pf [class*="mono"], .pf-landing [class*="mono"] {
+    overflow-wrap: normal;
+    word-break: keep-all;
   }
 
   /* Wide fixed-width panels (the landing "career position report") shrink
