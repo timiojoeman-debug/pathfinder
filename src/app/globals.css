@@ -1209,3 +1209,63 @@ html, body { max-width: 100%; overflow-x: hidden; }
   /* Tap targets: 44px is the accessible minimum. */
   .pf button, .pf a[role="button"] { min-height: 44px; }
 }
+
+/* ── Mobile spacing & typography ────────────────────────────────────────
+   Measured on a 390px phone before this block: h2 rendered at 34px with a
+   51px line box (ratio 1.5) because the display headings set font-size via
+   clamp() but never set line-height, so they inherited the body's 1.5. At
+   desktop sizes that is invisible; once a heading wraps to three lines on a
+   phone it opens a large gap between each line. Sections also kept their full
+   70px top *and* bottom padding, putting 140px of dead space between every
+   block and stretching the landing page to 6200px of scrolling. */
+
+@media (max-width: 860px) {
+  /* Display headings get a tight, deliberate line box. */
+  .pf h1, .pf h2, .pf-landing h1, .pf-landing h2 {
+    line-height: 1.12 !important;
+    letter-spacing: -0.03em;
+    text-wrap: balance;           /* avoid a lone short last line */
+  }
+  .pf h3, .pf-landing h3 { line-height: 1.25 !important; }
+
+  /* Halve the vertical rhythm between sections. The inline styles use
+     clamp(70px,9vw,120px)-style padding, which never shrinks far enough on a
+     phone, so this has to override. */
+  .pf-landing > section {
+    padding-top: 44px !important;
+    padding-bottom: 44px !important;
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+  /* The marquee is a full-bleed divider — it keeps its own compact padding. */
+  .pf-landing > section:has(> div[style*="pfMarquee"]) {
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  /* In-app phase pages first. NOTE: the landing root carries BOTH .pf and
+     .pf-landing, so these two blocks have equal specificity and the landing
+     rules must come second to win — otherwise the marketing hero collapses to
+     the in-app heading size (measured: 27px, far too small for a hero). */
+  .pf h1 { font-size: clamp(24px, 7vw, 30px) !important; }
+  .pf h2 { font-size: clamp(18px, 5vw, 22px) !important; }
+
+  /* Landing hero: still prominent, but capped so it cannot swallow screen one. */
+  .pf-landing h1 { font-size: clamp(30px, 8.5vw, 38px) !important; }
+  .pf-landing h2 { font-size: clamp(25px, 7vw, 32px) !important; }
+
+  /* Body copy: 15.5px reads better than 17px in a 354px column. */
+  .pf-landing p { font-size: 15.5px !important; line-height: 1.55 !important; }
+
+  .pf-landing > section {
+    padding-top: 38px !important;
+    padding-bottom: 38px !important;
+  }
+
+  /* Cards were designed for a 3-up desktop grid; full-width on a phone they
+     only need enough padding to breathe. */
+  .pf-landing [style*="borderRadius: 18"],
+  .pf [style*="borderRadius: 18"] { padding: 20px !important; }
+}
