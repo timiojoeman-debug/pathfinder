@@ -15,6 +15,7 @@ import { useAuthStore } from "@/lib/stores";
 import { setTheme, useThemeMode } from "@/lib/theme";
 import { CommandPalette } from "./palette";
 import { Drawers } from "./drawers";
+import { MentorAssistant } from "./assistant";
 import { ProfileSync } from "./profile-sync";
 
 /* ── Nav model ─────────────────────────────────────────────────────── */
@@ -345,6 +346,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       </div>
       <CommandPalette />
       <Drawers />
+      <MentorAssistant />
       <ProfileSync />
     </div>
   );

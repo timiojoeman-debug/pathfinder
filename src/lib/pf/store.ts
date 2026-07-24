@@ -47,6 +47,8 @@ function companyFromRecipient(to: string): string {
 }
 
 export interface ChatMsg { who: "you" | "ai"; text: string }
+/** A turn in the cross-page mentor conversation. */
+export interface AsstMsg { role: "user" | "assistant"; content: string }
 
 export interface SavedJob {
   company: string;
@@ -93,6 +95,12 @@ interface PfState {
   chat: ChatMsg[];
   chatDraft: string;
   chatN: number;
+
+  /* mentor assistant — advisory only, kept separate from the Direction page's
+     scripted `chat` above. It reads the profile; it never writes to it. */
+  asstOpen: boolean;
+  asstMsgs: AsstMsg[];
+  asstDraft: string;
 
   /* cv */
   cvText: string;
@@ -226,6 +234,10 @@ export const usePfStore = create<PfState>()(
       chat: [],
       chatDraft: "",
       chatN: 0,
+
+      asstOpen: false,
+      asstMsgs: [],
+      asstDraft: "",
 
       cvText: "",
       cvAnalyzing: false,
@@ -592,6 +604,7 @@ export const usePfStore = create<PfState>()(
         dirGenerated: s.dirGenerated,
         chat: s.chat,
         chatN: s.chatN,
+        asstMsgs: s.asstMsgs,
         cvText: s.cvText,
         cvAnalyzed: s.cvAnalyzed,
         cvProjects: s.cvProjects,

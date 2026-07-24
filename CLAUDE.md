@@ -113,6 +113,14 @@ If the store is unreachable the limiter degrades to per-instance counting rather
 - `/interview/{questions,company-briefing,feedback,star-builder,star-tweak,rate-solution,random-problem}`
 - `/cover-letter/generate`, `/project-builder/generate`, `/linkedin/check`
 - `/analytics/dashboard`
+- `/mentor/{chat,narrate}` — the cross-page mentor and the profile narration.
+  **Both are advisory only.** `narrate` restates the already-derived profile;
+  `chat` answers questions about it and routes the student to the right page.
+  Neither has tool calling, and the client writes nothing from either reply
+  back into the store — an assistant that could write to the store could
+  manufacture the progress every number is derived from. They sit under
+  `/api/mentor/` so `classifyRoute` puts them in the AI bucket without
+  dragging plain `/api/profile` read/write in with them.
 - `/health` — health check (GET); probes OpenAI and Supabase
 
 ### Career-OS (`src/lib/pf/`)
@@ -173,9 +181,9 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-24 test files / 229 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the LeetCode data and `toggleProblem` projection, the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search route handlers.
+25 test files / 234 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the LeetCode data and `toggleProblem` projection, the assistant slice's advisory boundary, the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search route handlers.
 
-`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈21.5% lines / 15.1% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
+`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈21.1% lines / 14.8% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 
 Still thin: most route handlers, and the phase pages themselves.
 
@@ -194,5 +202,11 @@ See `.env.example`. Required: `OPENAI_API_KEY`, `JWT_SECRET` (auth throws at sta
   `components/pf/cv/{tailor,projects,linkedin}-panel.tsx`,
   `components/pf/networking/{contact-workspace,startup-panel}.tsx`,
   `components/pf/intel/analysis-panel.tsx`.
+- The mentor assistant (`components/pf/assistant.tsx`) is **advisory by decision,
+  not by omission**. It has no tool calling and writes nothing to the store;
+  `__tests__/assistant-slice.test.ts` guards that boundary. Giving it write
+  access would let a misread question manufacture the progress every number in
+  the product is derived from — if that changes, every write needs explicit
+  confirmation and the tests should be updated deliberately, not deleted.
 - `universities/` still points at a placeholder `partnerships@pathfinder.app` mailbox
 - `NEXT_PUBLIC_APP_URL` is unset in production, so absolute links fall back to relative

@@ -12,6 +12,7 @@ import { useProfile, useProgress, useRecommendations } from "@/lib/pf/store";
 import { PHASE_HREF, relativeTime } from "@/lib/pf/events";
 import { whatChanged } from "@/lib/pf/orchestrator";
 import { Reveal } from "./ui";
+import { ProfileNarration } from "./profile-narration";
 
 const mono = "var(--font-mono), 'JetBrains Mono', monospace";
 
@@ -113,8 +114,12 @@ export function ProfileSummary() {
   );
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Your profile, in the AI&apos;s words</h2>
-      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Every phase feeds this — it&apos;s what the mentor reads before it answers.</span>
+      {/* The heading used to read "in the AI's words" over content that was
+          entirely computed. The strengths, gaps and skills below are derived
+          from logged work; the mentor's retelling is the block at the end, and
+          is labelled where it starts. */}
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Your profile</h2>
+      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Derived from every phase — it&apos;s what the mentor reads before it answers.</span>
 
       {profile.directionStatement && (
         <p style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5, margin: "14px 0 4px" }}>{profile.directionStatement}</p>
@@ -144,6 +149,8 @@ export function ProfileSummary() {
           </div>
         </div>
       )}
+
+      <ProfileNarration />
     </Reveal>
   );
 }

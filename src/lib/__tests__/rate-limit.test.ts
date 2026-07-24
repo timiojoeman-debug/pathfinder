@@ -55,6 +55,15 @@ describe('rate limiting', () => {
       expect(classifyRoute('/api/cv/analyze')).toBe('ai');
       expect(classifyRoute('/api/networking/outreach')).toBe('ai');
       expect(classifyRoute('/api/interview/questions')).toBe('ai');
+      expect(classifyRoute('/api/mentor/chat')).toBe('ai');
+      expect(classifyRoute('/api/mentor/narrate')).toBe('ai');
+    });
+
+    it('keeps /api/profile out of the ai bucket despite the mentor routes', () => {
+      // The mentor lives under /api/mentor/ precisely so profile read/write —
+      // which is not an AI call and should not spend the AI quota — keeps the
+      // general limit.
+      expect(classifyRoute('/api/profile')).toBe('api');
     });
 
     it('falls back to the general bucket for everything else', () => {

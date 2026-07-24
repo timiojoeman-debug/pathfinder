@@ -161,6 +161,7 @@ export function classifyRoute(pathname: string): keyof typeof LIMITS {
     pathname.startsWith("/api/cover-letter/") ||
     pathname.startsWith("/api/intel/") ||
     pathname.startsWith("/api/linkedin/") ||
+    pathname.startsWith("/api/mentor/") ||
     pathname.startsWith("/api/project-builder/")
   ) {
     return "ai";
