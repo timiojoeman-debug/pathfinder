@@ -32,6 +32,10 @@ describe('rate limiting', () => {
     process.env = { ...saved };
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    // Safety net: a test that installs fake timers and then fails an assertion
+    // would otherwise leak the frozen clock into every test after it. No-op
+    // when real timers are already active.
+    vi.useRealTimers();
   });
 
   describe('route classification', () => {
@@ -149,13 +153,22 @@ describe('rate limiting', () => {
     });
 
     it('resets once the window passes', () => {
-      const key = `window-${Date.now()}`;
-      expect(hitLocal(key, 1, 1).ok).toBe(true);
-      expect(hitLocal(key, 1, 1).ok).toBe(false);
+      // Freeze the clock for the whole test. The window is 1ms, so on the real
+      // clock the first two calls can straddle it under load — the window
+      // resets between them and the second wrongly succeeds. That was the flake.
+      // With time frozen, both calls land in the same window deterministically.
       vi.useFakeTimers();
-      vi.setSystemTime(Date.now() + 5_000);
-      expect(hitLocal(key, 1, 1).ok).toBe(true);
-      vi.useRealTimers();
+      try {
+        const start = Date.now();
+        const key = `window-${start}`;
+        expect(hitLocal(key, 1, 1).ok).toBe(true);
+        expect(hitLocal(key, 1, 1).ok).toBe(false);
+        // Advance well past the 1ms window; the counter resets.
+        vi.setSystemTime(start + 5_000);
+        expect(hitLocal(key, 1, 1).ok).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
