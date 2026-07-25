@@ -29,20 +29,20 @@ export default defineConfig({
       thresholds: {
         // A ratchet, not the goal.
         //
-        // Measured at the time of writing: 46.00% lines, 43.17% statements,
-        // 37.87% functions, 34.98% branches. These sit a whisker below that,
+        // Measured at the time of writing: 47.54% lines, 44.60% statements,
+        // 39.40% functions, 36.88% branches. These sit a whisker below that,
         // so coverage cannot silently regress while staying green today —
         // a threshold set to an aspirational 80% would fail on every run and
         // simply get ignored.
         //
-        // Raise these as tests land. The whole non-UI codebase plus the shared
-        // presentational primitives (ai-panel, ui, next-step) are now tested.
-        // The remaining gap is the React phase pages and the larger stateful
-        // panels/components under components/pf/** (RTL territory).
-        lines: 45,
-        statements: 43,
-        functions: 37,
-        branches: 34,
+        // Raise these as tests land. The whole non-UI codebase, the shared
+        // primitives, and the first stateful panels (profile-research,
+        // startup-panel, practice-panel) are now tested. The remaining gap is
+        // the rest of the components/pf/** panels and the phase pages.
+        lines: 47,
+        statements: 44,
+        functions: 39,
+        branches: 36,
       },
     },
   },
