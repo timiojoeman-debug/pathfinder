@@ -78,15 +78,16 @@ describe("embedDocumentChunks", () => {
 
   it("embeds and upserts every methodology chunk", async () => {
     stubEmbedding(true);
-    const upsert = vi.fn(async (_row: Record<string, unknown>) => ({ error: null }));
+    const rows: Record<string, unknown>[] = [];
+    const upsert = vi.fn(async (row: Record<string, unknown>) => { rows.push(row); return { error: null }; });
     vi.mocked(createAdminClient).mockReturnValue({ from: vi.fn(() => ({ upsert })) } as never);
 
     await embedDocumentChunks();
 
     // The corpus is a fixed set of chunks; each one is embedded and upserted.
-    expect(upsert.mock.calls.length).toBeGreaterThanOrEqual(15);
-    expect(upsert.mock.calls[0][0]).toHaveProperty("embedding");
-    expect(upsert.mock.calls[0][0]).toHaveProperty("chunk_text");
+    expect(rows.length).toBeGreaterThanOrEqual(15);
+    expect(rows[0]).toHaveProperty("embedding");
+    expect(rows[0]).toHaveProperty("chunk_text");
   });
 
   it("logs and continues when a chunk fails to embed", async () => {
