@@ -29,20 +29,21 @@ export default defineConfig({
       thresholds: {
         // A ratchet, not the goal.
         //
-        // Measured at the time of writing: 38.05% lines, 35.64% statements,
-        // 28.76% functions, 27.47% branches. These sit a whisker below that,
+        // Measured at the time of writing: 39.63% lines, 37.27% statements,
+        // 29.81% functions, 29.81% branches. These sit a whisker below that,
         // so coverage cannot silently regress while staying green today —
         // a threshold set to an aspirational 80% would fail on every run and
         // simply get ignored.
         //
-        // Raise these as tests land. Every API route handler and the Career-OS
-        // store now have tests. The biggest remaining gaps are lib/stores
-        // (0%), lib/ai/{mentor-engine,retrieval} (0%), lib/pf/orchestrator +
-        // recommendations (0%), and the phase pages.
-        lines: 38,
-        statements: 35,
-        functions: 28,
-        branches: 27,
+        // Raise these as tests land. Every API route handler and the whole
+        // Career-OS derivation layer (store, profile, progress, logic,
+        // recommendations, orchestrator) now have tests. The biggest remaining
+        // gaps are lib/stores (0%), lib/ai/{mentor-engine,retrieval} (0%), and
+        // the phase pages / components.
+        lines: 39,
+        statements: 37,
+        functions: 29,
+        branches: 29,
       },
     },
   },
