@@ -29,20 +29,20 @@ export default defineConfig({
       thresholds: {
         // A ratchet, not the goal.
         //
-        // Measured at the time of writing: 44.92% lines, 42.17% statements,
-        // 36.58% functions, 33.33% branches. These sit a whisker below that,
+        // Measured at the time of writing: 54.49% lines, 51.19% statements,
+        // 47.21% functions, 45.42% branches. These sit a whisker below that,
         // so coverage cannot silently regress while staying green today —
         // a threshold set to an aspirational 80% would fail on every run and
         // simply get ignored.
         //
-        // Raise these as tests land. Every API route handler, the whole
-        // Career-OS derivation layer, both Zustand store families, and the AI
-        // engine/retrieval layer now have tests. The biggest remaining gap is
-        // the React phase pages / components (untested — RTL territory).
-        lines: 44,
-        statements: 42,
-        functions: 36,
-        branches: 33,
+        // Raise these as tests land. The whole non-UI codebase and every
+        // stateful components/pf/** panel now have tests. The remaining gap is
+        // the phase-page shells (src/app/**/page.tsx) and the layout chrome
+        // (shell, journey, drawers).
+        lines: 54,
+        statements: 51,
+        functions: 47,
+        branches: 45,
       },
     },
   },
