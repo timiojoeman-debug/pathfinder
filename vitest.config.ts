@@ -29,20 +29,20 @@ export default defineConfig({
       thresholds: {
         // A ratchet, not the goal.
         //
-        // Measured at the time of writing: 51.64% lines, 48.53% statements,
-        // 44.31% functions, 42.24% branches. These sit a whisker below that,
+        // Measured at the time of writing: 54.49% lines, 51.19% statements,
+        // 47.21% functions, 45.42% branches. These sit a whisker below that,
         // so coverage cannot silently regress while staying green today —
         // a threshold set to an aspirational 80% would fail on every run and
         // simply get ignored.
         //
-        // Raise these as tests land. The whole non-UI codebase, the shared
-        // primitives, and the CV + networking + interview panel families are
-        // now tested. The remaining gap is the last few components/pf/** panels
-        // (contact-workspace, intel, assistant) and the phase pages.
-        lines: 51,
-        statements: 48,
-        functions: 44,
-        branches: 42,
+        // Raise these as tests land. The whole non-UI codebase and every
+        // stateful components/pf/** panel now have tests. The remaining gap is
+        // the phase-page shells (src/app/**/page.tsx) and the layout chrome
+        // (shell, journey, drawers).
+        lines: 54,
+        statements: 51,
+        functions: 47,
+        branches: 45,
       },
     },
   },
