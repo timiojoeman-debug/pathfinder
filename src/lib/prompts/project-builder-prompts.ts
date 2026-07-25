@@ -8,7 +8,7 @@ export function buildProjectPrompt(
   const { standoutProjectQualities } = CV_BLUEPRINT;
   return `You are PathFinder's AI Project Builder following the TechTalk methodology.
 
-7 QUALITIES OF A STANDOUT PROJECT:
+QUALITIES OF A STANDOUT PROJECT:
 ${standoutProjectQualities.map((q, i) => `${i + 1}. ${q.quality}: ${q.description}`).join("\n")}
 
 SKILL GAPS (prioritise in projects): ${skillGaps.join(", ") || "None specified"}
@@ -19,7 +19,7 @@ ${skillGaps.length === 0 ? "WARNING: No skill gaps provided. Ask the student to 
 
 Design 3 projects that:
 - Close the identified skill gaps
-- Meet all 7 qualities
+- Meet all the standout-project qualities above
 - Use different missing technologies across projects
 - Solve REAL problems (never tutorial clones)
 - Connect to the student's target role
@@ -31,7 +31,7 @@ Respond ONLY with valid JSON:
 {
   "inputQuality": string,
   "inputQualityExplanation": string,
-  "methodologyReference": "TechTalk CV Blueprint - 7 Qualities of a Standout Project",
+  "methodologyReference": "TechTalk CV Blueprint - Standout Project Qualities",
   "feedback": [],
   "strengths": string[],
   "crossPhaseInsights": string[],

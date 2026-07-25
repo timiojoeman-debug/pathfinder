@@ -256,15 +256,20 @@ export function trackerDerived(board: BoardColumn[], netSent: number) {
       else if (c.when === "2d ago" || c.when === "5d ago") weeklyCount += 1;
     }),
   );
-  const weeklyGoal = 3;
+  // Source (TechTalk Four Pillars): aim for ~10-15 quality applications/week.
+  // We target a middle ground of 5-8 deeply-tailored/week for a student's time
+  // budget, and only flag "too many" past ~10 — not at 3, which would have
+  // scolded students for following the methodology.
+  const weeklyGoal = 6;
+  const weeklyMax = 10;
   const weeklyPct = Math.min(100, Math.round((weeklyCount / weeklyGoal) * 100)) + "%";
-  const weeklyTone = weeklyCount > 5 ? "var(--risk)" : weeklyCount >= weeklyGoal ? "var(--strong)" : "var(--warn)";
+  const weeklyTone = weeklyCount > weeklyMax ? "var(--risk)" : weeklyCount >= weeklyGoal ? "var(--strong)" : "var(--warn)";
   const weeklyNote =
-    weeklyCount > 5
-      ? "Over 5 this week — slow down. Quality over quantity: tailor harder, apply less."
+    weeklyCount > weeklyMax
+      ? "Over " + weeklyMax + " this week — slow down. Quality over quantity: tailor harder, apply less."
       : weeklyCount >= weeklyGoal
-        ? "On target. 3+ tailored applications a week keeps you in the top consistency band."
-        : "3+ tailored applications a week keeps you in the top consistency band — you need " + (weeklyGoal - weeklyCount) + " more by Sunday.";
+        ? "On target. 5–8 tailored applications a week keeps you in the top consistency band."
+        : "Aim for 5–8 tailored applications a week — you need " + (weeklyGoal - weeklyCount) + " more by Sunday.";
 
   const stats = [
     { label: "Applications sent", value: submitted, color: "var(--fg)" },

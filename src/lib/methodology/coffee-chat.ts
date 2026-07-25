@@ -22,13 +22,24 @@ export const COFFEE_CHAT = {
       ],
     },
     coreConversation: {
-      description: 'Ask questions, listen actively, share only when it adds value',
+      title: 'Their story',
+      description: 'Ask your prepared questions, listen, and follow up on what they actually say',
       actions: [
         'Lead with prepared questions from the most relevant categories',
-        'Listen for 80% of the time — this is about learning, not pitching',
-        'Take brief notes on key insights (with permission)',
-        'Share your experience only when it directly relates to their point',
-        'If they mention a challenge, connect it to something you\'ve worked on',
+        'Talk no more than 40% of the time — this is about learning, not pitching',
+        'Take brief notes on key insights (ask permission first)',
+        'Ask one genuine follow-up on something they said rather than marching through your list',
+      ],
+    },
+    positioning: {
+      title: 'Positioning',
+      description: 'Show fit without asking for anything — mirror their language and map one concrete thing of yours onto a problem they raised',
+      duration: '2-3 minutes',
+      actions: [
+        'Mirror the language they used for their own work',
+        'Map ONE relevant artifact of yours onto something they mentioned (a project, a repo, a measurable result)',
+        'One artifact beats five adjectives — show, don\'t claim',
+        'This is demonstrating fit, not making an ask',
       ],
     },
     closing: {

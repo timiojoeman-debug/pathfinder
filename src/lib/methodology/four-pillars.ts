@@ -17,18 +17,25 @@ export const FOUR_PILLARS = {
       timeAllocation: 'Max 30% — positioning is important but diminishing returns set in. Don\'t polish your CV for 3 weeks.',
     },
     {
-      name: 'Building & Networking',
-      meaning: 'Projects that prove skills + connections that open doors',
-      whyItMatters: '~80% of roles are filled through the hidden job market. Building projects fills skill gaps. Networking opens the 80% of doors that cold applications never reach.',
+      name: 'Networking',
+      meaning: 'Connections and referrals that open doors — plus the projects that make you referable',
+      whyItMatters: '70–80% of roles are filled through the hidden job market. Networking opens the doors cold applications never reach; building projects fills the skill gaps that earn a referral.',
       timeAllocation: 'Min 35% — this is where results come from',
     },
     {
-      name: 'Consistency & Interview',
-      meaning: 'Regular applications, interview preparation, and follow-through',
-      whyItMatters: 'Consistency beats intensity. 2-3 tailored applications per week, every week, outperforms 30 generic applications in a weekend.',
+      name: 'Consistency',
+      meaning: 'Regular, tailored applications and disciplined follow-through',
+      whyItMatters: 'Consistency beats intensity. A steady weekly cadence of tailored applications outperforms 30 generic applications fired off in a weekend.',
       timeAllocation: 'Min 25% — steady cadence is non-negotiable',
     },
   ] as const,
+
+  // Interview preparation is a SEPARATE, parallel workstream in the TechTalk
+  // Four Pillars framework — the webinar is explicit that it is not one of the
+  // four pillars. It runs alongside them once interviews start landing.
+  interviewPrep: {
+    note: 'A separate, parallel workstream — not one of the four pillars. Prepare for interviews in parallel once they start landing.',
+  } as const,
 
   fridayReview: {
     name: 'Lightweight Friday Review',
@@ -37,12 +44,12 @@ export const FOUR_PILLARS = {
       { pillar: 'Clarity', question: 'Is my direction still clear, or do I need to refine it?' },
       { pillar: 'Positioning', question: 'Did I improve my CV, LinkedIn, or portfolio this week?' },
       { pillar: 'Networking', question: 'Did I send outreach or have a coffee chat this week?' },
-      { pillar: 'Consistency', question: 'Did I submit 2-3 tailored applications this week?' },
+      { pillar: 'Consistency', question: 'Did I submit 5-8 tailored applications this week?' },
     ],
   } as const,
 
   weeklyTargets: {
-    tailoredApplications: '2-3 per week (quality over quantity)',
+    tailoredApplications: '5-8 per week (quality over quantity)',
     connectionRequests: '3 new connections per week',
     coffeeChats: '1 per week',
     posts: '1 LinkedIn post or comment per week',
@@ -50,20 +57,20 @@ export const FOUR_PILLARS = {
 
   qualityWarnings: [
     {
-      condition: 'applicationsThisWeek > 5',
-      threshold: 5,
+      condition: 'applicationsThisWeek > 10',
+      threshold: 10,
       type: 'too_many',
-      message: 'You\'ve submitted {count} applications this week. Are they all tailored? Quality over quantity gets better results. The CV Blueprint\'s 15-minute tailoring process should be applied to every single application.',
+      message: 'You\'ve submitted {count} applications this week. Are they all genuinely tailored? Past ~10 a week, quality usually slips. The CV Blueprint\'s 15-minute tailoring process should be applied to every single application.',
     },
     {
       condition: 'applicationsThisWeek === 0 && dayOfWeek >= 4',
       threshold: 0,
       type: 'none_by_thursday',
-      message: 'No applications yet this week and it\'s already {day}. Aim for 2-3 quality submissions before Friday. Even one well-tailored application is better than zero.',
+      message: 'No applications yet this week and it\'s already {day}. Aim for 5-8 quality submissions before Friday. Even one well-tailored application is better than zero.',
     },
     {
-      condition: 'applicationsThisWeek >= 2 && applicationsThisWeek <= 3',
-      threshold: 3,
+      condition: 'applicationsThisWeek >= 5 && applicationsThisWeek <= 8',
+      threshold: 8,
       type: 'on_track',
       message: 'You\'re on track with {count} tailored applications this week. Keep the quality consistent.',
     },

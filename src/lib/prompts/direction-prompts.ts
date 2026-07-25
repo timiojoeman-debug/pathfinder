@@ -16,6 +16,7 @@ export function buildDirectionPrompt(wizardAnswers: WizardAnswers): string {
 
 FOUR PILLARS:
 ${pillars.map((p, i) => `${i + 1}. ${p.name}: ${p.meaning} (${p.timeAllocation})`).join("\n")}
+NOTE: ${FOUR_PILLARS.interviewPrep.note}
 
 FRIDAY REVIEW QUESTIONS:
 ${fridayReview.questions.map((q) => `- ${q.pillar}: ${q.question}`).join("\n")}

@@ -11,7 +11,7 @@ export const NETWORKING_STRATEGY = {
   ] as const,
 
   stats: {
-    hiddenJobMarket: '~80% of roles are filled through the hidden job market — never publicly advertised',
+    hiddenJobMarket: '70–80% of roles are filled through the hidden job market — never publicly advertised',
     referralAdvantage: 'Candidates with a referral have roughly 4x higher interview chances',
   } as const,
 
@@ -61,8 +61,8 @@ export const NETWORKING_STRATEGY = {
   } as const,
 
   startupOutreach: {
-    target: 'CTO, VP Engineering, or engineering lead at 20-200 person startups',
-    companySize: '20-200 employees',
+    target: 'CTO, VP Engineering, or engineering lead at startups under ~100 people',
+    companySize: 'Under ~100 employees (the Direct Access method targets sub-100-person firms)',
     frame: 'Willing to do useful work — not expecting pay, motivated by learning alongside experienced engineers',
     offers: ['Bug fixes', 'Test writing', 'Internal tools', 'Documentation', 'Feature work'],
     ask: '15 minutes to show what they have built',
@@ -72,7 +72,7 @@ export const NETWORKING_STRATEGY = {
 
   weeklyCadence: {
     connectionRequests: 3,
-    coffeeChats: '1 per 1-2 weeks',
+    coffeeChats: '1 per week',
     postsOrComments: 1,
     followUps: 'Bi-weekly check on all active contacts',
   } as const,
@@ -90,8 +90,8 @@ export const NETWORKING_STRATEGY = {
     },
     step3: {
       name: 'Find Peers',
-      searchQueries: ['"intern" + [company]', '"junior developer" + [company]'],
-      tip: 'Check university alumni networks — shared education creates the warmest connections',
+      searchQueries: ['"intern" + [company]', '"junior developer" + [company]', '"[your university]" + [company] + software engineer'],
+      tip: 'Alumni are the highest-leverage peer search — shared education halves the "why me?" barrier. Search your university name + the company and filter to engineers 1-4 years in.',
     },
   } as const,
 
