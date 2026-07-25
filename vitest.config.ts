@@ -29,20 +29,21 @@ export default defineConfig({
       thresholds: {
         // A ratchet, not the goal.
         //
-        // Measured at the time of writing: 26.51% lines, 24.85% statements,
-        // 20.06% functions, 19.74% branches. These sit a whisker below that,
+        // Measured at the time of writing: 31.37% lines, 29.24% statements,
+        // 22.32% functions, 23.31% branches. These sit a whisker below that,
         // so coverage cannot silently regress while staying green today —
         // a threshold set to an aspirational 80% would fail on every run and
         // simply get ignored.
         //
-        // Raise these as tests land. Most AI route handlers now have tests;
-        // the biggest remaining gaps are lib/pf/store.ts (~15%), lib/stores
-        // (0%), lib/ai/{mentor-engine,retrieval} (0%), the phase pages, and
-        // the auth/account/profile/direction/jobs-analyze/mentor routes.
-        lines: 26,
-        statements: 24,
-        functions: 19,
-        branches: 19,
+        // Raise these as tests land. Most AI + auth/profile/mentor route
+        // handlers now have tests; the biggest remaining gaps are
+        // lib/pf/store.ts (~15%), lib/stores (0%), lib/ai/{mentor-engine,
+        // retrieval} (0%), the phase pages, and the account/{export,delete}
+        // and password-reset / verify-email auth routes.
+        lines: 31,
+        statements: 29,
+        functions: 22,
+        branches: 23,
       },
     },
   },
