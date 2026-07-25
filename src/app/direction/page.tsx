@@ -14,7 +14,6 @@ import {
   DIR_SIZE_OPTS,
   DIR_STACK_OPTS,
   HIRE_FRAMEWORK,
-  TARGET_ROLES,
   TITLE_VARIANTS,
 } from "@/lib/pf/data";
 import {
@@ -24,6 +23,7 @@ import {
   directionStatement,
   directionSuggestions,
   extractChatPatch,
+  roleFamiliesFor,
 } from "@/lib/pf/logic";
 import { getProfile, usePfStore, type ChatMsg } from "@/lib/pf/store";
 import { buildMentorContext } from "@/lib/pf/orchestrator";
@@ -302,6 +302,8 @@ export default function DirectionPage() {
   const dirMode = usePfStore((s) => s.dirMode);
   const dirGenerating = usePfStore((s) => s.dirGenerating);
   const dirGenerated = usePfStore((s) => s.dirGenerated);
+  const dirRole = usePfStore((s) => s.dirRole);
+  const roleFamilies = roleFamiliesFor(dirRole);
 
   return (
     <div>
@@ -334,16 +336,16 @@ export default function DirectionPage() {
         <Panel style={{ overflow: "hidden" }}>
           <div style={{ padding: "20px 24px 12px" }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Target roles</h2>
-            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Common role families for your direction</span>
+            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Three titles to search under, from your chosen direction</span>
           </div>
-          {TARGET_ROLES.map((r) => (
+          {roleFamilies.map((r, i) => (
             <div key={r.title} style={{ display: "flex", alignItems: "center", gap: 14, padding: "15px 24px", borderTop: "1px solid var(--line2)" }}>
-              <span className="pf-mono" style={{ fontSize: 20, fontWeight: 700, color: r.tone, width: 40 }}>{r.fit}</span>
+              <span className="pf-mono" style={{ fontSize: 15, fontWeight: 700, color: "var(--faint)", width: 26, flexShrink: 0 }}>{String(i + 1).padStart(2, "0")}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{r.title}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>{r.note}</div>
               </div>
-              <span className="pf-mono" style={{ fontSize: 10, fontWeight: 600, color: r.tone, border: `1px solid color-mix(in srgb, ${r.tone} 30%, transparent)`, borderRadius: 6, padding: "3px 9px" }}>{r.label}</span>
+              <span className="pf-mono" style={{ fontSize: 10, fontWeight: 600, color: r.tone, border: `1px solid color-mix(in srgb, ${r.tone} 30%, transparent)`, borderRadius: 6, padding: "3px 9px", flexShrink: 0 }}>{r.relation}</span>
             </div>
           ))}
         </Panel>

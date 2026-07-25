@@ -7,9 +7,10 @@ import {
   roleFit, analyzeJobDescription,
   buildCoverLetter, followUpMessage,
   trackerDerived,
+  roleFamiliesFor, outreachSubject, buildOutreachTemplate,
   type OnbState, type DirectionFields,
 } from '../logic';
-import { EMPTY_BOARD, DEFAULT_TARGET_KEYWORDS, type BoardCard } from '../data';
+import { DIR_ROLE_OPTS, EMPTY_BOARD, DEFAULT_TARGET_KEYWORDS, OUTREACH_PERSONAS, type BoardCard } from '../data';
 
 /* ── helpers ──────────────────────────────────────────────────────── */
 
@@ -181,5 +182,75 @@ describe('trackerDerived', () => {
     // interviews = interview + offer
     expect(d.interviews).toBe(2);
     expect(d.offers).toBe(1);
+  });
+});
+
+/* ── target role families ─────────────────────────────────────────── */
+
+describe('roleFamiliesFor', () => {
+  it('gives exactly three families for every wizard role', () => {
+    for (const role of DIR_ROLE_OPTS) {
+      const fams = roleFamiliesFor(role);
+      expect(fams, role).toHaveLength(3);
+    }
+  });
+
+  it('leads with a Primary family that names the chosen role', () => {
+    const fams = roleFamiliesFor('Frontend');
+    expect(fams[0].relation).toBe('Primary');
+    expect(fams[0].title.toLowerCase()).toContain('frontend');
+  });
+
+  it('carries no fabricated fit score — only a relation label', () => {
+    const fams = roleFamiliesFor('Full-Stack SWE');
+    const relations = fams.map((f) => f.relation);
+    expect(relations).toContain('Primary');
+    for (const f of fams) {
+      expect(['Primary', 'Adjacent', 'Stretch']).toContain(f.relation);
+      expect(f).not.toHaveProperty('fit');
+    }
+  });
+
+  it('falls back to Full-Stack families for an unknown or null role', () => {
+    expect(roleFamiliesFor(null)).toEqual(roleFamiliesFor('Full-Stack SWE'));
+    expect(roleFamiliesFor('Nonsense')).toEqual(roleFamiliesFor('Full-Stack SWE'));
+  });
+});
+
+/* ── outreach templates ───────────────────────────────────────────── */
+
+describe('outreachSubject', () => {
+  it('returns a non-empty subject for every persona', () => {
+    for (const persona of OUTREACH_PERSONAS) {
+      expect(outreachSubject(persona, 'SWE Intern').trim().length, persona).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('buildOutreachTemplate', () => {
+  const opts = { name: 'Alex', company: 'Acme', role: 'SWE Intern', techs: 'React, Node' };
+
+  it('addresses the real recipient by name, never a hardcoded contact', () => {
+    const paras = buildOutreachTemplate('Recruiter', opts).join(' ');
+    expect(paras).toContain('Alex');
+    expect(paras).not.toMatch(/Priya|Marc|Tom|Sara/);
+  });
+
+  it('falls back to a neutral greeting when no name is given', () => {
+    const paras = buildOutreachTemplate('Recruiter', { ...opts, name: '' }).join(' ');
+    expect(paras).toContain('Hi there,');
+  });
+
+  it('produces a multi-paragraph draft for every persona', () => {
+    for (const persona of OUTREACH_PERSONAS) {
+      const paras = buildOutreachTemplate(persona, opts);
+      expect(paras.length, persona).toBeGreaterThanOrEqual(2);
+      expect(paras.every((p) => p.trim().length > 0), persona).toBe(true);
+    }
+  });
+
+  it('mentions the company when one is supplied', () => {
+    const paras = buildOutreachTemplate('Peer / alumnus', opts).join(' ');
+    expect(paras).toContain('Acme');
   });
 });

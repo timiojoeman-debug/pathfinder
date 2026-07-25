@@ -150,12 +150,6 @@ export const CHAT_REPLIES = [
   "That’s enough to draft a direction. I’ve pre-filled the wizard from what you said — accept it below or keep refining.",
 ];
 
-export const TARGET_ROLES = [
-  { fit: 86, title: "Full-Stack Engineer Intern", note: "React / Node / Postgres — your core stack", tone: "var(--strong)", label: "primary" },
-  { fit: 74, title: "Frontend Engineer Intern", note: "TypeScript + design-system work", tone: "var(--strong)", label: "strong" },
-  { fit: 61, title: "Data / ML Engineer Intern", note: "Needs a shipped ML project first", tone: "var(--warn)", label: "stretch" },
-];
-
 export const HIRE_FRAMEWORK = [
   { k: "H", label: "Hone direction", note: "Direction statement + 3 target roles", status: "Done", statusColor: "var(--strong)", bg: "var(--strong)", fg: "#fff" },
   { k: "I", label: "Intensify profile", note: "CV, LinkedIn, GitHub aligned", status: "In progress", statusColor: "var(--warn)", bg: "var(--warn)", fg: "#fff" },
@@ -246,23 +240,8 @@ export const JOB_DETAILS: Record<string, JobDetail> = {
 
 /* ── Networking ────────────────────────────────────────────────────── */
 
-export interface OutreachMessage {
-  to: string;
-  subject: string;
-  p1: string;
-  p2: string;
-  close: string;
-}
-
 export const OUTREACH_PERSONAS = ["Recruiter", "Hiring manager", "Peer / alumnus", "Startup founder"] as const;
 export type OutreachPersona = (typeof OUTREACH_PERSONAS)[number];
-
-export const OUTREACH_MESSAGES: Record<OutreachPersona, OutreachMessage> = {
-  "Recruiter": { to: "Priya · Recruiter, Skyscanner", subject: "CS student — quick question on your SWE intern track", p1: "Hi Priya, I’m a CS student focused on full-stack work (React/Node). I saw Skyscanner’s summer SWE internship and loved your post on the team’s move to edge rendering.", p2: "I recently shipped a deployed task-tracker my classmates use daily and would value 15 minutes to learn what a strong intern application looks like to your team — no ask beyond that.", close: "Either way, thanks for the content — it’s genuinely useful. [Your name]" },
-  "Hiring manager": { to: "Marc · Engineering Manager, FanDuel", subject: "A question about your settlement-services post", p1: "Hi Marc, your write-up on rebuilding FanDuel’s settlement pipeline stuck with me — the idempotency-key section especially. I’m a CS student working in Node and Postgres.", p2: "I rebuilt a small payments-style flow in a recent project and hit the exact double-write problem you described. If your team takes interns this summer, I’d love to know what you look for.", close: "One sharp question, not a pitch: how do you test that pipeline under partial failure? [Your name]" },
-  "Peer / alumnus": { to: "Tom · SWE, Monzo", subject: "Fellow CS student — coffee chat?", p1: "Hi Tom, I’m a CS student aiming at backend internships, and Monzo is top of my list.", p2: "Could I buy you a virtual coffee for 15 minutes? I’d love to hear what the intern experience is actually like — and what you wish you’d known applying.", close: "No agenda beyond that. Happy to work around your week. [Your name]" },
-  "Startup founder": { to: "Sara · Founder, BedrockAI", subject: "I built something with your API — and a question", p1: "Hi Sara, I’m a CS student. Last month I built a small tool on BedrockAI’s API — a study-notes summariser my flatmates now use daily.", p2: "I’m looking for a summer internship where I’d ship real product. If you’re taking anyone on, I’d love to show you what I built and where your docs tripped me up (fixable in an afternoon).", close: "Either way — the API is genuinely great. [Your name]" },
-};
 
 export const NETWORK_PERSONA_ANGLES = [
   { kind: "Recruiter", tone: "var(--active)", title: "Speed & keywords", angle: "Wants fast signal that you match the req. Lead with stack + a quantified win." },
