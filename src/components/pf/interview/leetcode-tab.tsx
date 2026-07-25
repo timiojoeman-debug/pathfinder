@@ -15,7 +15,7 @@
 
 import { useState } from "react";
 import { usePfStore } from "@/lib/pf/store";
-import { LEETCODE_CATEGORIES, LEETCODE_TOTAL, type LeetDifficulty } from "@/lib/pf/leetcode";
+import { LEETCODE_CATEGORIES, LEETCODE_TOTAL, NEETCODE_URL, type LeetDifficulty } from "@/lib/pf/leetcode";
 import { Reveal } from "@/components/pf/ui";
 
 const mono = "'JetBrains Mono',monospace";
@@ -48,12 +48,19 @@ export function LeetTab() {
 
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", maxWidth: 720 }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "20px 24px 12px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>LeetCode patterns · NeetCode</h2>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "20px 24px 6px" }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>LeetCode patterns · Blind 75</h2>
         <span className="pf-mono" style={{ fontSize: 10.5, color: "var(--muted)", fontFamily: mono }}>
           {solvedSum} / {LEETCODE_TOTAL} solved
         </span>
       </div>
+
+      <p style={{ padding: "0 24px 12px", margin: 0, fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, maxWidth: "62ch" }}>
+        The Blind 75 is the standard shortlist for CS interviews: master these patterns — not 500 random
+        problems — and most technical rounds become recognisable. Depth over volume is the whole point:
+        interviewers test whether you can spot the pattern and reason out loud, so understanding one
+        problem per pattern deeply beats grinding dozens shallowly.
+      </p>
 
       {rows.map((r) => {
         const on = open === r.name;
@@ -127,10 +134,18 @@ export function LeetTab() {
         );
       })}
 
-      <div style={{ padding: "12px 24px", fontSize: 11.5, color: "var(--faint)", lineHeight: 1.55, borderTop: "1px solid var(--line2)" }}>
+      <div style={{ padding: "12px 24px", fontSize: 11.5, color: "var(--faint)", lineHeight: 1.6, borderTop: "1px solid var(--line2)" }}>
         Tick a problem once you have solved it — the title links to LeetCode, and progress persists
-        between sessions. Category sizes are uneven because the list is: Arrays &amp; Hashing has 13,
-        Tries has 1.
+        between sessions. Category sizes are uneven because the list is: Trees has 11, Stack and
+        Advanced Graphs have 1.{" "}
+        <a
+          href={NEETCODE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "none" }}
+        >
+          Finished these? Continue on NeetCode 150 →
+        </a>
       </div>
     </Reveal>
   );
