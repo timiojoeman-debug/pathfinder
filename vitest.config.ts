@@ -29,19 +29,20 @@ export default defineConfig({
       thresholds: {
         // A ratchet, not the goal.
         //
-        // Measured at the time of writing: 20.09% lines, 19.31% statements,
-        // 16.20% functions, 14.66% branches. These sit a whisker below that,
+        // Measured at the time of writing: 44.92% lines, 42.17% statements,
+        // 36.58% functions, 33.33% branches. These sit a whisker below that,
         // so coverage cannot silently regress while staying green today —
         // a threshold set to an aspirational 80% would fail on every run and
         // simply get ignored.
         //
-        // Raise these as tests land. The biggest gaps are route handlers
-        // (most are at 0%), lib/pf/store.ts (~8%), lib/prompts (~10%) and
-        // lib/stores (0%).
-        lines: 20,
-        statements: 19,
-        functions: 16,
-        branches: 14,
+        // Raise these as tests land. Every API route handler, the whole
+        // Career-OS derivation layer, both Zustand store families, and the AI
+        // engine/retrieval layer now have tests. The biggest remaining gap is
+        // the React phase pages / components (untested — RTL territory).
+        lines: 44,
+        statements: 42,
+        functions: 36,
+        branches: 33,
       },
     },
   },
