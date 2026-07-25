@@ -29,21 +29,20 @@ export default defineConfig({
       thresholds: {
         // A ratchet, not the goal.
         //
-        // Measured at the time of writing: 33.54% lines, 31.25% statements,
-        // 22.80% functions, 24.55% branches. These sit a whisker below that,
+        // Measured at the time of writing: 35.70% lines, 33.08% statements,
+        // 24.25% functions, 25.81% branches. These sit a whisker below that,
         // so coverage cannot silently regress while staying green today —
         // a threshold set to an aspirational 80% would fail on every run and
         // simply get ignored.
         //
-        // Raise these as tests land. Nearly every route handler now has tests
-        // (remaining: cv/analyze, jobs/search internals, direction/{explore,
-        // title-variants}). The biggest gaps are now non-route: lib/pf/store.ts
-        // (~15%), lib/stores (0%), lib/ai/{mentor-engine,retrieval} (0%), and
-        // the phase pages.
-        lines: 33,
-        statements: 31,
-        functions: 22,
-        branches: 24,
+        // Raise these as tests land. Every API route handler now has tests.
+        // The biggest remaining gaps are non-route: lib/pf/store.ts (~15%),
+        // lib/stores (0%), lib/ai/{mentor-engine,retrieval} (0%), and the
+        // phase pages.
+        lines: 35,
+        statements: 32,
+        functions: 24,
+        branches: 25,
       },
     },
   },
