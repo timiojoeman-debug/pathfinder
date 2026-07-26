@@ -169,6 +169,25 @@ export function classifyRoute(pathname: string): keyof typeof LIMITS {
   return "api";
 }
 
+/* ── Guest (logged-out) access ──────────────────────────────────────────
+   The product's phase pages work without an account — state is local — but
+   every /api route sat behind the auth cookie, so the first thing many
+   students saw was a 401. Job search touches no user-specific server data: it
+   queries public GitHub internship lists and Adzuna using only the search
+   terms, so it is safe to open to guests. AI generators and every
+   account-scoped route stay behind login. A guest job search is still metered
+   by a per-IP daily budget (below) so it cannot run up the Adzuna quota. */
+
+const GUEST_API_ROUTES = new Set(["/api/jobs/search"]);
+
+/** Whether a logged-out visitor may call this exact route. */
+export function isGuestAllowed(pathname: string): boolean {
+  return GUEST_API_ROUTES.has(pathname);
+}
+
+/** Per-IP daily budget for guest AI/search calls (override with ANON_AI_DAILY_QUOTA). */
+export const ANON_AI_DAILY_QUOTA = Number(process.env.ANON_AI_DAILY_QUOTA) || 10;
+
 /* ── Per-user daily AI quota ────────────────────────────────────────────
    Caps OpenAI spend from any single account. Shares the same counter table,
    so it holds across instances too: the window is the milliseconds remaining

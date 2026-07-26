@@ -392,6 +392,18 @@ export default function JobsPage() {
           workMode: workMode === "any" ? undefined : workMode,
         }),
       });
+      // 429 is the guest daily cap (or a burst) — say so rather than showing
+      // "no results", which reads as a broken search. The route ships a plain
+      // message; fall back if it's missing.
+      if (res.status === 429) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        setLiveJobs([]);
+        setSearchNote(
+          body?.error ??
+            "You've hit today's free search limit. Sign in for more, or try again after midnight UTC.",
+        );
+        return;
+      }
       const json = (res.ok ? await res.json() : null) as
         | { jobs?: unknown; configured?: boolean; message?: string }
         | null;

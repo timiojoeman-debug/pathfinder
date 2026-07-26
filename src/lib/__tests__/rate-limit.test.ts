@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { hit, hitLocal, hitDaily, classifyRoute, LIMITS } from '../rate-limit';
+import { hit, hitLocal, hitDaily, classifyRoute, isGuestAllowed, ANON_AI_DAILY_QUOTA, LIMITS } from '../rate-limit';
 
 /**
  * The limiter was an in-memory Map, so on Vercel each serverless instance kept
@@ -73,6 +73,28 @@ describe('rate limiting', () => {
     it('falls back to the general bucket for everything else', () => {
       expect(classifyRoute('/api/profile')).toBe('api');
       expect(classifyRoute('/api/health')).toBe('api');
+    });
+  });
+
+  describe('guest access', () => {
+    it('opens job search to logged-out visitors', () => {
+      // Phase pages work logged out; job search touches no user data, so a
+      // guest shouldn't hit a 401 just for searching.
+      expect(isGuestAllowed('/api/jobs/search')).toBe(true);
+    });
+
+    it('keeps AI generators and account routes behind login', () => {
+      expect(isGuestAllowed('/api/jobs/analyze')).toBe(false);
+      expect(isGuestAllowed('/api/cv/analyze')).toBe(false);
+      expect(isGuestAllowed('/api/networking/outreach')).toBe(false);
+      expect(isGuestAllowed('/api/mentor/chat')).toBe(false);
+      expect(isGuestAllowed('/api/profile')).toBe(false);
+      expect(isGuestAllowed('/api/account/export')).toBe(false);
+    });
+
+    it('meters guests below the signed-in daily quota to protect provider cost', () => {
+      expect(ANON_AI_DAILY_QUOTA).toBeGreaterThan(0);
+      expect(ANON_AI_DAILY_QUOTA).toBeLessThan(Number(process.env.AI_DAILY_QUOTA) || 60);
     });
   });
 

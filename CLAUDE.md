@@ -50,9 +50,10 @@ Client-side AI calls go through **`useAiTask(endpoint)`** (`lib/pf/use-ai.ts`), 
 `fetch` in a component. It owns loading, error text, and aborting a superseded request, and it
 maps two statuses that a raw error string handles badly:
 
-- **401** — every phase page works logged-out (state is local) but every AI route sits behind the
-  auth cookie, so "not signed in" is the first response many students will see. It surfaces as
-  `needsAuth`, rendered as guidance with a sign-in link, not as a red failure.
+- **401** — every phase page works logged-out (state is local) but every AI *generator* sits behind the
+  auth cookie, so "not signed in" is the first response a student sees the moment they try to generate.
+  It surfaces as `needsAuth`, rendered as guidance with a sign-in link, not as a red failure. (Job
+  search is exempt — it's on the guest allowlist and runs logged-out; see the Guest tier note below.)
 - **429** — the AI bucket is 30/min with a real daily quota, so this gets its own wording.
 
 Panels are built from the primitives in `components/pf/ai-panel.tsx` (`GenerateButton`, `AiError`,
@@ -90,6 +91,14 @@ an in-memory Map gave each instance its own counter and the effective limit was 
 If the store is unreachable the limiter degrades to per-instance counting rather than failing requests.
 **`/api/auth/me` and `/api/auth/logout` are deliberately in the general bucket**: the client calls
 `me` on navigation, and throttling it at the credential limit locks a browsing user out of their own session.
+
+**Guest tier**: every `/api/*` route requires the auth cookie *except* the public allowlist in
+`middleware.ts` (`auth/*`, `health`, `intel/analyze`) and the guest allowlist in `rate-limit.ts`
+(`isGuestAllowed` — currently just `/api/jobs/search`). A guest job search touches no user data (GitHub
++ Adzuna, search terms only), so it runs logged-out, metered by a per-IP daily budget
+(`ANON_AI_DAILY_QUOTA`, default 10) so it can't run up the Adzuna quota. An expired/invalid token
+degrades to the guest path rather than a hard 401. AI generators and account-scoped routes stay behind
+login — do **not** widen `isGuestAllowed` to an OpenAI route without a matching per-IP cost cap.
 
 - `/auth/{signup,login,logout,me}` — JWT auth with httpOnly cookies
 - `/auth/password-reset/{request,confirm}`, `/auth/verify-email/{request,confirm}`
