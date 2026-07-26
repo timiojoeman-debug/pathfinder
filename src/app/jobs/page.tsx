@@ -6,7 +6,7 @@
  * job cards feeding the detail drawer.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { buildCoverLetter, fitTone, targetKeywords } from "@/lib/pf/logic";
 import { usePfStore, type SavedJob } from "@/lib/pf/store";
 import { Chip, Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
@@ -135,43 +135,66 @@ function AnalysisResult() {
     return () => controller.abort();
   }, [r]);
 
+  const [refineDraft, setRefineDraft] = useState("");
+  const [refining, setRefining] = useState(false);
+
   // AI cover letter via the active site's generator; local draft as fallback.
+  // Extracted so the "Refine" button can re-run it with an instruction.
+  const runLetter = useCallback(async (refinement?: string) => {
+    const st = usePfStore.getState();
+    if (refinement) setRefining(true);
+    try {
+      const res = await fetch("/api/cover-letter/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cvData: st.cvText,
+          jobDescription: st.jfJD,
+          companyName: st.jfCompany || "the company",
+          directionStatement: st.dirRole ? `${st.dirRole} internships` : undefined,
+          refinement: refinement || undefined,
+        }),
+      });
+      const json: unknown = res.ok ? await res.json() : null;
+      const data = (json as { data?: { coverLetter?: string; assumptions?: unknown } } | null)?.data;
+      const text = data?.coverLetter;
+      if (typeof text === "string" && text.trim().length > 80) {
+        const paras = text.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean);
+        const assumptions = Array.isArray(data?.assumptions) ? data.assumptions.filter((x): x is string => typeof x === "string") : [];
+        setLetterFor({ key: st.jfLetter, value: { paras, assumptions, words: text.split(/\s+/).length } });
+      }
+    } catch {
+      /* local letter renders */
+    } finally {
+      if (refinement) setRefining(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!s.jfLetter) return;
-    const st = usePfStore.getState();
-    const controller = new AbortController();
-    fetch("/api/cover-letter/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cvData: st.cvText, jobDescription: st.jfJD, companyName: st.jfCompany || "the company", directionStatement: st.dirRole ? `${st.dirRole} internships` : undefined }),
-      signal: controller.signal,
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json: unknown) => {
-        const data = (json as { data?: { coverLetter?: string; assumptions?: unknown } } | null)?.data;
-        const text = data?.coverLetter;
-        if (typeof text === "string" && text.trim().length > 80) {
-          const paras = text.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean);
-          const assumptions = Array.isArray(data?.assumptions) ? data.assumptions.filter((x): x is string => typeof x === "string") : [];
-          setLetterFor({ key: st.jfLetter, value: { paras, assumptions, words: text.split(/\s+/).length } });
-        }
-      })
-      .catch(() => { /* local letter renders */ });
-    return () => controller.abort();
-  }, [s.jfLetter]);
+    void runLetter();
+  }, [s.jfLetter, runLetter]);
 
   if (!r) return null;
   const localLetter = buildCoverLetter(s.jfCompany, s.jfTitle, s.jfJD, targetKeywords(s.dirStack));
   const letter = aiLetter
     ? { paras: aiLetter.paras, words: aiLetter.words, assumptions: aiLetter.assumptions.length ? aiLetter.assumptions : localLetter.assumptions }
     : { paras: [localLetter.p1, localLetter.p2, localLetter.p3], words: localLetter.words, assumptions: localLetter.assumptions };
+
+  // One compatibility number, not two: lead with the AI score once it lands,
+  // fall back to the instant keyword heuristic before then. The two used to
+  // render side by side and disagree, which is what students noticed.
+  const scoreIsAi = typeof aiRead?.score === "number";
+  const displayScore = typeof aiRead?.score === "number" ? aiRead.score : r.compat;
+  const displayTone = displayScore >= 70 ? "var(--strong)" : displayScore >= 55 ? "var(--warn)" : "var(--risk)";
+  const scoreLabel = scoreIsAi ? "AI-scored against your CV" : "keyword estimate — refine below";
   return (
     <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", borderBottom: "1px solid var(--line)", background: "var(--accentSoft)" }}>
-        <span className="pf-mono" style={{ fontSize: 30, fontWeight: 700, color: r.compatTone }}>{r.compat}</span>
+        <span className="pf-mono" style={{ fontSize: 30, fontWeight: 700, color: displayTone }}>{displayScore}</span>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700 }}>Compatibility with your CV</div>
-          <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 2 }}>{r.tally}</div>
+          <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 2 }}>{scoreLabel} · {r.tally}</div>
         </div>
         {r.hasBlockers && (
           <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "var(--risk)", border: "1px solid color-mix(in srgb,var(--risk) 32%,transparent)", borderRadius: 6, padding: "3px 9px" }}>
@@ -206,13 +229,10 @@ function AnalysisResult() {
         </div>
       ))}
 
-      {aiRead && (
+      {aiRead && (aiRead.warning || aiRead.checklist.length > 0) && (
         <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--line2)" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-            <Kicker style={{ fontSize: 9.5 }}>AI read</Kicker>
-            {aiRead.score !== null && (
-              <span className="pf-mono" style={{ fontSize: 10.5, color: "var(--muted)" }}>AI match {aiRead.score}%</span>
-            )}
+            <Kicker style={{ fontSize: 9.5 }}>AI notes</Kicker>
           </div>
           {aiRead.warning && (
             <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--risk)", margin: "0 0 8px" }}>{aiRead.warning}</p>
@@ -255,6 +275,25 @@ function AnalysisResult() {
               <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{a}</span>
             </div>
           ))}
+
+          {/* Refine with AI — tell it what to change and regenerate the draft. */}
+          <div style={{ display: "flex", gap: 9, marginTop: 14, flexWrap: "wrap" }}>
+            <input
+              value={refineDraft}
+              onChange={(e) => setRefineDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && refineDraft.trim() && !refining) { void runLetter(refineDraft.trim()); } }}
+              placeholder="Refine it — e.g. “more concise”, “lead with my Go project”…"
+              className="pf-input"
+              style={{ flex: "1 1 240px", minWidth: 0, height: 40, padding: "0 14px", fontSize: 13 }}
+            />
+            <button
+              onClick={() => { if (refineDraft.trim() && !refining) void runLetter(refineDraft.trim()); }}
+              disabled={!refineDraft.trim() || refining}
+              style={{ cursor: !refineDraft.trim() || refining ? "default" : "pointer", height: 40, padding: "0 18px", borderRadius: 10, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: !refineDraft.trim() || refining ? "var(--faint)" : "var(--fg)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
+            >
+              {refining ? "Refining…" : "Refine with AI"}
+            </button>
+          </div>
         </div>
       )}
     </Reveal>
