@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
-import { AI_DAILY_QUOTA, classifyRoute, hit, hitDaily, LIMITS } from '@/lib/rate-limit';
+import { AI_DAILY_QUOTA, ANON_AI_DAILY_QUOTA, classifyRoute, hit, hitDaily, isGuestAllowed, LIMITS } from '@/lib/rate-limit';
 
 const PUBLIC_API_ROUTES = [
   '/api/auth/login',
@@ -61,35 +61,65 @@ export async function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get('pathfinder-token')?.value;
-  if (!token) {
-    return NextResponse.json(
-      { error: 'Authentication required' },
-      { status: 401 }
-    );
+
+  // A valid session gets full access with the per-user daily AI quota. A missing
+  // or expired token falls through to guest handling rather than a hard 401, so
+  // a lapsed cookie still degrades to the logged-out experience on open routes.
+  if (token) {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    try {
+      const { payload } = await jwtVerify(
+        token,
+        new TextEncoder().encode(secret)
+      );
+
+      const userId = payload.userId as string;
+
+      // Per-user daily AI quota — caps OpenAI cost from any single account.
+      if (bucket === 'ai') {
+        const quota = await hitDaily(`aiq:${userId}`, AI_DAILY_QUOTA);
+        if (!quota.ok) {
+          return NextResponse.json(
+            { error: `You've reached today's AI limit (${AI_DAILY_QUOTA} requests). It resets at midnight UTC.` },
+            {
+              status: 429,
+              headers: {
+                'Retry-After': String(quota.retryAfter),
+                'RateLimit-Limit': String(quota.limit),
+                'RateLimit-Remaining': String(quota.remaining),
+              },
+            },
+          );
+        }
+      }
+
+      const headers = new Headers(request.headers);
+      headers.set('x-user-id', userId);
+      headers.set('x-user-email', payload.email as string);
+      headers.set('x-user-role', payload.role as string);
+
+      return NextResponse.next({ request: { headers } });
+    } catch {
+      // Invalid/expired token — treat as logged-out below, not a 401 outright.
+    }
   }
 
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    return NextResponse.json(
-      { error: 'Server configuration error' },
-      { status: 500 }
-    );
-  }
-
-  try {
-    const { payload } = await jwtVerify(
-      token,
-      new TextEncoder().encode(secret)
-    );
-
-    const userId = payload.userId as string;
-
-    // Per-user daily AI quota — caps OpenAI cost from any single account.
+  // No valid session. Guest-safe routes (e.g. job search — no user data, just
+  // GitHub + Adzuna) run anonymously, metered by a per-IP daily budget so they
+  // cannot run up the provider quota. Everything else still requires sign-in.
+  if (isGuestAllowed(pathname)) {
     if (bucket === 'ai') {
-      const quota = await hitDaily(`aiq:${userId}`, AI_DAILY_QUOTA);
+      const quota = await hitDaily(`aiq:anon:${clientIp(request)}`, ANON_AI_DAILY_QUOTA);
       if (!quota.ok) {
         return NextResponse.json(
-          { error: `You've reached today's AI limit (${AI_DAILY_QUOTA} requests). It resets at midnight UTC.` },
+          { error: `You've reached today's free limit (${ANON_AI_DAILY_QUOTA} searches). Sign in for more, or try again after midnight UTC.` },
           {
             status: 429,
             headers: {
@@ -101,19 +131,13 @@ export async function middleware(request: NextRequest) {
         );
       }
     }
-
-    const headers = new Headers(request.headers);
-    headers.set('x-user-id', userId);
-    headers.set('x-user-email', payload.email as string);
-    headers.set('x-user-role', payload.role as string);
-
-    return NextResponse.next({ request: { headers } });
-  } catch {
-    return NextResponse.json(
-      { error: 'Invalid or expired token' },
-      { status: 401 }
-    );
+    return NextResponse.next();
   }
+
+  return NextResponse.json(
+    { error: 'Authentication required' },
+    { status: 401 }
+  );
 }
 
 export const config = {
