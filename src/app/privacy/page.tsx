@@ -51,7 +51,11 @@ export default function PrivacyPage() {
       <ul>
         <li><strong>Supabase</strong> — database and storage hosting.</li>
         <li><strong>OpenAI</strong> — AI text generation for the features above.</li>
-        <li><strong>Job data providers</strong> (e.g. Adzuna / JSearch) — when you search for live opportunities.</li>
+        <li><strong>Job data providers</strong> — when you search for live opportunities, PathFinder queries
+          <strong> Adzuna</strong> (a job-search API) and pulls from open, community-maintained internship lists
+          published on <strong>GitHub</strong> (e.g. the Summer-internship repos). We only send your search terms
+          (role, location) to these sources; every listing links out to the original posting, and we do not
+          re-host or claim ownership of it.</li>
       </ul>
 
       <LegalH2>Retention</LegalH2>

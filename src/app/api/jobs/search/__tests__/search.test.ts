@@ -6,13 +6,13 @@ vi.mock('@/lib/logger', () => ({
 }));
 
 import { POST } from '../route';
+import { _resetGithubCache } from '@/lib/jobs/github';
 
 /**
- * This route used to return three invented companies attributed to Adzuna,
- * JSearch and Greenhouse, with apply links pointing at example.com — a student
- * could tailor a CV to a company that does not exist. These tests exist to stop
- * fabricated listings coming back: every path that cannot produce real jobs
- * must return an empty list, never placeholder data.
+ * The route now merges two real sources — GitHub internship lists (always on)
+ * and Adzuna (when configured). It once returned three invented companies with
+ * example.com links; these tests keep every path honest: real listings only,
+ * fewer on failure, never fabricated data.
  */
 
 function post(body: unknown): Request {
@@ -24,14 +24,36 @@ function post(body: unknown): Request {
 }
 
 const INVENTED = ['NovaTech', 'ScaleUp Systems', 'CloudFleet', 'example.com'];
-
-/** No listing may reference a placeholder company or a placeholder domain. */
 function expectNothingInvented(payload: unknown) {
   const serialized = JSON.stringify(payload);
-  for (const marker of INVENTED) {
-    expect(serialized).not.toContain(marker);
-  }
+  for (const marker of INVENTED) expect(serialized).not.toContain(marker);
 }
+
+/** Route fetch by host: GitHub raw JSON vs the Adzuna API. */
+function stubFetch(opts: {
+  github?: unknown[];
+  adzuna?: unknown[];
+  adzunaStatus?: number;
+  adzunaThrow?: boolean;
+}) {
+  const { github = [], adzuna = [], adzunaStatus = 200, adzunaThrow = false } = opts;
+  const fn = vi.fn(async (url: unknown) => {
+    const u = String(url);
+    if (u.includes('githubusercontent')) {
+      return { ok: true, json: async () => github } as unknown as Response;
+    }
+    if (adzunaThrow) throw new Error('ECONNRESET');
+    if (adzunaStatus !== 200) return { ok: false, status: adzunaStatus, json: async () => ({}) } as unknown as Response;
+    return { ok: true, json: async () => ({ results: adzuna }) } as unknown as Response;
+  });
+  vi.stubGlobal('fetch', fn);
+  return fn;
+}
+
+const GH = (over: Record<string, unknown> = {}) => ({
+  company_name: 'Skyscanner', title: 'Software Engineer Intern', url: 'https://careers.skyscanner.net/1',
+  locations: ['Edinburgh, UK'], active: true, is_visible: true, source: 'vanshb03', id: 'gh-1', ...over,
+});
 
 describe('POST /api/jobs/search', () => {
   const saved = { ...process.env };
@@ -39,6 +61,7 @@ describe('POST /api/jobs/search', () => {
   beforeEach(() => {
     delete process.env.ADZUNA_APP_ID;
     delete process.env.ADZUNA_APP_KEY;
+    _resetGithubCache();
   });
   afterEach(() => {
     process.env = { ...saved };
@@ -46,96 +69,79 @@ describe('POST /api/jobs/search', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns no jobs and says so when Adzuna is not configured', async () => {
-    const res = await POST(post({ roleType: 'backend intern' }));
+  it('returns real GitHub listings even when Adzuna is not configured', async () => {
+    stubFetch({ github: [GH()] });
+    const res = await POST(post({ roleType: 'software engineer intern' }));
     expect(res.status).toBe(200);
     const body = await res.json();
 
-    expect(body.jobs).toEqual([]);
-    expect(body.configured).toBe(false);
-    expect(body.message).toMatch(/isn't connected/i);
+    expect(body.configured).toBe(true);
+    expect(body.jobs.length).toBeGreaterThanOrEqual(1);
+    expect(body.jobs[0]).toMatchObject({ company: 'Skyscanner', url: 'https://careers.skyscanner.net/1' });
+    expect(body.jobs[0].source).toMatch(/via/i);
+    // No description in these lists → no fabricated fit number.
+    expect(body.jobs[0].matchScore).toBeNull();
     expectNothingInvented(body);
   });
 
-  it('never calls out to a provider when there are no credentials', async () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal('fetch', fetchSpy);
-    await POST(post({ roleType: 'backend intern' }));
-    expect(fetchSpy).not.toHaveBeenCalled();
+  it('never calls Adzuna without credentials (GitHub only)', async () => {
+    const fn = stubFetch({ github: [GH()] });
+    await POST(post({ roleType: 'intern' }));
+    const calledAdzuna = fn.mock.calls.some((c) => String(c[0]).includes('api.adzuna.com'));
+    expect(calledAdzuna).toBe(false);
   });
 
-  it('maps real Adzuna listings, keeping the provider apply link', async () => {
+  it('drops inactive / hidden / linkless GitHub entries rather than showing dead links', async () => {
+    stubFetch({ github: [
+      GH({ id: 'a', active: false }),
+      GH({ id: 'b', is_visible: false, url: 'https://x/b' }),
+      GH({ id: 'c', url: undefined, company_name: 'NoLink' }),
+      GH({ id: 'd', company_name: 'Live Co', url: 'https://x/d' }),
+    ] });
+    const body = await (await POST(post({ roleType: 'software engineer intern' }))).json();
+    const companies = body.jobs.map((j: { company: string }) => j.company);
+    expect(companies).toContain('Live Co');
+    expect(companies).not.toContain('NoLink');
+    expect(body.jobs.every((j: { url: string }) => !!j.url)).toBe(true);
+  });
+
+  it('maps real Adzuna listings, keeping the provider apply link and scoring the JD', async () => {
     process.env.ADZUNA_APP_ID = 'id';
     process.env.ADZUNA_APP_KEY = 'key';
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        results: [
-          {
-            id: 42,
-            title: 'Backend Engineering Intern',
-            description: 'Work with typescript, node and postgresql on our API.',
-            redirect_url: 'https://www.adzuna.co.uk/jobs/details/42',
-            company: { display_name: 'Monzo' },
-            location: { display_name: 'London' },
-          },
-        ],
-      }),
-    })));
+    stubFetch({ github: [], adzuna: [
+      {
+        id: 42,
+        title: 'Backend Engineering Intern',
+        description: 'Work with typescript, node and postgresql on our API.',
+        redirect_url: 'https://www.adzuna.co.uk/jobs/details/42',
+        company: { display_name: 'Monzo' },
+        location: { display_name: 'London' },
+      },
+    ] });
 
-    const res = await POST(post({ roleType: 'backend intern', cvSummary: 'typescript node' }));
-    const body = await res.json();
-
+    const body = await (await POST(post({ roleType: 'backend intern', cvSummary: 'typescript node' }))).json();
     expect(body.configured).toBe(true);
     expect(body.jobs).toHaveLength(1);
-    expect(body.jobs[0]).toMatchObject({
-      company: 'Monzo',
-      source: 'Adzuna',
-      url: 'https://www.adzuna.co.uk/jobs/details/42',
-    });
-    // The JD mentions five recognised keywords — typescript, node, api,
-    // postgresql, and sql (matched as a substring of "postgresql"). The CV
-    // evidences two of them, so 2/5 = 40.
+    expect(body.jobs[0]).toMatchObject({ company: 'Monzo', source: 'Adzuna', url: 'https://www.adzuna.co.uk/jobs/details/42' });
+    // JD names 5 recognised keywords; CV evidences 2 → 40.
     expect(body.jobs[0].matchScore).toBe(40);
-    expect(body.jobs[0].atsKeywords).toEqual(
-      expect.arrayContaining(['typescript', 'node', 'postgresql']),
-    );
+    expect(body.jobs[0].atsKeywords).toEqual(expect.arrayContaining(['typescript', 'node', 'postgresql']));
     expectNothingInvented(body);
   });
 
-  it('drops listings with no apply link rather than inventing one', async () => {
+  it('returns fewer jobs (not invented ones) when Adzuna errors', async () => {
     process.env.ADZUNA_APP_ID = 'id';
     process.env.ADZUNA_APP_KEY = 'key';
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        results: [
-          { title: 'Ghost Role', description: 'No link provided.' },
-          { title: 'Real Role', description: 'react', redirect_url: 'https://example-board.test/1' },
-        ],
-      }),
-    })));
-
-    const body = await (await POST(post({ roleType: 'intern' }))).json();
-    expect(body.jobs).toHaveLength(1);
-    expect(body.jobs[0].title).toBe('Real Role');
-  });
-
-  it('returns an empty list when the provider errors', async () => {
-    process.env.ADZUNA_APP_ID = 'id';
-    process.env.ADZUNA_APP_KEY = 'key';
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503, json: async () => ({}) })));
-
+    stubFetch({ github: [], adzunaStatus: 503 });
     const body = await (await POST(post({ roleType: 'intern' }))).json();
     expect(body.jobs).toEqual([]);
     expectNothingInvented(body);
   });
 
-  it('returns an empty list when the provider is unreachable', async () => {
+  it('surfaces an unavailable message when Adzuna is unreachable', async () => {
     process.env.ADZUNA_APP_ID = 'id';
     process.env.ADZUNA_APP_KEY = 'key';
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('ECONNRESET'); }));
-
+    stubFetch({ github: [], adzunaThrow: true });
     const res = await POST(post({ roleType: 'intern' }));
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -143,50 +149,17 @@ describe('POST /api/jobs/search', () => {
     expect(body.message).toMatch(/unavailable/i);
     expectNothingInvented(body);
   });
-  describe('listings with nothing to score against', () => {
-    beforeEach(() => {
-      process.env.ADZUNA_APP_ID = 'id';
-      process.env.ADZUNA_APP_KEY = 'key';
+
+  it('sorts scored (Adzuna) listings above unscored (GitHub) ones', async () => {
+    process.env.ADZUNA_APP_ID = 'id';
+    process.env.ADZUNA_APP_KEY = 'key';
+    stubFetch({
+      github: [GH({ company_name: 'GH Co', title: 'Software Engineer Intern', url: 'https://x/gh' })],
+      adzuna: [{ title: 'Software Engineer Intern', description: 'react and typescript required', redirect_url: 'https://x/az', company: { display_name: 'AZ Co' } }],
     });
-
-    it('returns a null score rather than a confident-looking number', async () => {
-      // Adzuna sends a ~500-char snippet, usually company blurb naming no
-      // technologies. Scoring that 50 made every real job render "Long shot".
-      vi.stubGlobal('fetch', vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          results: [{
-            title: 'Software Engineering Intern',
-            description: "We're a profitable video game start-up in London with 15 million monthly players.",
-            redirect_url: 'https://www.adzuna.co.uk/jobs/details/1',
-            company: { display_name: 'Bloxd' },
-          }],
-        }),
-      })));
-
-      const body = await (await POST(post({ roleType: 'intern', cvSummary: 'Go Postgres React' }))).json();
-      expect(body.jobs).toHaveLength(1);
-      expect(body.jobs[0].matchScore).toBeNull();
-      expect(body.jobs[0].atsKeywords).toEqual([]);
-      // The listing itself is still real and still shown.
-      expect(body.jobs[0].company).toBe('Bloxd');
-    });
-
-    it('sorts scored listings above unscored ones', async () => {
-      vi.stubGlobal('fetch', vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          results: [
-            { title: 'A', description: 'company blurb only', redirect_url: 'https://x.test/a' },
-            { title: 'B', description: 'react and typescript required', redirect_url: 'https://x.test/b' },
-          ],
-        }),
-      })));
-
-      const body = await (await POST(post({ roleType: 'intern', cvSummary: 'react typescript' }))).json();
-      expect(body.jobs[0].title).toBe('B');
-      expect(body.jobs[0].matchScore).toBe(100);
-      expect(body.jobs[1].matchScore).toBeNull();
-    });
+    const body = await (await POST(post({ roleType: 'software engineer intern', cvSummary: 'react typescript' }))).json();
+    expect(body.jobs[0].company).toBe('AZ Co');
+    expect(body.jobs[0].matchScore).toBe(100);
+    expect(body.jobs[body.jobs.length - 1].matchScore).toBeNull();
   });
 });
