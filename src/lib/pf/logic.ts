@@ -406,3 +406,26 @@ export function buildOutreachTemplate(
       ];
   }
 }
+
+/* ── Phase 03 / 04 display + composition helpers ───────────────────── */
+
+/** Fit-filter predicate for a scored job card (Phase 03). A role with no known
+ *  fit is hidden once a threshold is set — it has no score to compare. */
+export function jobPassesFit(job: { fit: number; fitKnown?: boolean }, minFit: number): boolean {
+  return minFit <= 0 || (job.fitKnown !== false && job.fit >= minFit);
+}
+
+/** What the outreach AI personalises on: research findings first, then the
+ *  profile text the student pasted, then a neutral fallback. Never invents. */
+export function composeSharedAttributes(
+  research: { connectionPoints?: string[]; outreachAngles?: string[] } | null,
+  pasted: { about?: string; experience?: string },
+  fallback: string,
+): string {
+  const bits = [
+    ...(research?.connectionPoints ?? []),
+    ...(research?.outreachAngles ?? []),
+    ...[pasted.about, pasted.experience].map((x) => (x ?? "").trim()).filter(Boolean),
+  ].filter(Boolean);
+  return bits.join(" | ") || fallback;
+}

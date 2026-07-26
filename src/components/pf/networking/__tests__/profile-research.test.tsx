@@ -64,6 +64,26 @@ describe("ProfileResearch", () => {
     expect(screen.getByText("How did you handle idempotency?")).toBeTruthy();
   });
 
+  it("is controllable — reports contact edits and results up to the parent", async () => {
+    const onContactChange = vi.fn();
+    const onResult = vi.fn();
+    const run = vi.fn(async () => ({ summary: "Backend engineer at Monzo.", connectionPoints: ["Edinburgh"] }));
+    vi.mocked(useAiTask).mockReturnValue(aiTask({ run: run as never }));
+
+    const contact = { name: "Dana", company: "Monzo", about: "Backend engineer.", experience: "" };
+    render(<ProfileResearch contact={contact} onContactChange={onContactChange} onResult={onResult} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/their name/i), { target: { value: "Danae" } });
+    expect(onContactChange).toHaveBeenCalledWith(expect.objectContaining({ name: "Danae" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /find the angles/i }));
+    await waitFor(() =>
+      expect(onResult).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ summary: "Backend engineer at Monzo." }) }),
+      ),
+    );
+  });
+
   it("surfaces a not-signed-in state as guidance with a sign-in link", () => {
     vi.mocked(useAiTask).mockReturnValue(aiTask({ error: "Sign in to research contacts.", needsAuth: true }));
     render(<ProfileResearch />);

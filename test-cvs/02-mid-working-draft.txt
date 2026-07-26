@@ -1,0 +1,35 @@
+Sam Carter
+Edinburgh, UK · sam.carter@example.com · github.com/samcarter-dev
+
+Software Engineer Intern
+
+Second-year Computer Science student at the University of Edinburgh interested
+in web development. Comfortable building front ends with React and JavaScript
+and currently learning backend development. Looking for a summer internship.
+
+SKILLS
+JavaScript, React, HTML, CSS, Python, Git
+
+EXPERIENCE
+
+Student Ambassador — University of Edinburgh · Sep 2025 – present
+- Gave campus tours and ran open-day sessions for prospective students.
+- Helped answer questions about the Computer Science course.
+
+Retail Assistant — Independent Bookshop, Edinburgh · 2024 – 2025
+- Worked on the till and managed stock during busy periods.
+- Trained two new starters on the point-of-sale system.
+
+PROJECTS
+
+Weather App (React)
+- Built a React app that shows a five-day forecast for any city using a
+  public weather API.
+- Added a search box and saved the user's last city in local storage.
+
+Personal Portfolio Website (HTML/CSS)
+- Designed and built a personal site to showcase my projects.
+
+EDUCATION
+BSc Computer Science, University of Edinburgh · 2025 – 2029 (expected)
+Relevant coursework: Programming, Data Structures, Web Development.
