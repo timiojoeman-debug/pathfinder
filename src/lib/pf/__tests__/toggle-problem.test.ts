@@ -13,8 +13,8 @@ import { LEETCODE_CATEGORIES } from '../leetcode';
  * silently adding them to the new totals.
  */
 
-const arrays = LEETCODE_CATEGORIES[0];          // Arrays & Hashing, 13 problems
-const twoPointers = LEETCODE_CATEGORIES[1];     // Two Pointers, 8 problems
+const arrays = LEETCODE_CATEGORIES[0];          // Arrays & Hashing, 8 problems
+const twoPointers = LEETCODE_CATEGORIES[1];     // Two Pointers, 3 problems
 
 beforeEach(() => {
   usePfStore.setState({ ivProblems: {}, ivSolved: {}, events: [] });

@@ -10,6 +10,7 @@ import {
   KEYWORD_VOCAB,
   VAGUE_TERMS,
   type BoardColumn,
+  type OutreachPersona,
 } from "./data";
 
 /* ── Shared scales ─────────────────────────────────────────────────── */
@@ -114,6 +115,47 @@ export function chatReplyFor(turn: number): string {
   return CHAT_REPLIES[Math.min(turn, CHAT_REPLIES.length - 1)];
 }
 
+/* ── Target role families ──────────────────────────────────────────────
+   Derived from the role the student actually chose, not a fixed table of
+   invented fit scores. The relationships (a role narrows, widens, or
+   stretches from the primary) are real; there is no fabricated percentage,
+   because nothing here has seen the student's CV to compute one. */
+
+export interface RoleFamily {
+  title: string;
+  note: string;
+  relation: "Primary" | "Adjacent" | "Stretch";
+  tone: string;
+}
+
+const ROLE_FAMILIES: Record<string, RoleFamily[]> = {
+  "Full-Stack SWE": [
+    { title: "Full-Stack Engineer Intern", note: "Your core target — front end and back end in one role.", relation: "Primary", tone: "var(--strong)" },
+    { title: "Frontend Engineer Intern", note: "Narrows to the UI half of your stack — a natural second search.", relation: "Adjacent", tone: "var(--strong)" },
+    { title: "Backend Engineer Intern", note: "Narrows to services and data — worth searching under this name too.", relation: "Adjacent", tone: "var(--warn)" },
+  ],
+  "Frontend": [
+    { title: "Frontend Engineer Intern", note: "Your core target — UI, components and browser work.", relation: "Primary", tone: "var(--strong)" },
+    { title: "Full-Stack Engineer Intern", note: "Widens to the back end — many front-end interns are hired under this title.", relation: "Adjacent", tone: "var(--strong)" },
+    { title: "Design Engineer Intern", note: "Front end with a design-systems slant — a stretch if you have UI work to show.", relation: "Stretch", tone: "var(--warn)" },
+  ],
+  "Backend": [
+    { title: "Backend Engineer Intern", note: "Your core target — APIs, services and data.", relation: "Primary", tone: "var(--strong)" },
+    { title: "Full-Stack Engineer Intern", note: "Widens to the UI — a common title for backend-leaning interns.", relation: "Adjacent", tone: "var(--strong)" },
+    { title: "Platform / Infrastructure Intern", note: "Deeper into systems — a stretch that rewards a deployed, operable project.", relation: "Stretch", tone: "var(--warn)" },
+  ],
+  "Data / ML": [
+    { title: "Data / ML Engineer Intern", note: "Your core target — models and the pipelines around them.", relation: "Primary", tone: "var(--strong)" },
+    { title: "Data Engineer Intern", note: "The pipelines without the modelling — often more intern openings.", relation: "Adjacent", tone: "var(--strong)" },
+    { title: "Backend Engineer Intern", note: "Software-heavy roles value ML-adjacent skills — a stretch worth searching.", relation: "Stretch", tone: "var(--warn)" },
+  ],
+};
+
+/** Role families for the chosen direction — three targets, methodology's cap. */
+export function roleFamiliesFor(dirRole: string | null): RoleFamily[] {
+  return ROLE_FAMILIES[dirRole ?? ""] ?? ROLE_FAMILIES["Full-Stack SWE"];
+}
+
 /* ── CV analysis ───────────────────────────────────────────────────── */
 
 export interface CvAnalysis {
@@ -146,17 +188,6 @@ export function analyzeCvText(cvText: string, dirStack: string[]): CvAnalysis {
     vague,
     missing,
     targetKw,
-  };
-}
-
-export function linkedInIssues(targetKw: string[]) {
-  return {
-    score: 68,
-    issues: [
-      { sev: "HIGH", sevCol: "var(--risk)", text: "Headline lists your degree, not your target role — recruiters search by role keywords." },
-      { sev: "HIGH", sevCol: "var(--risk)", text: "About section has none of your target-stack keywords (" + targetKw.slice(0, 3).join(", ") + ")." },
-      { sev: "MED", sevCol: "var(--warn)", text: "Featured section is empty — pin your deployed project with a one-line metric." },
-    ],
   };
 }
 
@@ -312,5 +343,61 @@ export function formatReminder(v: string): string {
 }
 
 export function followUpMessage(to: string): string {
-  return "Hi " + to.split(" ")[0] + " — quick follow-up on my last note. Since then I shipped the improvement you suggested (repo link below). Still keen on that 15 minutes if your week allows.";
+  const first = to.trim() ? to.trim().split(" ")[0] : "there";
+  return "Hi " + first + " — quick follow-up on my last note. Since then I shipped the improvement you suggested (repo link below). Still keen on that 15 minutes if your week allows.";
+}
+
+/* ── Outreach (Phase 04) ───────────────────────────────────────────────
+   A structural template the student edits and tailors, built from the real
+   recipient they entered — never a fabricated named contact. The bracketed
+   lines are prompts to fill in, not invented facts. The AI regenerate path
+   produces the fully tailored version. */
+
+export function outreachSubject(persona: OutreachPersona, role: string): string {
+  switch (persona) {
+    case "Recruiter":
+      return `CS student — quick question on your ${role.toLowerCase()} track`;
+    case "Hiring manager":
+      return "A question about your team's work";
+    case "Peer / alumnus":
+      return "Fellow student — 15-min coffee chat?";
+    case "Startup founder":
+      return "I tried your product — and a question";
+  }
+}
+
+export function buildOutreachTemplate(
+  persona: OutreachPersona,
+  o: { name: string; company: string; role: string; techs: string },
+): string[] {
+  const hi = o.name.trim() ? `Hi ${o.name.trim()},` : "Hi there,";
+  const at = o.company.trim() ? ` at ${o.company.trim()}` : "";
+  const stack = o.techs.trim() || "my core stack";
+  const role = o.role.toLowerCase();
+  switch (persona) {
+    case "Recruiter":
+      return [
+        `${hi} I'm a CS student focused on ${role} work (${stack}). I saw the ${role} opening${at} and wanted to reach out directly.`,
+        "I recently shipped a deployed project I can point to, and I'd value 15 minutes to learn what a strong application looks like to your team — no ask beyond that.",
+        "[Add one specific thing you noticed about the team or a recent post before sending.] Thanks either way. [Your name]",
+      ];
+    case "Hiring manager":
+      return [
+        `${hi} I'm a CS student working in ${stack}, aiming at ${role} internships${at}.`,
+        "[Reference one concrete thing their team built or wrote about — this is what earns the reply.] I hit a related problem in a recent project and would value your read on it.",
+        "One sharp question, not a pitch: [ask something specific about how they work]. Thank you. [Your name]",
+      ];
+    case "Peer / alumnus":
+      return [
+        `${hi} I'm a CS student aiming at ${role} internships${at ? `, and${at} is top of my list` : ""}.`,
+        "Could I buy you a virtual coffee for 15 minutes? I'd love to hear what the intern experience is actually like — and what you wish you'd known applying.",
+        "No agenda beyond that. Happy to work around your week. [Your name]",
+      ];
+    case "Startup founder":
+      return [
+        `${hi} I'm a CS student. [Say what you built or tried with their product — one honest sentence.]`,
+        `I'm looking for a summer internship where I'd ship real product${at ? ` — ${o.company.trim()} is exactly the kind of team I mean` : ""}. If you're taking anyone on, I'd love to show you what I've built.`,
+        "[Add one specific, useful observation about their product.] Either way — thanks for building it. [Your name]",
+      ];
+  }
 }

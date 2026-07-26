@@ -11,11 +11,10 @@ import {
   COFFEE_CHAT_FRAMEWORK,
   FOLLOW_UP_CADENCE,
   NETWORK_PERSONA_ANGLES,
-  OUTREACH_MESSAGES,
   OUTREACH_PERSONAS,
   type OutreachPersona,
 } from "@/lib/pf/data";
-import { followUpMessage, targetKeywords } from "@/lib/pf/logic";
+import { buildOutreachTemplate, followUpMessage, outreachSubject, targetKeywords } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
 import { useAuthStore } from "@/lib/stores";
 import { Chip, PageHeader, Panel, Reveal } from "@/components/pf/ui";
@@ -38,12 +37,29 @@ export default function NetworkingPage() {
   const s = usePfStore();
   const user = useAuthStore((a) => a.user);
   const senderName = user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "";
-  const netMsg = OUTREACH_MESSAGES[s.netPersona];
+
+  // The real recipient the student is writing to — entered here, never a
+  // fabricated named contact. Everything the outreach renders is built from
+  // these fields, so the draft is honestly blank until the student fills them.
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientCompany, setRecipientCompany] = useState("");
+  const [recipientIntel, setRecipientIntel] = useState("");
   const [aiMsg, setAiMsg] = useState<AiOutreach | null>(null);
   const [generating, setGenerating] = useState(false);
 
-  // AI outreach via the active site's generator; the design's persona
-  // templates remain the instant fallback.
+  const role = s.dirRole ? `${s.dirRole} Intern` : "SWE Intern";
+  const techs = targetKeywords(s.dirStack).slice(0, 3).join(", ");
+  const subject = outreachSubject(s.netPersona, role);
+  const templateParas = buildOutreachTemplate(s.netPersona, {
+    name: recipientName,
+    company: recipientCompany,
+    role,
+    techs,
+  });
+  const recipientLabel = recipientName.trim() || recipientCompany.trim() || "your contact";
+
+  // AI outreach via the active site's generator, built from the real contact
+  // the student entered; the structural template is the instant fallback.
   const regenerate = async () => {
     if (generating) return;
     setGenerating(true);
@@ -53,12 +69,14 @@ export default function NetworkingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: PERSONA_API_TYPE[s.netPersona],
-          recipientName: netMsg.to.split(" ·")[0],
+          recipientName: recipientName.trim() || undefined,
           senderName,
-          roleTitle: s.dirRole ? `${s.dirRole} Intern` : "SWE Intern",
-          company: netMsg.to.split(", ").pop() ?? "the company",
-          technologies: targetKeywords(s.dirStack).slice(0, 3).join(", "),
-          sharedAttributes: s.netPersona === "Startup founder" ? "Built a project on their product; founder-led team" : (s.dirRole ? `${s.dirRole} student` : "Student targeting internships"),
+          roleTitle: role,
+          company: recipientCompany.trim() || "the company",
+          technologies: techs,
+          // Only what the student actually pasted about this person — no
+          // invented common ground.
+          sharedAttributes: recipientIntel.trim() || (s.dirRole ? `${s.dirRole} student targeting internships` : "Student targeting internships"),
         }),
       });
       const json: unknown = res.ok ? await res.json() : null;
@@ -84,7 +102,7 @@ export default function NetworkingPage() {
     s.set({ netPersona: p, netFollow: false });
   };
 
-  const followMsg = aiMsg?.followUp ?? followUpMessage(netMsg.to);
+  const followMsg = aiMsg?.followUp ?? followUpMessage(recipientName);
 
   return (
     <div>
@@ -143,7 +161,7 @@ export default function NetworkingPage() {
             <span style={{ display: "flex", width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: 7, background: "var(--accent)" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="#F7F1E4"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
             </span>
-            <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>AI outreach · tailored to {netMsg.to}</span>
+            <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>AI outreach · tailored to {recipientLabel}</span>
             {/* Only claimed once a message has actually been scored — the
                 template shown before that has no verdict to report. */}
             <NaturalnessBadge result={aiMsg?.naturalness} />
@@ -155,23 +173,68 @@ export default function NetworkingPage() {
             ))}
           </div>
 
-          <div style={{ padding: "18px 24px" }}>
-            <div className="pf-mono" style={{ fontSize: 11, color: "var(--faint)", marginBottom: 12 }}>Subject · {netMsg.subject}</div>
+          {/* Who you're writing to. Prefill the company from a saved role, or
+              type it — the draft is built from these, so it's honestly blank
+              until you say who this is for. */}
+          <div style={{ padding: "14px 22px 0" }}>
+            {s.savedJobs.length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {s.savedJobs.slice(0, 6).map((j) => (
+                  <Chip
+                    key={j.company + j.role}
+                    size="sm"
+                    label={j.company}
+                    on={recipientCompany.trim().toLowerCase() === j.company.toLowerCase()}
+                    onClick={() => { setRecipientCompany(j.company); setAiMsg(null); }}
+                  />
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <input
+                value={recipientName}
+                onChange={(e) => { setRecipientName(e.target.value); setAiMsg(null); }}
+                placeholder="Their name (optional)"
+                className="pf-input"
+                style={{ height: 40, padding: "0 13px", flex: "1 1 160px", minWidth: 0, fontSize: 13 }}
+              />
+              <input
+                value={recipientCompany}
+                onChange={(e) => { setRecipientCompany(e.target.value); setAiMsg(null); }}
+                placeholder="Their company"
+                className="pf-input"
+                style={{ height: 40, padding: "0 13px", flex: "1 1 160px", minWidth: 0, fontSize: 13 }}
+              />
+            </div>
+            <textarea
+              value={recipientIntel}
+              onChange={(e) => { setRecipientIntel(e.target.value); setAiMsg(null); }}
+              placeholder="What you know about them — paste from their LinkedIn/bio (school, degree, recent work, a post). This is what the AI personalises on."
+              className="pf-input"
+              style={{ width: "100%", minHeight: 64, marginTop: 10, padding: "10px 13px", fontSize: 12.5, lineHeight: 1.6, resize: "vertical" }}
+            />
+          </div>
+
+          <div style={{ padding: "16px 24px" }}>
+            <div className="pf-mono" style={{ fontSize: 11, color: "var(--faint)", marginBottom: 12 }}>Subject · {subject}</div>
             {aiMsg ? (
               aiMsg.paras.map((p, i) => (
                 <p key={i} style={{ fontSize: 13.5, lineHeight: 1.7, color: i === aiMsg.paras.length - 1 ? "var(--muted)" : "var(--fg)", margin: i === aiMsg.paras.length - 1 ? "0 0 16px" : "0 0 12px" }}>{p}</p>
               ))
             ) : (
               <>
-                <p style={{ fontSize: 13.5, lineHeight: 1.7, color: "var(--fg)", margin: "0 0 12px" }}>{netMsg.p1}</p>
-                <p style={{ fontSize: 13.5, lineHeight: 1.7, color: "var(--fg)", margin: "0 0 12px" }}>{netMsg.p2}</p>
-                <p style={{ fontSize: 13.5, lineHeight: 1.7, color: "var(--muted)", margin: "0 0 16px" }}>{netMsg.close}</p>
+                <div className="pf-mono" style={{ fontSize: 9.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 8 }}>
+                  Structural template — fill the bracketed parts, or generate a tailored version
+                </div>
+                {templateParas.map((p, i) => (
+                  <p key={i} style={{ fontSize: 13.5, lineHeight: 1.7, color: i === templateParas.length - 1 ? "var(--muted)" : "var(--fg)", margin: i === templateParas.length - 1 ? "0 0 16px" : "0 0 12px" }}>{p}</p>
+                ))}
               </>
             )}
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: "1px solid var(--line2)", paddingTop: 14 }}>
               <button
-                onClick={s.generateOutreach}
+                onClick={() => s.generateOutreach(recipientCompany)}
                 style={{ cursor: "pointer", height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
               >
                 Mark as sent &amp; log it →

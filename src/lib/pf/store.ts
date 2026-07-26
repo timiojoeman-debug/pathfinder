@@ -16,7 +16,6 @@ import {
   ONB_TO_DIR_INDUSTRY,
   ONB_TO_DIR_ROLE,
   ONB_TO_DIR_SIZE,
-  OUTREACH_MESSAGES,
   type BoardCard,
   type BoardColumn,
   type OutreachPersona,
@@ -39,12 +38,6 @@ import { deriveProfile, type CareerProfile, type ProfileInput } from "./profile"
 import { computeProgress, type ProgressReport } from "./progress";
 import { recommend, type Recommendation } from "./recommendations";
 import type { AiInteraction } from "./orchestrator";
-
-/** Company name out of an outreach recipient line ("Priya · Recruiter, Skyscanner"). */
-function companyFromRecipient(to: string): string {
-  const parts = to.split(", ");
-  return parts.length > 1 ? parts[parts.length - 1] : to;
-}
 
 export interface ChatMsg { who: "you" | "ai"; text: string }
 /** A turn in the cross-page mentor conversation. */
@@ -175,7 +168,7 @@ interface PfState {
   saveJfJob: () => void;
   analyzeJf: () => void;
 
-  generateOutreach: () => void;
+  generateOutreach: (company?: string) => void;
 
   /** Mark a problem solved, or un-mark it if it already was. */
   toggleProblem: (slug: string) => void;
@@ -437,11 +430,11 @@ export const usePfStore = create<PfState>()(
         }, 1500);
       },
 
-      generateOutreach: () => {
+      generateOutreach: (company?: string) => {
         const s = get();
-        const company = companyFromRecipient(OUTREACH_MESSAGES[s.netPersona].to);
+        const co = company?.trim() || "a contact";
         set({ netGenerated: true, netSent: s.netSent + 1 });
-        get().emit("RecruiterContacted", "networking", `Outreach sent to ${company} (${s.netPersona})`, { company, persona: s.netPersona });
+        get().emit("RecruiterContacted", "networking", `Outreach sent to ${co} (${s.netPersona})`, { company: co, persona: s.netPersona });
       },
 
       toggleProblem: (slug) => {

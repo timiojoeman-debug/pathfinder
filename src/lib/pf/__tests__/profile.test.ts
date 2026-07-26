@@ -81,7 +81,9 @@ describe('deriveProfile — reflects real activity only', () => {
   });
 
   it('counts only real logged LeetCode progress', () => {
-    const p = deriveProfile(makeInput({ ivSolved: { 'Two Pointers': 5 } }));
+    // Trees holds 11 problems, so 5 is a real count that passes through
+    // unclamped (unlike a value above a small category's size).
+    const p = deriveProfile(makeInput({ ivSolved: { 'Trees': 5 } }));
     expect(p.leetSolved).toBe(5);
   });
 

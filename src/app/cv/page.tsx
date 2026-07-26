@@ -9,7 +9,7 @@
 
 import { useRef, useState } from "react";
 import { usePfStore } from "@/lib/pf/store";
-import { analyzeCvText, linkedInIssues } from "@/lib/pf/logic";
+import { analyzeCvText } from "@/lib/pf/logic";
 import { Kicker, PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 import { TailorPanel } from "@/components/pf/cv/tailor-panel";
@@ -113,7 +113,6 @@ export default function CvPage() {
   const analysis = analyzeCvText(cvText, dirStack);
   const hasVague = analysis.vague.length > 0;
   const hasMissing = analysis.missing.length > 0;
-  const linkedin = linkedInIssues(analysis.targetKw);
   const linkedinChevron = cvLinkedIn ? "▾" : "▸";
 
   return (
@@ -322,16 +321,10 @@ export default function CvPage() {
                 <span style={{ fontSize: 16, fontWeight: 700 }}>{linkedinChevron}</span>
                 <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>LinkedIn quick check</h2>
               </span>
-              <span style={{ fontFamily: mono, fontSize: 12, fontWeight: 700, color: "var(--warn)" }}>{linkedin.score} / 100</span>
+              <span style={{ fontFamily: mono, fontSize: 11, color: "var(--faint)" }}>paste yours to review</span>
             </a>
             {cvLinkedIn && (
               <div style={{ borderTop: "1px solid var(--line)" }}>
-                {linkedin.issues.map((li, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 24px", borderBottom: "1px solid var(--line2)" }}>
-                    <span style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, color: li.sevCol, border: `1px solid color-mix(in srgb, ${li.sevCol} 32%, transparent)`, borderRadius: 5, padding: "2px 7px", flexShrink: 0 }}>{li.sev}</span>
-                    <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)" }}>{li.text}</span>
-                  </div>
-                ))}
                 <LinkedInPanel />
               </div>
             )}

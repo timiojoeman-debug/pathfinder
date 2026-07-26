@@ -17,10 +17,10 @@ import {
  */
 
 describe('LeetCode data', () => {
-  it('has the 18 categories and 100 problems of the NeetCode list', () => {
+  it('has the 18 categories and 75 problems of the Blind 75 list', () => {
     expect(LEETCODE_CATEGORIES).toHaveLength(18);
-    expect(LEETCODE_TOTAL).toBe(100);
-    expect(LEETCODE_PROBLEMS).toHaveLength(100);
+    expect(LEETCODE_TOTAL).toBe(75);
+    expect(LEETCODE_PROBLEMS).toHaveLength(75);
   });
 
   it('derives the total from the categories, so the two cannot disagree', () => {
@@ -49,13 +49,13 @@ describe('LeetCode data', () => {
   it('keeps the uneven category sizes rather than padding them', () => {
     const sizes = LEETCODE_CATEGORIES.map((c) => c.problems.length);
     expect(Math.min(...sizes)).toBe(1);
-    expect(Math.max(...sizes)).toBe(13);
+    expect(Math.max(...sizes)).toBe(11);
   });
 });
 
 describe('LEET_ON_TRACK', () => {
-  it('holds the 60% bar the old hardcoded 45-of-75 threshold represented', () => {
-    expect(LEET_ON_TRACK).toBe(60);
+  it('holds the 60% bar — 45 of the 75-problem Blind 75', () => {
+    expect(LEET_ON_TRACK).toBe(45);
     expect(LEET_ON_TRACK / LEETCODE_TOTAL).toBeCloseTo(0.6, 5);
   });
 });
