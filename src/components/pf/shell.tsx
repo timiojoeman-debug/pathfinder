@@ -130,10 +130,14 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
       data-mobile-open={mobileOpen ? "1" : "0"}
       style={{
         width: collapsed ? 74 : 266, flexShrink: 0, borderRight: "1px solid var(--line)", background: "var(--panel)",
-        display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh",
-        transition: "width .3s var(--ease)", overflow: "hidden",
+        alignSelf: "stretch", minHeight: "100dvh",
+        transition: "width .3s var(--ease)",
       }}
     >
+      {/* The aside's background stretches the full height of the page (align-self
+          stretch); this inner column is pinned to the viewport so the rail's
+          content stays in view without the rail ending mid-page. */}
+      <div style={{ position: "sticky", top: 0, height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Link href="/" title="Back to the site" style={{ display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "22px 0 18px" : "22px 22px 18px", justifyContent: collapsed ? "center" : undefined, textDecoration: "none", color: "var(--fg)" }}>
         <div style={{ width: 30, height: 30, borderRadius: 9, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--rim)", flexShrink: 0 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
@@ -218,6 +222,7 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
             </Link>
           )
         )}
+      </div>
       </div>
     </aside>
   );
