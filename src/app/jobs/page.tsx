@@ -53,6 +53,39 @@ function AddRolePanel() {
   const s = usePfStore();
   const canSave = !!(s.jfTitle.trim() && s.jfCompany.trim());
   const canAnalyze = s.jfJD.trim().length >= 80;
+
+  // Optional: paste a posting URL and pull the description text from it, so the
+  // student doesn't have to copy the whole JD. Falls back to a clear "paste it"
+  // message when the page can't be read.
+  const [jdUrl, setJdUrl] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [fetchNote, setFetchNote] = useState<string | null>(null);
+
+  const fetchJd = async () => {
+    const url = jdUrl.trim();
+    if (!url || fetching) return;
+    setFetching(true);
+    setFetchNote(null);
+    try {
+      const res = await fetch("/api/jobs/fetch-jd", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const json = (res.ok ? await res.json() : await res.json().catch(() => null)) as { text?: string; error?: string } | null;
+      if (res.ok && typeof json?.text === "string" && json.text.length >= 120) {
+        s.set({ jfJD: json.text, jfResult: null, jfLetter: false });
+        setFetchNote("Pulled the description from the link — review it, then analyze.");
+      } else {
+        setFetchNote(json?.error ?? "Couldn't read that link. Paste the description below instead.");
+      }
+    } catch {
+      setFetchNote("Couldn't reach that link. Paste the description below instead.");
+    } finally {
+      setFetching(false);
+    }
+  };
+
   return (
     <Panel style={{ padding: "24px 26px", marginBottom: 18 }}>
       <Kicker style={{ marginBottom: 14 }}>Add a role you found — save it, or analyze it against your CV</Kicker>
@@ -72,6 +105,26 @@ function AddRolePanel() {
           style={{ height: 44, padding: "0 15px" }}
         />
       </div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        <input
+          value={jdUrl}
+          onChange={(e) => setJdUrl(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") void fetchJd(); }}
+          placeholder="Job posting URL (optional) — paste a link to pull the description"
+          className="pf-input"
+          style={{ flex: "1 1 260px", minWidth: 0, height: 44, padding: "0 15px", fontSize: 13 }}
+        />
+        <button
+          onClick={() => void fetchJd()}
+          disabled={!jdUrl.trim() || fetching}
+          style={{ cursor: !jdUrl.trim() || fetching ? "default" : "pointer", height: 44, padding: "0 18px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: !jdUrl.trim() || fetching ? "var(--faint)" : "var(--fg)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
+        >
+          {fetching ? "Fetching…" : "Fetch from link"}
+        </button>
+      </div>
+      {fetchNote && (
+        <div style={{ fontSize: 11.5, color: "var(--faint)", margin: "-4px 0 12px" }}>{fetchNote}</div>
+      )}
       <textarea
         value={s.jfJD}
         onChange={(e) => s.set({ jfJD: e.target.value, jfResult: null, jfLetter: false })}

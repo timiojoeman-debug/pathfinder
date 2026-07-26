@@ -256,6 +256,56 @@ export const FOLLOW_UP_CADENCE = [
   { n: "4", label: "Long-term reminder", note: "Light check-in ~6 weeks later", bg: "var(--panel3)", fg: "var(--muted)" },
 ];
 
+/** Who to reach, the titles they actually go by when you search them, where to
+ *  find them, and what to look for first. Grounded in the TechTalk personas +
+ *  LinkedIn checklist + Direct Access method — not invented. */
+export interface StakeholderSearch {
+  kind: string;
+  tone: string;
+  goesBy: string[];
+  where: string;
+  research: string;
+}
+
+export const STAKEHOLDER_SEARCH: StakeholderSearch[] = [
+  {
+    kind: "Recruiter",
+    tone: "var(--active)",
+    goesBy: ["Recruiter", "Talent Acquisition", "Talent Partner", "Talent Sourcer", "Early Careers / University Recruiter", "HR"],
+    where: 'LinkedIn: "talent acquisition" + [company] — or whoever posted the specific role',
+    research: "Check if they posted about this exact role — they're the most responsive. Note the roles they usually hire for.",
+  },
+  {
+    kind: "Hiring manager",
+    tone: "var(--accent)",
+    goesBy: ["Engineering Manager", "Head of Engineering", "Tech Lead", "Director of Engineering", "VP Engineering", "CTO"],
+    where: 'LinkedIn: "engineering manager" + [company]; often the person who posted the job',
+    research: "Read their team's engineering blog and recent talks. Reference one specific thing they built, then ask one sharp question.",
+  },
+  {
+    kind: "Peer / alumnus",
+    tone: "var(--strong)",
+    goesBy: ["Software Engineer", "Graduate Engineer", "Associate Engineer", "Intern", "Junior Developer"],
+    where: 'LinkedIn: "[your university]" + [company] + software engineer — filter to engineers 1–4 years in',
+    research: "Shared university halves the barrier. Prioritise former interns and recent grads — they remember applying and refer freely.",
+  },
+  {
+    kind: "Startup founder",
+    tone: "var(--warn)",
+    goesBy: ["Founder", "Co-founder", "CEO", "CTO", "Founding Engineer"],
+    where: "Their company site, LinkedIn, or AngelList — sub-100-person firms (the Direct Access method)",
+    research: "Read their product, blog, and GitHub. The one specific detail about their work is non-negotiable — a generic email to 50 startups gets zero replies.",
+  },
+];
+
+export const NETWORK_RESEARCH_STEPS = [
+  "Read their LinkedIn, GitHub, and any blog or talk — about 30 minutes, once.",
+  "Find ONE specific thing about their work that genuinely interests you (a post, a project, a decision).",
+  "Find ONE real commonality — same university, city, a technology, an event you both attended.",
+  "Note their team's current focus so your questions land on what they actually do.",
+  "For the role itself: read the JD twice, skim the company's engineering blog, and check Glassdoor for the interview format — then map your evidence to their requirements.",
+];
+
 export const COFFEE_CHAT_FRAMEWORK = [
   { n: "1", label: "Opening", time: "~1 min", note: "Intro + gratitude + set a light agenda — setting the agenda reads as leadership.", script: "Would it be OK to spend most of the time on your path into the team, and grab any advice for my next year at the end?" },
   { n: "2", label: "Their story", time: "10–15 min", note: "Your prepared questions — about them, never “what should I do”.", script: "What actually separated strong interns from average ones on your team?" },
