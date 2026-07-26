@@ -58,5 +58,18 @@ async function checkSupabase(): Promise<boolean> {
 
 export async function GET() {
   const [openai, supabase] = await Promise.all([checkOpenAI(), checkSupabase()]);
-  return NextResponse.json({ openai, supabase, version: '0.1.0' });
+  // Surface the deployed commit/branch (set by Vercel) so "is the live site
+  // stale?" is a one-request check instead of guesswork. Included only when
+  // Vercel provides them, so local/test responses keep their existing shape.
+  const commit = process.env.VERCEL_GIT_COMMIT_SHA;
+  const branch = process.env.VERCEL_GIT_COMMIT_REF;
+  const env = process.env.VERCEL_ENV;
+  return NextResponse.json({
+    openai,
+    supabase,
+    version: '0.1.0',
+    ...(commit ? { commit: commit.slice(0, 7) } : {}),
+    ...(branch ? { branch } : {}),
+    ...(env ? { env } : {}),
+  });
 }

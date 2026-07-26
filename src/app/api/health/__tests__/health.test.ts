@@ -36,6 +36,9 @@ describe('GET /api/health', () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    delete process.env.VERCEL_GIT_COMMIT_SHA;
+    delete process.env.VERCEL_GIT_COMMIT_REF;
+    delete process.env.VERCEL_ENV;
   });
   afterEach(() => {
     process.env = { ...saved };
@@ -47,6 +50,16 @@ describe('GET /api/health', () => {
     const res = await GET();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ openai: false, supabase: false, version: '0.1.0' });
+  });
+
+  it('surfaces the deployed commit, branch and env when Vercel provides them', async () => {
+    process.env.VERCEL_GIT_COMMIT_SHA = 'abcdef1234567890';
+    process.env.VERCEL_GIT_COMMIT_REF = 'master';
+    process.env.VERCEL_ENV = 'production';
+    const body = await (await GET()).json();
+    expect(body.commit).toBe('abcdef1');
+    expect(body.branch).toBe('master');
+    expect(body.env).toBe('production');
   });
 
   it('reports supabase healthy by probing with the service-role key', async () => {
