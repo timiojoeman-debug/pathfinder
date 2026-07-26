@@ -1,0 +1,43 @@
+Priya Nair
+Edinburgh, UK · priya.nair@example.com · github.com/priyanair-ml · linkedin.com/in/priyanair-ml
+
+MACHINE LEARNING INTERN
+
+Second-year Computer Science student (University of Edinburgh) focused on
+machine learning and data engineering. Built and evaluated models in Python,
+deployed one as a small inference API. Seeking a Summer 2027 ML or data
+internship.
+
+CORE SKILLS
+Languages: Python, SQL, R
+ML / Data: PyTorch, scikit-learn, pandas, NumPy, Hugging Face Transformers
+Data engineering: Apache Spark, Airflow, dbt, BigQuery
+Tooling: Git, Docker, Jupyter, Weights & Biases
+
+EXPERIENCE
+
+Data Science Intern — Aveni (fintech AI), Edinburgh · Jun 2026 – Aug 2026
+- Trained a text-classification model (PyTorch) that raised call-tagging
+  accuracy from 78% to 91% on the held-out set.
+- Built an Airflow pipeline processing 2M records/day into BigQuery, cutting a
+  manual export from 90 minutes to under 5.
+- Wrote unit tests for the feature pipeline and documented the evaluation
+  protocol.
+
+PROJECTS
+
+Sentiment Analysis Service · github.com/priyanair-ml/sentiment
+Python · PyTorch · FastAPI · Docker
+- Fine-tuned a transformer for review sentiment (F1 0.89) and deployed it
+  behind a FastAPI inference endpoint.
+- Documented the train/validation/test split and baseline comparison.
+
+Housing Price Model
+Python · scikit-learn · pandas
+- Built a gradient-boosted regressor, benchmarked against a linear baseline,
+  and analysed feature importance.
+
+EDUCATION
+BSc Computer Science, University of Edinburgh · 2025 – 2029 (expected)
+Relevant coursework: Machine Learning, Probability & Statistics, Databases,
+Algorithms. First-year average: 84%.

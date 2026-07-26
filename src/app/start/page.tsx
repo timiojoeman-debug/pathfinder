@@ -75,7 +75,7 @@ export default function StartPage() {
   const readinessDash = Math.round(402 * (1 - shownReadiness / 100));
 
   const pillars = [
-    { label: "Academic alignment", value: 82, color: "var(--strong)", pct: "82%" },
+    { label: "Academic baseline", value: 82, color: "var(--strong)", pct: "82%" },
     { label: "CV & positioning", value: cvV, color: toneFor(cvV), pct: cvV + "%" },
     { label: "Portfolio strength", value: projV, color: toneFor(projV), pct: projV + "%" },
     { label: "Networking activity", value: outV, color: toneFor(outV), pct: outV + "%" },
@@ -236,6 +236,9 @@ export default function StartPage() {
                   </div>
                 </div>
               ))}
+              <div style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.5, marginTop: 4 }}>
+                Academic baseline is an assumed starting point — everything else is scored from your answers above.
+              </div>
             </Reveal>
 
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "20px 24px" }}>

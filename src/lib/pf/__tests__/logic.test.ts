@@ -8,6 +8,7 @@ import {
   buildCoverLetter, followUpMessage,
   trackerDerived,
   roleFamiliesFor, outreachSubject, buildOutreachTemplate,
+  jobPassesFit, composeSharedAttributes,
   type OnbState, type DirectionFields,
 } from '../logic';
 import { DIR_ROLE_OPTS, EMPTY_BOARD, DEFAULT_TARGET_KEYWORDS, OUTREACH_PERSONAS, type BoardCard } from '../data';
@@ -252,5 +253,42 @@ describe('buildOutreachTemplate', () => {
   it('mentions the company when one is supplied', () => {
     const paras = buildOutreachTemplate('Peer / alumnus', opts).join(' ');
     expect(paras).toContain('Acme');
+  });
+});
+
+/* ── jobPassesFit ─────────────────────────────────────────────────── */
+
+describe('jobPassesFit', () => {
+  it('passes everything when the threshold is 0', () => {
+    expect(jobPassesFit({ fit: 20 }, 0)).toBe(true);
+    expect(jobPassesFit({ fit: 90 }, 0)).toBe(true);
+  });
+
+  it('keeps only roles at or above the threshold', () => {
+    expect(jobPassesFit({ fit: 80 }, 80)).toBe(true);
+    expect(jobPassesFit({ fit: 59 }, 60)).toBe(false);
+  });
+
+  it('hides unknown-fit roles once a threshold is set', () => {
+    expect(jobPassesFit({ fit: 0, fitKnown: false }, 60)).toBe(false);
+    expect(jobPassesFit({ fit: 0, fitKnown: false }, 0)).toBe(true);
+  });
+});
+
+/* ── composeSharedAttributes ──────────────────────────────────────── */
+
+describe('composeSharedAttributes', () => {
+  it('leads with research findings, then the pasted profile text', () => {
+    const out = composeSharedAttributes(
+      { connectionPoints: ['Both at Edinburgh'], outreachAngles: ['Their edge-rendering post'] },
+      { about: 'Backend engineer', experience: 'ex-Monzo' },
+      'fallback',
+    );
+    expect(out).toBe('Both at Edinburgh | Their edge-rendering post | Backend engineer | ex-Monzo');
+  });
+
+  it('falls back when there is nothing real to personalise on', () => {
+    expect(composeSharedAttributes(null, {}, 'Student targeting internships')).toBe('Student targeting internships');
+    expect(composeSharedAttributes(null, { about: '   ' }, 'fallback')).toBe('fallback');
   });
 });

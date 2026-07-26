@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { buildCoverLetter, fitTone, targetKeywords } from "@/lib/pf/logic";
+import { buildCoverLetter, fitTone, jobPassesFit, targetKeywords } from "@/lib/pf/logic";
 import { usePfStore, type SavedJob } from "@/lib/pf/store";
 import { Chip, Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
@@ -20,6 +20,14 @@ const WORK_MODES: [WorkMode, string][] = [
   ["any", "Any mode"],
   ["remote", "Remote"],
   ["hybrid", "Hybrid"],
+];
+
+/** Client-side display filter over already-scored results. Company size is
+ *  deliberately absent — no job board exposes it, so it can't be a real filter. */
+const FIT_FILTERS: [number, string][] = [
+  [0, "All fits"],
+  [60, "Fit ≥ 60"],
+  [80, "Fit ≥ 80"],
 ];
 
 interface AiJdRead { score: number | null; checklist: string[]; warning: string | null }
@@ -364,6 +372,7 @@ export default function JobsPage() {
   const [searching, setSearching] = useState(false);
   const [liveJobs, setLiveJobs] = useState<SavedJob[]>([]);
   const [searchNote, setSearchNote] = useState<string | null>(null);
+  const [minFit, setMinFit] = useState(0);
 
   // Live search against the active site's job-board route (Adzuna/JSearch).
   const runSearch = async () => {
@@ -415,6 +424,12 @@ export default function JobsPage() {
     if (!exists) s.set({ savedJobs: [{ ...job, action: "Analyze" }, ...st.savedJobs] });
     if (open) s.openJob(job.company);
   };
+
+  // Fit filter applies to already-scored results (jobPassesFit hides unknown-fit
+  // roles once a threshold is set, since they have no score to compare).
+  const passesFit = (j: SavedJob) => jobPassesFit(j, minFit);
+  const shownLive = liveJobs.filter(passesFit);
+  const shownSaved = jobsAll.filter(passesFit);
 
   return (
     <div>
@@ -489,13 +504,25 @@ export default function JobsPage() {
         <div style={{ fontSize: 12, color: "var(--faint)", margin: "-8px 0 14px" }}>{searchNote}</div>
       )}
 
-      {liveJobs.length > 0 && (
+      {(liveJobs.length > 0 || jobsAll.length > 0) && (
+        <Reveal style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)" }}>Show</span>
+          {FIT_FILTERS.map(([value, label]) => (
+            <Chip key={value} size="sm" label={label} on={minFit === value} onClick={() => setMinFit(value)} />
+          ))}
+          <span style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.45, flex: "1 1 220px" }}>
+            Filters what&apos;s shown below by score. Company size isn&apos;t filterable — no job board exposes it.
+          </span>
+        </Reveal>
+      )}
+
+      {shownLive.length > 0 && (
         <div style={{ marginBottom: 18 }}>
           <div className="pf-mono" style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 10 }}>
-            live results · {liveJobs.length} found
+            live results · {shownLive.length} shown
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
-            {liveJobs.map((j, i) => (
+            {shownLive.map((j, i) => (
               <div
                 key={`live-${j.company}-${j.role}-${i}`}
                 onClick={() => saveLiveJob(j, true)}
@@ -551,7 +578,7 @@ export default function JobsPage() {
 
       {jobsAll.length > 0 && (
         <div className="pf-mono" style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)", margin: "0 0 10px" }}>
-          Your saved roles · {jobsAll.length}
+          Your saved roles · {minFit ? `${shownSaved.length} of ${jobsAll.length}` : jobsAll.length}
         </div>
       )}
 
@@ -562,9 +589,16 @@ export default function JobsPage() {
             Search live roles above, or paste a job description below to score it against your CV and save it. Saved roles show here and feed your pipeline.
           </div>
         </Reveal>
+      ) : shownSaved.length === 0 ? (
+        <Reveal style={{ border: "1px dashed var(--lineStrong)", borderRadius: 16, background: "var(--panel)", padding: "30px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: 12 }}>
+            None of your {jobsAll.length} saved roles are at {minFit}+ fit.
+          </div>
+          <Chip size="sm" label="Show all fits" on={false} onClick={() => setMinFit(0)} />
+        </Reveal>
       ) : (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
-        {jobsAll.map((j, i) => (
+        {shownSaved.map((j, i) => (
           <Reveal key={`${j.company}-${j.role}-${i}`} style={{}}>
             <div
               onClick={() => s.openJob(j.company)}

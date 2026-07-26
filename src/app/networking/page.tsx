@@ -16,13 +16,13 @@ import {
   STAKEHOLDER_SEARCH,
   type OutreachPersona,
 } from "@/lib/pf/data";
-import { buildOutreachTemplate, followUpMessage, outreachSubject, targetKeywords } from "@/lib/pf/logic";
+import { buildOutreachTemplate, composeSharedAttributes, followUpMessage, outreachSubject, targetKeywords } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
 import { useAuthStore } from "@/lib/stores";
 import { Chip, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 import { ContactWorkspace } from "@/components/pf/networking/contact-workspace";
-import { ProfileResearch } from "@/components/pf/networking/profile-research";
+import { ProfileResearch, type AnalysisData, type ResearchContact } from "@/components/pf/networking/profile-research";
 import { StartupPanel } from "@/components/pf/networking/startup-panel";
 import { NaturalnessBadge, type Naturalness } from "@/components/pf/networking/naturalness-note";
 
@@ -40,25 +40,38 @@ export default function NetworkingPage() {
   const user = useAuthStore((a) => a.user);
   const senderName = user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "";
 
-  // The real recipient the student is writing to — entered here, never a
-  // fabricated named contact. Everything the outreach renders is built from
-  // these fields, so the draft is honestly blank until the student fills them.
-  const [recipientName, setRecipientName] = useState("");
-  const [recipientCompany, setRecipientCompany] = useState("");
-  const [recipientIntel, setRecipientIntel] = useState("");
+  // The real recipient the student is writing to — one shared contact across
+  // the research panel and the outreach generator, never a fabricated named
+  // contact. The draft stays honestly blank until the student fills it in.
+  const [contact, setContact] = useState<ResearchContact>({ name: "", company: "", about: "", experience: "" });
+  const [research, setResearch] = useState<AnalysisData | null>(null);
   const [aiMsg, setAiMsg] = useState<AiOutreach | null>(null);
   const [generating, setGenerating] = useState(false);
+
+  const editContact = (patch: Partial<ResearchContact>) => {
+    setContact((c) => ({ ...c, ...patch }));
+    setAiMsg(null);
+  };
 
   const role = s.dirRole ? `${s.dirRole} Intern` : "SWE Intern";
   const techs = targetKeywords(s.dirStack).slice(0, 3).join(", ");
   const subject = outreachSubject(s.netPersona, role);
   const templateParas = buildOutreachTemplate(s.netPersona, {
-    name: recipientName,
-    company: recipientCompany,
+    name: contact.name,
+    company: contact.company,
     role,
     techs,
   });
-  const recipientLabel = recipientName.trim() || recipientCompany.trim() || "your contact";
+  const recipientLabel = contact.name.trim() || contact.company.trim() || "your contact";
+
+  // What the AI personalises on: research findings first, then the raw profile
+  // text the student pasted, then a neutral fallback. Never invented.
+  const researchBits = [...(research?.connectionPoints ?? []), ...(research?.outreachAngles ?? [])].filter(Boolean);
+  const sharedAttributes = composeSharedAttributes(
+    research,
+    { about: contact.about, experience: contact.experience },
+    s.dirRole ? `${s.dirRole} student targeting internships` : "Student targeting internships",
+  );
 
   // AI outreach via the active site's generator, built from the real contact
   // the student entered; the structural template is the instant fallback.
@@ -71,14 +84,14 @@ export default function NetworkingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: PERSONA_API_TYPE[s.netPersona],
-          recipientName: recipientName.trim() || undefined,
+          recipientName: contact.name.trim() || undefined,
           senderName,
           roleTitle: role,
-          company: recipientCompany.trim() || "the company",
+          company: contact.company.trim() || "the company",
           technologies: techs,
-          // Only what the student actually pasted about this person — no
-          // invented common ground.
-          sharedAttributes: recipientIntel.trim() || (s.dirRole ? `${s.dirRole} student targeting internships` : "Student targeting internships"),
+          // The research findings + what the student actually pasted about this
+          // person — no invented common ground.
+          sharedAttributes,
         }),
       });
       const json: unknown = res.ok ? await res.json() : null;
@@ -104,7 +117,7 @@ export default function NetworkingPage() {
     s.set({ netPersona: p, netFollow: false });
   };
 
-  const followMsg = aiMsg?.followUp ?? followUpMessage(recipientName);
+  const followMsg = aiMsg?.followUp ?? followUpMessage(contact.name);
 
   return (
     <div>
@@ -117,7 +130,11 @@ export default function NetworkingPage() {
 
       <NextStep />
 
-      <ProfileResearch />
+      <ProfileResearch
+        contact={contact}
+        onContactChange={(c) => { setContact(c); setAiMsg(null); }}
+        onResult={({ data }) => { setResearch(data); setAiMsg(null); }}
+      />
       <ContactWorkspace />
       <StartupPanel />
 
@@ -204,9 +221,9 @@ export default function NetworkingPage() {
             ))}
           </div>
 
-          {/* Who you're writing to. Prefill the company from a saved role, or
-              type it — the draft is built from these, so it's honestly blank
-              until you say who this is for. */}
+          {/* Who you're writing to — the same shared contact as "Research a
+              contact" above, so researching a person personalises this draft.
+              Prefill the company from a saved role, or type it. */}
           <div style={{ padding: "14px 22px 0" }}>
             {s.savedJobs.length > 0 && (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -215,35 +232,38 @@ export default function NetworkingPage() {
                     key={j.company + j.role}
                     size="sm"
                     label={j.company}
-                    on={recipientCompany.trim().toLowerCase() === j.company.toLowerCase()}
-                    onClick={() => { setRecipientCompany(j.company); setAiMsg(null); }}
+                    on={contact.company.trim().toLowerCase() === j.company.toLowerCase()}
+                    onClick={() => editContact({ company: j.company })}
                   />
                 ))}
               </div>
             )}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <input
-                value={recipientName}
-                onChange={(e) => { setRecipientName(e.target.value); setAiMsg(null); }}
+                value={contact.name}
+                onChange={(e) => editContact({ name: e.target.value })}
                 placeholder="Their name (optional)"
                 className="pf-input"
                 style={{ height: 40, padding: "0 13px", flex: "1 1 160px", minWidth: 0, fontSize: 13 }}
               />
               <input
-                value={recipientCompany}
-                onChange={(e) => { setRecipientCompany(e.target.value); setAiMsg(null); }}
+                value={contact.company}
+                onChange={(e) => editContact({ company: e.target.value })}
                 placeholder="Their company"
                 className="pf-input"
                 style={{ height: 40, padding: "0 13px", flex: "1 1 160px", minWidth: 0, fontSize: 13 }}
               />
             </div>
-            <textarea
-              value={recipientIntel}
-              onChange={(e) => { setRecipientIntel(e.target.value); setAiMsg(null); }}
-              placeholder="What you know about them — paste from their LinkedIn/bio (school, degree, recent work, a post). This is what the AI personalises on."
-              className="pf-input"
-              style={{ width: "100%", minHeight: 64, marginTop: 10, padding: "10px 13px", fontSize: 12.5, lineHeight: 1.6, resize: "vertical" }}
-            />
+            {research ? (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--strong)", lineHeight: 1.5 }}>
+                ✓ Personalising on your research of {contact.name.trim() || "this contact"}
+                {researchBits.length ? ` — ${researchBits.length} connection point${researchBits.length > 1 ? "s" : ""} to draw on` : ""}.
+              </div>
+            ) : (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5 }}>
+                Paste their profile in &ldquo;Research a contact&rdquo; above to personalise this — otherwise the AI writes from your target role alone.
+              </div>
+            )}
           </div>
 
           <div style={{ padding: "16px 24px" }}>
@@ -265,7 +285,7 @@ export default function NetworkingPage() {
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: "1px solid var(--line2)", paddingTop: 14 }}>
               <button
-                onClick={() => s.generateOutreach(recipientCompany)}
+                onClick={() => s.generateOutreach(contact.company)}
                 style={{ cursor: "pointer", height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
               >
                 Mark as sent &amp; log it →

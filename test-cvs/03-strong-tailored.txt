@@ -1,0 +1,47 @@
+Alex Morgan
+Edinburgh, UK · alex.morgan@example.com · github.com/alexmorgan-dev · alexmorgan.dev
+linkedin.com/in/alexmorgan-dev
+
+SOFTWARE ENGINEER INTERN
+
+Second-year Computer Science student (University of Edinburgh) building
+full-stack products with React, TypeScript, Node and PostgreSQL. Shipped two
+deployed projects, one used weekly by 40+ classmates. Seeking a Summer 2027
+software engineering internship.
+
+CORE SKILLS
+Languages: TypeScript, JavaScript, Python, SQL
+Frontend: React, Next.js, Tailwind CSS
+Backend: Node, Express, PostgreSQL, REST APIs
+Tooling: Git, Docker, Jest, Playwright, CI/CD (GitHub Actions), AWS (S3, EC2)
+
+EXPERIENCE
+
+Software Engineering Intern — Faciit (fintech), Edinburgh · Jun 2026 – Aug 2026
+- Built a React/TypeScript reconciliation dashboard used by 30+ internal
+  users, cutting a manual daily task from 2 hours to 15 minutes.
+- Shipped 12 REST endpoints on a Node/Express + PostgreSQL service and raised
+  Jest test coverage from 54% to 81%.
+- Instrumented the payments flow with structured logging, reducing mean
+  incident triage time by ~40%.
+
+PROJECTS
+
+PathFinder — AI career mentor · pathfinder.example.dev
+React · Next.js · TypeScript · Node · PostgreSQL · OpenAI / RAG (pgvector)
+- Deployed full-stack app guiding students through the internship search;
+  used weekly by 40+ classmates.
+- Built a retrieval pipeline over pgvector and documented the chunking
+  trade-offs and index choices in the README.
+- CI on GitHub Actions runs the full test suite on every push.
+
+Collaborative Task Board · github.com/alexmorgan-dev/taskboard
+React · WebSockets · PostgreSQL · Docker
+- Real-time board with optimistic updates and presence cursors, load-tested to
+  500 concurrent connections.
+- Documented the consistency trade-off chosen and the race condition fixed.
+
+EDUCATION
+BSc Computer Science, University of Edinburgh · 2025 – 2029 (expected)
+Relevant coursework: Data Structures & Algorithms, Databases, Software
+Engineering, Computer Systems. First-year average: 82%.

@@ -22,37 +22,60 @@ import { useAiTask } from "@/lib/pf/use-ai";
 import { Panel } from "@/components/pf/ui";
 import { AiCaveat, AiError, AiList, AiSection, GenerateButton } from "@/components/pf/ai-panel";
 
-interface AnalysisData {
+export interface AnalysisData {
   summary?: string;
   connectionPoints?: string[];
   outreachAngles?: string[];
   conversationStarters?: string[];
 }
 
-export function ProfileResearch() {
+export interface ResearchContact {
+  name: string;
+  company: string;
+  about: string;
+  experience: string;
+}
+
+const EMPTY_CONTACT: ResearchContact = { name: "", company: "", about: "", experience: "" };
+
+interface ProfileResearchProps {
+  /** When provided, the contact fields are controlled by the parent so the
+   *  outreach generator can share the same person. Omitted → internal state. */
+  contact?: ResearchContact;
+  onContactChange?: (contact: ResearchContact) => void;
+  /** Fired when a research result comes back, so the parent can personalise
+   *  the outreach message from the same findings. */
+  onResult?: (payload: { contact: ResearchContact; data: AnalysisData }) => void;
+}
+
+export function ProfileResearch({ contact, onContactChange, onResult }: ProfileResearchProps = {}) {
   const emit = usePfStore((s) => s.emit);
 
-  const [name, setName] = useState("");
-  const [company, setCompany] = useState("");
-  const [about, setAbout] = useState("");
-  const [experience, setExperience] = useState("");
+  const [internal, setInternal] = useState<ResearchContact>(EMPTY_CONTACT);
+  const c = contact ?? internal;
+  const update = (patch: Partial<ResearchContact>) => {
+    const next = { ...c, ...patch };
+    if (onContactChange) onContactChange(next);
+    else setInternal(next);
+  };
 
   const { data, loading, error, needsAuth, run } = useAiTask<AnalysisData>(
     "/api/networking/analyze-profile",
   );
 
-  const hasContent = about.trim().length > 0 || experience.trim().length > 0;
+  const hasContent = c.about.trim().length > 0 || c.experience.trim().length > 0;
 
   const analyse = async () => {
     if (!hasContent) return;
     const result = await run({
-      recipientName: name.trim() || undefined,
-      company: company.trim() || undefined,
-      about: about.trim() || undefined,
-      experience: experience.trim() || undefined,
+      recipientName: c.name.trim() || undefined,
+      company: c.company.trim() || undefined,
+      about: c.about.trim() || undefined,
+      experience: c.experience.trim() || undefined,
     });
     if (result?.summary) {
-      emit("AiConsulted", "networking", `Researched ${name.trim() || "a contact"} before outreach`);
+      emit("AiConsulted", "networking", `Researched ${c.name.trim() || "a contact"} before outreach`);
+      onResult?.({ contact: c, data: result });
     }
   };
 
@@ -66,15 +89,15 @@ export function ProfileResearch() {
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 15 }}>
         <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={c.name}
+          onChange={(e) => update({ name: e.target.value })}
           placeholder="Their name (optional)"
           className="pf-input"
           style={{ height: 44, padding: "0 15px", flex: "1 1 180px", minWidth: 0 }}
         />
         <input
-          value={company}
-          onChange={(e) => setCompany(e.target.value)}
+          value={c.company}
+          onChange={(e) => update({ company: e.target.value })}
           placeholder="Company (optional)"
           className="pf-input"
           style={{ height: 44, padding: "0 15px", flex: "1 1 180px", minWidth: 0 }}
@@ -82,16 +105,16 @@ export function ProfileResearch() {
       </div>
 
       <textarea
-        value={about}
-        onChange={(e) => setAbout(e.target.value)}
-        placeholder="Their About / bio…"
+        value={c.about}
+        onChange={(e) => update({ about: e.target.value })}
+        placeholder="Their About / bio — include their school, degree, and current role if you can see them…"
         className="pf-input"
         style={{ width: "100%", minHeight: 80, marginTop: 10, padding: "12px 15px", fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
       />
       <textarea
-        value={experience}
-        onChange={(e) => setExperience(e.target.value)}
-        placeholder="Their experience / recent roles…"
+        value={c.experience}
+        onChange={(e) => update({ experience: e.target.value })}
+        placeholder="Their experience / recent roles — past companies, projects, anything you could genuinely connect on…"
         className="pf-input"
         style={{ width: "100%", minHeight: 80, marginTop: 10, padding: "12px 15px", fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
       />
