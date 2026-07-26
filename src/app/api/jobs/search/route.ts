@@ -2,26 +2,31 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { readBody, zShort, zText } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import {
+  computeMatchScore,
+  dedupeListings,
+  filterListings,
+  sortByFit,
+  type JobListing,
+} from "@/lib/jobs/types";
+import { fetchGithubListings } from "@/lib/jobs/github";
 
 /**
  * Job search.
  *
- * This route used to return three hardcoded listings — invented companies
- * ("NovaTech Labs", "ScaleUp Systems", "CloudFleet") attributed to Adzuna,
- * JSearch and Greenhouse, with apply links pointing at example.com. A student
- * could tailor a CV to a company that does not exist and click through to a
- * placeholder domain. A product that coaches people not to embellish their CV
- * cannot invent the jobs it sends them to.
- *
- * Now: real listings when Adzuna is configured, and an explicit empty result
- * when it is not. Every failure path returns nothing rather than something
- * made up.
+ * This route used to return three hardcoded listings — invented companies with
+ * apply links pointing at example.com. A product that coaches people not to
+ * embellish their CV cannot invent the jobs it sends them to. Now every listing
+ * is real, from one of two sources:
+ *   - GitHub internship lists (always on, free, curated) — see lib/jobs/github
+ *   - Adzuna (UK-native) — only when API credentials are configured
+ * Merged, deduped and filtered; every failure path returns fewer real jobs,
+ * never fabricated ones.
  */
 
 /**
- * `companySize` used to be accepted here and silently ignored — Adzuna exposes
- * no company-size data, and the listing payload carries none either, so there
- * was nothing to filter on. It is gone rather than validated-and-dropped,
+ * `companySize` used to be accepted here and silently ignored — no source
+ * exposes company-size data — so it is gone rather than validated-and-dropped,
  * because a field the schema accepts reads as a field the search honours.
  */
 const SearchSchema = z.object({
@@ -33,78 +38,29 @@ const SearchSchema = z.object({
 });
 
 /**
- * Work mode is a keyword narrowing, not a hard filter.
- *
- * Adzuna has no work-mode field, but it full-text searches the advert, so
- * adding "remote" to the query genuinely biases results toward remote roles.
- * On-site is deliberately absent: few adverts say "on-site", so searching for
- * it would exclude most of the roles it is meant to find.
+ * Work mode is a keyword narrowing, not a hard filter. Adzuna full-text
+ * searches the advert, so adding "remote" biases results. On-site is absent:
+ * few adverts say "on-site", so searching it would exclude the roles it means.
  */
 const WORK_MODE_TERMS: Record<string, string> = {
   remote: "remote",
   hybrid: "hybrid",
 };
 
-type JobListing = {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  workMode: string;
-  source: string;
-  description: string;
-  url: string;
-  /** null when the listing gave us nothing to score against — never a guess. */
-  matchScore: number | null;
-  atsKeywords: string[];
-};
-
-/** Adzuna is country-scoped; the product targets UK/EU internship season. */
 const ADZUNA_COUNTRY = process.env.ADZUNA_COUNTRY || "gb";
 const RESULTS_PER_PAGE = 20;
 const ADZUNA_TIMEOUT_MS = 8000;
+const MAX_RESULTS = 40;
 
-const NOT_CONFIGURED_MESSAGE =
-  "Live job search isn't connected yet. Add roles manually below and PathFinder will score each one against your profile.";
 const UNAVAILABLE_MESSAGE =
   "Live job search is temporarily unavailable. Add roles manually below and PathFinder will score them.";
+const NO_MATCHES_MESSAGE =
+  "No live matches right now — broaden the search, or paste a role below to score it against your CV.";
 
 function adzunaCredentials(): { appId: string; appKey: string } | null {
   const appId = process.env.ADZUNA_APP_ID;
   const appKey = process.env.ADZUNA_APP_KEY;
   return appId && appKey ? { appId, appKey } : null;
-}
-
-const KEYWORD_CANDIDATES = [
-  "react", "node", "typescript", "python", "java", "sql", "aws", "gcp",
-  "docker", "kubernetes", "api", "microservices", "tailwind", "postgresql",
-];
-
-/**
- * Deterministic overlap between the CV and the job description. Only keywords
- * the job actually asks for are counted, so the score reads as "how much of
- * what they want can you evidence" rather than "how many buzzwords do you own".
- */
-function computeMatchScore(cv: string, jobDescription: string): { score: number | null; keywords: string[] } {
-  const normalizedCv = cv.toLowerCase();
-  const normalizedDesc = jobDescription.toLowerCase();
-
-  const keywords: string[] = [];
-  let hits = 0;
-  for (const kw of KEYWORD_CANDIDATES) {
-    if (normalizedDesc.includes(kw)) {
-      keywords.push(kw);
-      if (normalizedCv.includes(kw)) hits += 1;
-    }
-  }
-
-  // Adzuna returns a ~500-character *snippet*, not the full ad, and it is
-  // usually company blurb — so most listings mention none of these keywords.
-  // That is not a 50% match, it is no evidence at all, and saying "50" put a
-  // confident number on nothing (every real job then rendered as "Long shot").
-  // Return null and let the UI say the fit is unknown.
-  const score = keywords.length ? Math.round((hits / keywords.length) * 100) : null;
-  return { score, keywords: keywords.slice(0, 5) };
 }
 
 type AdzunaResult = {
@@ -120,7 +76,6 @@ type AdzunaResult = {
 function mapAdzunaResult(r: AdzunaResult, cvSummary: string): JobListing | null {
   const title = r.title?.trim();
   const url = r.redirect_url?.trim();
-  // Without a title or a real apply link there is nothing worth showing.
   if (!title || !url) return null;
 
   const description = r.description?.trim() ?? "";
@@ -171,8 +126,7 @@ async function searchAdzuna(
 
   return results
     .map((r) => mapAdzunaResult(r as AdzunaResult, cvSummary))
-    .filter((j): j is JobListing => j !== null)
-    .sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1));
+    .filter((j): j is JobListing => j !== null);
 }
 
 export async function POST(req: Request) {
@@ -180,22 +134,37 @@ export async function POST(req: Request) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
 
+  const cvSummary = body.cvSummary ?? "";
   const creds = adzunaCredentials();
-  if (!creds) {
-    return NextResponse.json({ jobs: [], configured: false, message: NOT_CONFIGURED_MESSAGE });
-  }
-
   const workModeTerm = body.workMode ? WORK_MODE_TERMS[body.workMode.trim().toLowerCase()] : undefined;
   const what = [body.roleType, body.industry, workModeTerm].filter(Boolean).join(" ").trim() || "intern";
 
-  try {
-    const jobs = await searchAdzuna(creds, what, body.location, body.cvSummary ?? "");
-    return NextResponse.json({ jobs, configured: true });
-  } catch (err) {
-    // A provider outage returns nothing, never something invented.
-    logger.error("jobs/search — Adzuna unreachable", {
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return NextResponse.json({ jobs: [], configured: true, message: UNAVAILABLE_MESSAGE });
+  // GitHub lists are always available and free; filtered locally by role/location.
+  const githubAll = await fetchGithubListings();
+  const github = filterListings(githubAll, { roleType: body.roleType, location: body.location });
+
+  // Adzuna is pre-filtered by its own query, so it isn't re-filtered locally.
+  let adzuna: JobListing[] = [];
+  let adzunaError = false;
+  if (creds) {
+    try {
+      adzuna = await searchAdzuna(creds, what, body.location, cvSummary);
+    } catch (err) {
+      adzunaError = true;
+      logger.error("jobs/search — Adzuna unreachable", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
+
+  const jobs = sortByFit(dedupeListings([...adzuna, ...github])).slice(0, MAX_RESULTS);
+
+  const message = jobs.length ? undefined : adzunaError ? UNAVAILABLE_MESSAGE : NO_MATCHES_MESSAGE;
+
+  return NextResponse.json({
+    jobs,
+    configured: true,
+    sources: { github: github.length, adzuna: creds ? adzuna.length : null },
+    message,
+  });
 }
