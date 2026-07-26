@@ -11,7 +11,9 @@ import {
   COFFEE_CHAT_FRAMEWORK,
   FOLLOW_UP_CADENCE,
   NETWORK_PERSONA_ANGLES,
+  NETWORK_RESEARCH_STEPS,
   OUTREACH_PERSONAS,
+  STAKEHOLDER_SEARCH,
   type OutreachPersona,
 } from "@/lib/pf/data";
 import { buildOutreachTemplate, followUpMessage, outreachSubject, targetKeywords } from "@/lib/pf/logic";
@@ -128,6 +130,35 @@ export default function NetworkingPage() {
           </Reveal>
         ))}
       </div>
+
+      {/* Who to reach, what they're called, and how to research them */}
+      <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Who to reach — and what they&apos;re called</h2>
+          <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>the titles to search on LinkedIn / Glassdoor</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginBottom: 16 }}>
+          {STAKEHOLDER_SEARCH.map((st) => (
+            <div key={st.kind} style={{ border: "1px solid var(--line2)", borderRadius: 12, background: "var(--panel2)", padding: "14px 16px" }}>
+              <div className="pf-mono" style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: st.tone, marginBottom: 8 }}>{st.kind}</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 9 }}>
+                {st.goesBy.map((t) => (
+                  <span key={t} className="pf-mono" style={{ fontSize: 10, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel)", borderRadius: 6, padding: "3px 8px" }}>{t}</span>
+                ))}
+              </div>
+              <div style={{ fontSize: 11.5, color: "var(--fg)", lineHeight: 1.5, marginBottom: 6 }}><span style={{ color: "var(--faint)" }}>Find them: </span>{st.where}</div>
+              <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.55 }}><span style={{ color: "var(--faint)" }}>Research: </span>{st.research}</div>
+            </div>
+          ))}
+        </div>
+        <div className="pf-mono" style={{ fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 8 }}>How to research before you reach out</div>
+        {NETWORK_RESEARCH_STEPS.map((step, i) => (
+          <div key={i} style={{ display: "flex", gap: 10, padding: "4px 0" }}>
+            <span className="pf-mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{i + 1}</span>
+            <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55 }}>{step}</span>
+          </div>
+        ))}
+      </Panel>
 
       <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>

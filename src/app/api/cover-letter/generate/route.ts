@@ -24,13 +24,16 @@ const CoverLetterSchema = z.object({
   companyName: zShort(),
   directionStatement: zText(2000).optional(),
   region: zShort(20).optional(),
+  /** An optional instruction to refine the draft, e.g. "make it more concise"
+   *  or "emphasise my Go experience". */
+  refinement: zText(500).optional(),
 });
 
 export async function POST(req: Request) {
   try {
     const parsed = await readBody(req, CoverLetterSchema);
     if (!parsed.ok) return parsed.response;
-    const { cvData, jobDescription, companyName, directionStatement, region } = parsed.data;
+    const { cvData, jobDescription, companyName, directionStatement, region, refinement } = parsed.data;
     if (!jobDescription || !companyName) {
       return NextResponse.json({ error: 'Job description and company name are required' }, { status: 400 });
     }
@@ -46,7 +49,7 @@ RULES:
 - Specific enough it could NOT be sent to another company without changes
 - Flag any assumptions you made about motivation
 - End with: "Review and personalise this before sending. AI drafts the structure — you add the authenticity."
-
+${refinement ? `\nREFINEMENT REQUEST — apply this to the draft while keeping every rule above: ${refinement}\n` : ""}
 Company: ${companyName}
 Direction: ${directionStatement || 'Not specified'}
 

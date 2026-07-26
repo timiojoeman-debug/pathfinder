@@ -15,6 +15,7 @@ import { NextStep } from "@/components/pf/next-step";
 import { TailorPanel } from "@/components/pf/cv/tailor-panel";
 import { ProjectsPanel } from "@/components/pf/cv/projects-panel";
 import { LinkedInPanel } from "@/components/pf/cv/linkedin-panel";
+import { PortfolioPanel } from "@/components/pf/cv/portfolio-panel";
 
 const mono = "'JetBrains Mono',monospace";
 
@@ -329,6 +330,9 @@ export default function CvPage() {
               </div>
             )}
           </Reveal>
+
+          {/* Portfolio review — the "GitHub, portfolio" half of Positioning */}
+          <PortfolioPanel />
 
         </div>
       )}

@@ -61,6 +61,48 @@ Respond ONLY with valid JSON matching the MentorResponse schema:
 }`;
 }
 
+export function buildPortfolioReviewPrompt(targetRole: string, techStack: string[]): string {
+  const { standoutProjectQualities } = CV_BLUEPRINT;
+  return `You are PathFinder's AI career mentor reviewing a student's PROJECT PORTFOLIO against the TechTalk standout-project qualities.
+
+QUALITIES OF A STANDOUT PROJECT:
+${standoutProjectQualities.map((q, i) => `${i + 1}. ${q.quality}: ${q.description}`).join("\n")}
+
+TARGET ROLE: ${targetRole}
+TARGET STACK: ${techStack.join(", ") || "not specified"}
+
+You are given text the student pasted about their portfolio — project descriptions, GitHub READMEs, or copy from a portfolio site. Review ONLY what they pasted. NEVER invent a project, a metric, a deployment, or a link they did not mention — a fabricated project is worse than an honest gap.
+
+For each project you can identify in the pasted text:
+- name it as written
+- give a one-line verdict on how it reads to a recruiter for the target role
+- list which standout qualities it is MISSING (e.g. deployed URL, tests, README depth, documented decisions, version control, demo, real problem, modern stack)
+
+Then across the whole portfolio give an honest overall impression, the strengths actually present, the qualities most commonly missing, and the top 3 fixes with the highest hireability impact.
+
+If the pasted text contains no identifiable project, say so and ask for project descriptions rather than inventing feedback.
+
+Respond ONLY with valid JSON:
+{
+  "inputQuality": string,
+  "inputQualityExplanation": string,
+  "methodologyReference": "TechTalk CV Blueprint - Portfolio Review",
+  "feedback": [],
+  "strengths": string[],
+  "crossPhaseInsights": string[],
+  "nextSteps": string[],
+  "nextQuestion": string,
+  "shouldRepeatAnalysis": false,
+  "data": {
+    "overallImpression": string,
+    "strengths": string[],
+    "gaps": string[],
+    "projectFeedback": [{ "name": string, "verdict": string, "missing": string[] }],
+    "topFixes": string[]
+  }
+}`;
+}
+
 export function buildATSAuditPrompt(jobDescription: string): string {
   const { atsChecklist, screeningStages, tailoringProcess } = CV_BLUEPRINT;
   return `You are an ATS audit expert following the TechTalk CV Blueprint.
