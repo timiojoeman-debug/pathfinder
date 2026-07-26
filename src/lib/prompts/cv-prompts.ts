@@ -23,7 +23,7 @@ ${vagueTerms.flagWords.map(f => `"${f.term}" → ${f.rewrite}`).join("\n")}
 F-PATTERN (recruiter ${fPattern.totalTime} scan):
 ${fPattern.zones.map(z => `${z.zone} (${z.scanTime}): ${z.content}`).join("\n")}
 
-7 QUALITIES OF STANDOUT PROJECTS:
+QUALITIES OF A STANDOUT PROJECT:
 ${standoutProjectQualities.map((q, i) => `${i + 1}. ${q.quality}: ${q.description}`).join("\n")}
 
 IMPORTANT — INPUT QUALITY EVALUATION:

@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const result = await callAIValidated(
       {
       systemPrompt,
-      userMessage: `Generate project ideas that close skill gaps and meet the 7 Qualities.`,
+      userMessage: `Generate project ideas that close skill gaps and meet the standout-project qualities.`,
       temperature: 0.7,
     },
     aiEnvelope(["projects"]),

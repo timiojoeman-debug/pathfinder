@@ -92,9 +92,11 @@ EXPERIENCE LEVEL: ${level} (${coffeeChatsDone} chats done) — ${calibration.app
    Steps: ${framework.preparation.steps.join("; ")}
 2. Opening script: "${framework.opening.script}"
    Tips: ${framework.opening.tips.join("; ")}
-3. Core: ${framework.coreConversation.description}
+3. Their story: ${framework.coreConversation.description}
    Actions: ${framework.coreConversation.actions.join("; ")}
-4. Closing: ${framework.closing.description}
+4. Positioning (${framework.positioning.duration}): ${framework.positioning.description}
+   Actions: ${framework.positioning.actions.join("; ")}
+5. Closing: ${framework.closing.description}
    Direct referral ask: "${framework.closing.referralAsk.direct.script}" (${framework.closing.referralAsk.direct.when})
    Indirect referral ask: "${framework.closing.referralAsk.indirect.script}" (${framework.closing.referralAsk.indirect.when})
    Guidance: ${framework.closing.referralAsk.guidance}

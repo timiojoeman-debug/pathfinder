@@ -71,6 +71,7 @@ export const CV_BLUEPRINT = {
     'No graphics, tables, icons, or images — ATS cannot parse visual elements',
     'Consistent date formatting (MMM YYYY – MMM YYYY)',
     'No headers/footers with critical info — ATS often skips these areas',
+    'Length: one page is ideal for a student; up to two pages is acceptable only if every line earns its place (TechTalk CV Mastery)',
   ] as const,
 
   atsChecklist: [
@@ -174,6 +175,7 @@ export const CV_BLUEPRINT = {
     { quality: 'Comprehensive README', description: 'Screenshots, setup guide, architecture decisions, tech stack rationale' },
     { quality: 'Clean code with tests', description: 'Unit and integration tests show engineering maturity' },
     { quality: 'Technical decision-making documented', description: '"Why PostgreSQL over MongoDB?" — shows you think, not just code' },
+    { quality: 'Version-controlled with a clean git history', description: 'Meaningful commits and a maintained repo signal real engineering discipline' },
     { quality: 'Demo video available', description: 'A 60-second walkthrough lets reviewers see your work without cloning' },
   ] as const,
 } as const;
