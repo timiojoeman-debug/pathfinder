@@ -90,7 +90,10 @@ function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, ro
     const ctx = cv.getContext("2d");
     if (!ctx) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const CELL = 8;
+    /* Glyph grid pitch. The shell pass is O(area/CELL²) and is the hot loop —
+       dropping this below 7 roughly doubles per-frame cost for detail you
+       can barely resolve at 7px type. */
+    const CELL = 7;
     let W = 0, H = 0, cols = 0, rows = 0, dpr = 1;
     let raf = 0;
 
@@ -110,6 +113,18 @@ function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, ro
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(cv);
+
+    /* The globe used to scroll away with the hero; now it sits under every
+       section, including body copy on a transparent background. So it steps
+       back once you leave the hero — legibility, not decoration. Read in the
+       rAF loop off a plain object; a scroll handler that calls setState is
+       how a 30fps canvas becomes a 6fps one. */
+    const dim = { v: 1 };
+    const onScroll = () => {
+      dim.v = 1 - 0.6 * Math.min(window.scrollY / (window.innerHeight * 0.85), 1);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     let ink = "#382C20", accent = "#B0673C", themeName = "";
     const readColors = () => {
@@ -140,7 +155,7 @@ function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, ro
 
     interface GNode { ux: number; uy: number; uz: number; phase: number }
     interface GEdge { a: number; b: number; phase: number; speed: number }
-    const N = 108;
+    const N = 168;
     let nodes: GNode[] = [];
     let edges: GEdge[] = [];
     const buildNet = () => {
@@ -163,7 +178,7 @@ function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, ro
           ds.push({ j, d: dx * dx + dy * dy + dz * dz });
         }
         ds.sort((p, q) => p.d - q.d);
-        const k = 3 + (hash(i, 2, 9) > 0.7 ? 1 : 0);
+        const k = 3 + (hash(i, 2, 9) > 0.7 ? 1 : 0) + (hash(i, 4, 11) > 0.82 ? 1 : 0);
         for (let m = 0; m < k; m++) {
           const j = ds[m].j;
           const key = Math.min(i, j) + "_" + Math.max(i, j);
@@ -223,7 +238,10 @@ function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, ro
       const ang = reduce ? 0.5 : el * 0.26;
       const ca = Math.cos(ang), sa = Math.sin(ang);
       const tilt = 0.32, ct = Math.cos(tilt), st = Math.sin(tilt);
-      const R = Math.min(H * 0.6, W * 0.34);
+      /* The old canvas was 150% of viewport width, so 0.34·W read much larger
+         than it does on a viewport-width layer. Widened to keep the hero
+         presence it had. */
+      const R = Math.min(H * 0.66, W * 0.42);
       const cx = W / 2, cy = H * 0.72;
 
       const rCells = Math.ceil(R / CELL) + 1;
@@ -238,9 +256,14 @@ function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, ro
           const Z = Math.sqrt(1 - rr);
           const y1 = ct * Y + st * Z, z1 = -st * Y + ct * Z;
           const ux = ca * X - sa * z1, uz = sa * X + ca * z1;
-          const n = vnoise(ux * 2.8 + 9.3, y1 * 2.8 + 4.7, uz * 2.8 + 2.1);
-          const ch = n < 0.38 ? "·" : n < 0.6 ? ":" : n < 0.8 ? "-" : "+";
-          put(gx, gy, ch, 0.07 + Z * 0.09 + n * 0.09, 0);
+          /* Two octaves: continents from the low frequency, coastline detail
+             from the high one. The second vnoise is the single most
+             expensive thing in the frame — drop it before dropping CELL. */
+          const n = vnoise(ux * 2.6 + 9.3, y1 * 2.6 + 4.7, uz * 2.6 + 2.1) * 0.68
+            + vnoise(ux * 6.4 + 1.7, y1 * 6.4 + 8.2, uz * 6.4 + 5.5) * 0.32;
+          const ch = n < 0.30 ? "·" : n < 0.42 ? ":" : n < 0.52 ? ";" : n < 0.62 ? "-"
+            : n < 0.72 ? "=" : n < 0.82 ? "+" : n < 0.90 ? "*" : "#";
+          put(gx, gy, ch, 0.06 + Z * 0.10 + n * 0.11, 0);
         }
       }
 
@@ -287,9 +310,12 @@ function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, ro
         const cxg = Math.floor(p.sx / CELL), cyg = Math.floor(p.sy / CELL);
         const breathe = 0.5 + 0.5 * Math.sin(el * 2.2 + nd.phase * 6.28);
         const core = (0.32 + p.d * 0.62) * (0.7 + breathe * 0.3);
-        const glyph = p.d > 0.62 ? "#" : p.d > 0.34 ? "O" : "o";
+        const glyph = p.d > 0.80 ? "@" : p.d > 0.62 ? "#" : p.d > 0.42 ? "O" : p.d > 0.24 ? "o" : "·";
         put(cxg, cyg, glyph, core, p.d > 0.6 && breathe > 0.7 ? 1 : 0);
         if (p.d > 0.4) { put(cxg - 1, cyg, ":", core * 0.5, 0); put(cxg + 1, cyg, ":", core * 0.5, 0); }
+        /* Vertical halo on the nearest nodes only — reads as volume without
+           smearing the ones on the far side of the sphere. */
+        if (p.d > 0.72) { put(cxg, cyg - 1, "'", core * 0.34, 0); put(cxg, cyg + 1, ".", core * 0.34, 0); }
       }
 
       for (let ry = 0; ry < rows; ry++) {
@@ -301,7 +327,7 @@ function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, ro
           const idx = ry * cols + rx;
           const a = aBuf[idx];
           if (a <= 0.02) continue;
-          ctx.globalAlpha = Math.min(a * rowAlpha, 1);
+          ctx.globalAlpha = Math.min(a * rowAlpha, 1) * dim.v;
           ctx.fillStyle = acBuf[idx] ? accent : ink;
           ctx.fillText(chBuf[idx] || "·", rx * CELL + CELL / 2, py);
         }
@@ -311,7 +337,11 @@ function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, ro
     };
     raf = requestAnimationFrame(frame);
 
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("scroll", onScroll);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
@@ -372,8 +402,18 @@ export default function Landing() {
   const navLink: CSSProperties = { color: "inherit", textDecoration: "none", padding: "8px 12px", margin: "-8px 0", borderRadius: 9, transition: "color .2s var(--ease), background .2s var(--ease)" };
   const kicker: CSSProperties = { fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--accent)" };
 
+  /* isolation:isolate on the root is load-bearing — without a stacking context
+     there, the globe's z-index:-1 escapes to the root element and paints
+     *behind* this div's background, i.e. invisible. */
   return (
-    <div ref={rootRef} className="pf pf-landing" style={{ position: "relative", width: "100%", background: "var(--bg)", overflow: "hidden" }}>
+    <div ref={rootRef} className="pf pf-landing" style={{ position: "relative", width: "100%", background: "var(--bg)", overflow: "hidden", isolation: "isolate" }}>
+      {/* Neural globe — a fixed viewport layer, not a hero decoration, so it
+          stays present behind every section. z-index -1 puts it above the
+          page background but below all in-flow content; sections that carry
+          their own --panel background (marquee, report card) occlude it,
+          which is what gives the page depth. */}
+      <canvas ref={globeRef} aria-hidden style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none" }} />
+
       {/* Paper grain */}
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 60, pointerEvents: "none", opacity: "var(--grainOpacity)" as unknown as number, mixBlendMode: "multiply", backgroundImage: GRAIN, backgroundSize: "150px 150px" }} />
 
@@ -409,8 +449,6 @@ export default function Landing() {
       {/* ── Hero ── */}
       <section style={{ position: "relative", textAlign: "center", padding: "clamp(64px,9vw,112px) clamp(20px,5vw,40px) 0", overflow: "hidden" }}>
         <div aria-hidden data-parallax="14" style={{ position: "absolute", inset: 0, left: "50%", transform: "translateX(-50%)", width: "100%", pointerEvents: "none", backgroundImage: "radial-gradient(var(--dot) 1px, transparent 1.6px)", backgroundSize: "9px 9px", WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 24%, #000 12%, transparent 72%)", maskImage: "radial-gradient(ellipse 70% 60% at 50% 24%, #000 12%, transparent 72%)", transition: "transform .4s var(--ease)" }} />
-        <canvas ref={globeRef} data-parallax="16" aria-hidden style={{ position: "absolute", left: "50%", top: 0, transform: "translateX(-50%)", width: "min(1240px,150%)", height: "100%", zIndex: 1, pointerEvents: "none", transition: "transform .4s var(--ease)" }} />
-
         <div style={{ position: "relative", zIndex: 2 }}>
           <div className="pf-anim-up" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 15px 6px 8px", borderRadius: 100, border: "1px solid var(--lineStrong)", background: "var(--panel)", fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".08em", color: "var(--muted)", marginBottom: 32, whiteSpace: "nowrap", boxShadow: "var(--rim)" }}>
             <span style={{ display: "inline-flex", width: 20, height: 20, alignItems: "center", justifyContent: "center", borderRadius: 100, background: "var(--accentSoft)", color: "var(--accent)" }}>✦</span>
