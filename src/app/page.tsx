@@ -441,7 +441,10 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
           const ux = ca * X - sa * z1, uz = sa * X + ca * z1;
           const n = 0.5 + 0.5 * Math.sin(ux * 4.2 + 1.7) * Math.sin(y1 * 3.6 - 2.1) * Math.sin(uz * 3.1 + 0.6);
           const f = flashOf(((gx / CELL) | 0) * 997 + ((gy / CELL) | 0));
-          gctx.globalAlpha = (0.05 + Z * 0.09 + n * 0.10) * (1 + f * 2.2);
+          /* Weighted up ~1.5x from 0.05-0.24. Alpha only: the ramp, the cell
+             size and the glyph count are unchanged, so this reads as the same
+             sphere a little more present rather than a denser one. */
+          gctx.globalAlpha = (0.10 + Z * 0.13 + n * 0.13) * (1 + f * 2.0);
           gctx.fillStyle = f > 0.25 ? accent : faint;
           gctx.fillText(GLOBE_RAMP[Math.min(GLOBE_RAMP.length - 1, (n * GLOBE_RAMP.length) | 0)], gx, gy);
         }
@@ -469,7 +472,10 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
         const nf = flashOf(i * 31 + 5);
         gctx.globalAlpha = (0.18 + p.d * 0.38) * (1 + nf * 1.8);
         gctx.fillStyle = nf > 0.25 ? accent : faint;
-        gctx.fillText(p.d > 0.66 ? "#" : p.d > 0.36 ? "O" : "o", p.sx, p.sy);
+        /* Node tiers from the requested set. '0' is deliberately not the
+           mid tier: that is the largest population of the three, and putting
+           it there is what scattered zeros across the sphere before. */
+        gctx.fillText(p.d > 0.66 ? "#" : p.d > 0.36 ? "^" : "-", p.sx, p.sy);
       }
       gctx.globalAlpha = 1;
 
