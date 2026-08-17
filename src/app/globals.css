@@ -327,11 +327,20 @@ canvas { display: block; }
 h1, h2, h3 { text-wrap: balance; }
 p { text-wrap: pretty; }
 
-/* ── Accessible focus ring (keyboard only) ── */
+/* ── Accessible focus ring (keyboard only) ──
+   Outline, not box-shadow. Two reasons this was invisible before:
+
+   1. --ring is `0 0 0 3px var(--accent-soft)`, and --accent-soft is the accent
+      at 10% alpha. Composited over white that renders rgb(239,240,251) — a
+      contrast of 1.13:1, where WCAG requires 3:1 for a focus indicator.
+   2. box-shadow loses to any inline box-shadow, and several CTAs set one
+      inline, so on those the ring was erased outright.
+
+   --accent at full opacity is 4.7:1 on white. Kept on the element's own
+   border-radius via outline-offset so it traces the shape. */
 :focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
-  border-radius: 6px;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 /* ─── Ambient grain — breaks digital flatness, stays imperceptible on text ─── */
@@ -1308,4 +1317,20 @@ html, body { max-width: 100%; overflow-x: hidden; }
      only need enough padding to breathe. */
   .pf-landing [style*="borderRadius: 18"],
   .pf [style*="borderRadius: 18"] { padding: 20px !important; }
+}
+
+/* ── Two-column tier ────────────────────────────────────────────────
+   Between 600 and 860 the rule above collapsed three-column grids straight
+   to one, which made each phase card ~780px wide to hold a one-line
+   description: all the width, none of the density. Written as a top-level
+   query with both bounds rather than nested inside the 860 block — the
+   nested form did not survive the build and never reached the browser.
+   Placed last so it wins on order at equal specificity. */
+@media (min-width: 600px) and (max-width: 860px) {
+  .pf [style*="repeat(3,1fr)"],
+  .pf [style*="repeat(3, 1fr)"],
+  .pf-landing [style*="repeat(3,1fr)"],
+  .pf-landing [style*="repeat(3, 1fr)"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }

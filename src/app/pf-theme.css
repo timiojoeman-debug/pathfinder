@@ -99,6 +99,22 @@
   .pf-anim-up, .pf-anim-grow, .pf-anim-pulse, .pf-anim-spin, .pf-anim-scan, .pf-anim-fade, .pf-anim-slidein { animation: none !important; }
 }
 
+/* ── Keyboard focus ──────────────────────────────────────────────────
+   Drawn with outline, not box-shadow. The global :focus-visible in
+   globals.css sets `outline: none` and paints the ring via box-shadow, but
+   several CTAs here set boxShadow inline — and an inline value outranks any
+   stylesheet rule, so their focus ring never rendered at all.
+
+   That global ring also resolves to `--accent-soft` (#5e6ad21a): the indigo
+   from the console theme at 10% alpha. The .pf scope defines --accentSoft
+   (camelCase) instead, so the hyphenated name falls through to a hue that is
+   both wrong for warm paper and invisible on it. */
+.pf :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
 /* ── Base ── */
 .pf {
   background: var(--bg2);

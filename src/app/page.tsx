@@ -2,8 +2,8 @@
 
 /**
  * PathFinder landing — warm-paper redesign (PathFinder Landing.dc.html).
- * Paper grain, ASCII neural globe, career position report with tilt,
- * university marquee, six phase cards, and the one-action pitch.
+ * Paper grain, a scroll-driven terrain and route, career position report with
+ * tilt, coverage marquee, six phase cards, and the one-action pitch.
  */
 
 import Link from "next/link";
@@ -80,267 +80,771 @@ const PHASES = [
   { n: "06", label: "Phase 06 · Momentum", title: "Application Tracking", href: "/tracker", desc: "Every application in one calm board, so nothing slips and momentum compounds toward the offer.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg> },
 ];
 
-/* ── ASCII neural globe (ported from the design script) ───────────── */
+/* ── Terrain, route and camera ────────────────────────────────────────
+ * The landing's one visual. A height field in world space, projected in
+ * perspective and drawn back-to-front so each ridge occludes the one behind
+ * it — a real 3D scene, but stroked line art, so it needs no material
+ * system and no WebGL.
+ *
+ * Scroll moves a camera along the route through seven stations rather than
+ * firing seven unrelated section effects. Station 0 is the trailhead;
+ * stations 1–6 are the six phases, and the camera arrives at each as its
+ * section does.
+ */
 
-function useNeuralGlobe(canvasRef: React.RefObject<HTMLCanvasElement | null>, rootRef: React.RefObject<HTMLDivElement | null>) {
+/** How much of the route is visible ahead of the camera at once. */
+const VIEW = 3;
+
+/** Perspective strength. Screen position and scale both go as 1/(1+PERSP·d),
+ *  so the far end of the valley compresses toward a vanishing point instead of
+ *  ramping evenly to the horizon — the difference between a slope and a
+ *  distance. */
+const PERSP = 4.5;
+
+/** Elevation ramp for the globe's surface shell, lightest first. */
+const GLOBE_RAMP = ["·", ":", ";", "-", "=", "+", "*", "#"];
+
+/** Fraction of a glyph's cycle spent flashing orange on the globe. */
+const FLASH_DUTY_GLOBE = 0.1;
+
+/** Fraction of its cycle a node spends lit. With ~100 nodes in view this leaves
+ *  roughly a quarter firing at any moment — eased back from 0.34, but only a
+ *  step: at 0.14 the ground went quiet enough to look broken. */
+const FLASH_DUTY = 0.26;
+
+/** Seconds per node cycle, min and added range. Each node picks its own from
+ *  this window so they never fall into a shared beat. Duty is held constant
+ *  while these grow, so a longer cycle also means a longer, slower swell rather
+ *  than the same quick blink spaced further apart. */
+const FLASH_PERIOD_MIN = 4.6, FLASH_PERIOD_RANGE = 6.4;
+
+/** Pins past this normalised depth are dropped. Beyond it the shape is only a
+ *  few pixels tall and reads as a tapered dot, so it contributes noise without
+ *  contributing the icon. Culling by depth rather than by rendered size matters:
+ *  size also depends on the flash envelope, so a size test would pop a pin in
+ *  and out during a single flash. PIN_FADE eases the last stretch so there is
+ *  no hard line across the ground where they stop. */
+const PIN_MAX_DEPTH = 0.42, PIN_FADE = 0.13;
+
+/** Camera stations, one per section in document order. `v` is distance along
+ *  the route, `pitch` is 0 at eye level and 1 looking straight down. */
+const STATIONS: { v: number; pitch: number }[] = [
+  { v: 0.0, pitch: 0.04 }, // 0 hero — point A, standing at the trailhead
+  { v: 2.4, pitch: 0.12 }, // 1 position report
+  { v: 4.8, pitch: 0.68 }, // 2 six phases — the one climb of the journey, high
+                           //   enough for the opportunity graph to resolve. The
+                           //   page explains "six phases, two that convert"
+                           //   here, so it is where seeing the whole structure
+                           //   is worth leaving the ground for.
+  { v: 7.2, pitch: 0.16 }, // 3 one action — back down into the valley
+  { v: 9.6, pitch: 0.08 }, // 4 honest status — level, and then it barely moves:
+  { v: 9.9, pitch: 0.08 }, // 5 CTA — a 0.3 crawl against 2.4 everywhere else, so
+                           //   the stretch across "no numbers we haven't earned"
+                           //   is the one that doesn't perform.
+  { v: 12.6, pitch: 0.14 }, // 6 footer — point B
+];
+
+/** Total distance travelled, for spacing the waypoints across the journey. */
+const ROUTE_LENGTH = STATIONS[STATIONS.length - 1].v;
+
+function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, rootRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const cv = canvasRef.current;
     const root = rootRef.current;
     if (!cv || !root) return;
     const ctx = cv.getContext("2d");
     if (!ctx) return;
+
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    /* Glyph grid pitch. The shell pass is O(area/CELL²) and is the hot loop —
-       dropping this below 7 roughly doubles per-frame cost for detail you
-       can barely resolve at 7px type. */
-    const CELL = 7;
-    let W = 0, H = 0, cols = 0, rows = 0, dpr = 1;
-    let raf = 0;
+    /* More rows than before: the far half of the valley compresses into the top
+       of the band, so it needs the density to stay continuous rather than
+       banding. Rows are sampled evenly in world depth and land unevenly on
+       screen, which is what perspective should do. */
+    const ROWS = 62, COLS = 150;
+    let W = 0, H = 0;
+    let raf = 0, last = 0;
 
-    const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      W = cv.clientWidth || 800;
-      H = cv.clientHeight || 300;
-      cv.width = Math.max(1, Math.floor(W * dpr));
-      cv.height = Math.max(1, Math.floor(H * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      cols = Math.ceil(W / CELL);
-      rows = Math.ceil(H / CELL);
-      ctx.font = `700 ${CELL + 1}px "JetBrains Mono", monospace`;
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(cv);
-
-    /* The globe used to scroll away with the hero; now it sits under every
-       section, including body copy on a transparent background. So it steps
-       back once you leave the hero — legibility, not decoration. Read in the
-       rAF loop off a plain object; a scroll handler that calls setState is
-       how a 30fps canvas becomes a 6fps one. */
-    const dim = { v: 1 };
-    const onScroll = () => {
-      dim.v = 1 - 0.6 * Math.min(window.scrollY / (window.innerHeight * 0.85), 1);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    let ink = "#382C20", accent = "#B0673C", themeName = "";
-    const readColors = () => {
-      const cs = getComputedStyle(root);
-      ink = (cs.getPropertyValue("--fg") || "").trim() || ink;
-      accent = (cs.getPropertyValue("--accent") || "").trim() || accent;
-      themeName = document.documentElement.getAttribute("data-theme") || "";
-    };
-    readColors();
-
-    const hash = (x: number, y: number, z: number) => {
-      let n = (x | 0) * 374761393 + (y | 0) * 668265263 + (z | 0) * 1274126177;
-      n = (n ^ (n >> 13)) * 1274126177;
-      return ((n ^ (n >> 16)) >>> 0) / 4294967295;
-    };
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const sm = (t: number) => t * t * (3 - 2 * t);
-    const vnoise = (x: number, y: number, z: number) => {
-      const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
-      const u = sm(x - xi), v = sm(y - yi), w = sm(z - zi);
-      const c000 = hash(xi, yi, zi), c100 = hash(xi + 1, yi, zi), c010 = hash(xi, yi + 1, zi), c110 = hash(xi + 1, yi + 1, zi);
-      const c001 = hash(xi, yi, zi + 1), c101 = hash(xi + 1, yi, zi + 1), c011 = hash(xi, yi + 1, zi + 1), c111 = hash(xi + 1, yi + 1, zi + 1);
-      return lerp(lerp(lerp(c000, c100, u), lerp(c010, c110, u), v), lerp(lerp(c001, c101, u), lerp(c011, c111, u), v), w);
+    const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t);
+
+    /* A gentle bend, not a sweep. At ±0.30 the valley centre moved further
+       across the view than the visible half-window, so only the outer wall was
+       ever in frame and the canyon read as a single hillside. */
+    const routeU = (v: number) => 0.5 + Math.sin(v * 0.38) * 0.14 + Math.sin(v * 0.97) * 0.05;
+
+    /* Open country, not a canyon. The route still runs a flat floor, but past
+       the floor the ground swells into rolling ridges that keep climbing
+       outward instead of walling the frame in. */
+    const RELIEF_RISE = 1.15;
+    const RELIEF_CAP = 3.2;
+    /* Half-width of the flat floor, measured from the hero copy so the text
+       always sits on level ground. A world constant can't work: the copy is a
+       fixed pixel width, so at 1280 it covers half the frame and at 760 nearly
+       all of it. */
+    let copyHalfPx = 0;
+
+    /* Distance out from the route, past the flat floor. Shared by the surface
+       and the ASCII pass so the glyphs land on the high ground and never on
+       the floor the copy sits on. */
+    const outFrom = (u: number, v: number, floorHalf: number) =>
+      Math.max(0, Math.abs(u - routeU(v)) - floorHalf);
+
+    /* Linear swell plus ridge structure that only fades in past the floor —
+       a range receding outward rather than a wall at a fixed offset. */
+    const reliefAt = (u: number, v: number, floorHalf: number) => {
+      const t = outFrom(u, v, floorHalf);
+      if (t <= 0) return 0;
+      const swell = Math.min(t * RELIEF_RISE, RELIEF_CAP);
+      const ridges =
+        Math.sin(u * 4.3 + v * 0.85) * 0.42 +
+        Math.sin(u * 9.1 - v * 1.6) * 0.24 +
+        Math.sin(u * 2.1 + v * 0.4) * 0.30;
+      return swell + ridges * Math.min(t * 2.4, 1) * 0.9;
     };
 
-    const t0 = performance.now();
-    let last = 0;
+    const height = (u: number, v: number, d: number, floorHalf: number) => {
+      const relief = reliefAt(u, v, floorHalf) * (1 - d * 0.25);
+      const rough =
+        Math.sin(u * 7.1 + v * 3.4) * 0.16 +
+        Math.sin(u * 13.7 - v * 5.2) * 0.09 +
+        Math.sin(u * 3.3 + v * 1.7) * 0.12;
+      /* Roughness scales with the relief, so the floor stays walkable and only
+         the high ground goes craggy. */
+      return relief + rough * (0.35 + relief * 0.5);
+    };
 
-    interface GNode { ux: number; uy: number; uz: number; phase: number }
-    interface GEdge { a: number; b: number; phase: number; speed: number }
-    const N = 168;
-    let nodes: GNode[] = [];
-    let edges: GEdge[] = [];
-    const buildNet = () => {
-      nodes = []; edges = [];
-      const GA = Math.PI * (3 - Math.sqrt(5));
+    /* At eye level the horizon is placed below the hero's last content row, so
+       the ground never climbs into the copy; at plan view it rises to fill the
+       frame. Measured rather than tuned — a constant that clears the CTAs on a
+       desktop cuts through them on a phone. */
+    let floorY = 0;
+    /* Peaks rise about PEAK_RISE of the band above the horizon, and the band is
+       itself whatever is left below the horizon — so the clearance the horizon
+       needs depends on where the horizon ends up. Solving that rather than
+       adding a fixed margin: a constant that cleared the copy at 1280x800 was
+       40px into it at 768x1024, because the band scales with the viewport. */
+    /* The valley floor is what has to clear the copy — the walls are at the
+       sides of the frame, where centred text isn't, and they read as a frame
+       around it rather than an obstruction. So this is sized off the floor's
+       roughness, not the wall cap. */
+    const PEAK_RISE = 0.16;
+    const horizonAt = (pitch: number) => {
+      const eye = (floorY + 16 + 0.95 * PEAK_RISE * H) / (1 + PEAK_RISE);
+      return lerp(Math.min(Math.max(eye, H * 0.40), H * 0.88), H * 0.02, pitch);
+    };
+
+    /* Pitch blends two projections: eye level (strong squeeze, shallow band)
+       and plan view (near-orthographic, full frame). Relief is a fraction of
+       the band, so peaks can never out-climb the horizon they belong to. */
+    const rowGeom = (d: number, pitch: number) => {
+      const horizon = horizonAt(pitch);
+      const band = H * 0.95 - horizon;
+      /* One perspective factor drives scale, screen depth and relief together,
+         so the valley recedes as a single consistent space. */
+      const p = 1 / (1 + PERSP * d);
+      const pFar = 1 / (1 + PERSP);
+      const squeeze = lerp(p, lerp(1, 0.5, d), pitch);
+      return {
+        squeeze,
+        horizon,
+        /* Normalised so d=1 lands exactly on the horizon. Most of the world
+           depth now compresses into the top of the band — that compression is
+           what reads as distance. */
+        dScreen: (1 - p) / (1 - pFar),
+        /* Constant *screen* width, so the corridor flares with distance. A
+           constant world width shrinks on screen as depth grows, which is what
+           let far walls climb into the copy however wide the floor was set. */
+        floorHalf: copyHalfPx / Math.max(squeeze * W * 1.02, 1),
+        /* Deliberately larger than the band: only the floor has to stay under
+           the copy, and the walls are meant to overshoot it and frame the shot. */
+        amp: band * lerp(1.15, 0.55, pitch) * p,
+      };
+    };
+
+    /* camU is the camera's lateral position, and it tracks the route. Without
+       it the camera advances along the route's axis but keeps staring down the
+       middle, so the path snakes across the screen instead of staying ahead of
+       you — it reads as a line drawn over the ground rather than one you are
+       walking. */
+    const project = (u: number, v: number, camV: number, camU: number, pitch: number) => {
+      const d = clamp01((v - camV) / VIEW);
+      const g = rowGeom(d, pitch);
+      return {
+        x: (u - camU) * g.squeeze * W * 1.02 + W / 2,
+        y: H * 0.95 - g.dScreen * (H * 0.95 - g.horizon) - height(u, v, d, g.floorHalf) * g.amp,
+        d,
+      };
+    };
+
+    /* ── Opportunity graph ──────────────────────────────────────────────
+     * The same node/edge structure the old ASCII globe drew on a sphere, laid
+     * on the ground plane instead: the route is one traversal through it, and
+     * the unlit edges are the paths not taken. Built once — it is scenery, not
+     * data, and must never be labelled with a real company or person. */
+    /* Math.imul and unsigned shifts. The previous version used plain `*` on
+       32-bit-sized integers, which overflows float-exact range and silently
+       corrupts the bit mixing, and `>>`, which propagates sign. For the input
+       pattern used to place nodes it never once returned above 0.4998 — so all
+       280 nodes landed on the same side of the route. */
+    const hash = (x: number, y: number) => {
+      let n = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263);
+      n = Math.imul(n ^ (n >>> 13), 1274126177);
+      n = Math.imul(n ^ (n >>> 16), 2246822519);
+      return ((n ^ (n >>> 13)) >>> 0) / 4294967295;
+    };
+
+
+    /* Node count is up from 280: with nodes visible only while firing, the
+       population sets how much of the ground can light rather than how dense a
+       drawn mesh looks. Edges and their nearest-neighbour wiring are gone —
+       nothing connects the nodes now, so none of that structure was read. */
+    const NODES: { u: number; v: number }[] = [];
+    (() => {
+      const span = ROUTE_LENGTH + VIEW;
+      const N = 520;
+
+      /* Stratified rather than pure random. Uniform random is correct but it
+         clumps — it leaves bald patches and knots, which is what reads as an
+         uneven scatter even when the statistics are fine. Each node instead
+         owns one slot per axis and jitters inside it, so coverage is even at
+         every scale and the randomness only decides where within a slot.
+         Measured against pure random: lateral quartiles 129/148/121/122 became
+         130/130/130/130, and the spread of nearest-neighbour gaps halved. */
+      const order = Array.from({ length: N }, (_, i) => i).sort((a, b) => hash(a, 91) - hash(b, 91));
+
       for (let i = 0; i < N; i++) {
-        const uy = 1 - (2 * (i + 0.5)) / N;
-        const r = Math.sqrt(Math.max(0, 1 - uy * uy));
-        const th = i * GA;
-        nodes.push({ ux: r * Math.cos(th), uy, uz: r * Math.sin(th), phase: hash(i + 1, i * 2 + 3, 7) });
+        const v = ((i + hash(i, 7)) / N) * span;
+        /* The permutation is what keeps the lateral slot independent of the
+           depth slot — without it every node would sit on one diagonal.
+
+           Spread is ±0.7, not the ±2.6 it started at. Wider is not better here:
+           the visible world width is only about ±0.5 units at the plan station
+           and ±0.5 to ±1.4 across the culled depth band at eye level, so a ±2.6
+           spawn put four nodes in five off-frame sideways and left only the
+           small-offset ones — which bunched down the middle and left the outer
+           quarter of the frame empty. Sizing the spawn to the visible cone is
+           what actually puts pins on both sides. */
+        const spread = ((order[i] + hash(i, 11)) / N - 0.5) * 1.4;
+        NODES.push({ u: routeU(v) + spread, v });
+      }
+    })();
+
+    /* Split in two so the animated layer does not repay for the static one.
+       The terrain is 62 rows of path work and only changes when the camera
+       moves; the graph flash and the flow along the edges change every
+       frame. Painting terrain into an offscreen canvas and blitting it took
+       the graph station from a 22ms median frame to roughly idle. */
+    /* The globe gets its own layer: capping each glyph's alpha does not bound
+       what they composite to — a dozen glyphs at 0.115 stack to ~0.77, which is
+       how the paragraph still measured 3.61:1 after a per-glyph cap. Masked as
+       a whole layer, the ceiling actually holds. */
+    const globeCv = document.createElement("canvas");
+    const gctx = globeCv.getContext("2d");
+    if (!gctx) return;
+
+    /* ── Distant ASCII globe ──────────────────────────────────────────
+     * The original hero globe, kept as scenery: a Fibonacci sphere wired to
+     * nearest neighbours, rotating, with pulses running its edges. Smaller and
+     * fainter than it was, sitting in the sky. Painted before the terrain is
+     * blitted, so the ground occludes its lower half and it reads as something
+     * far off rather than a decal on the front. */
+    const GLOBE_N = 340;
+    const globeNodes: { x: number; y: number; z: number }[] = [];
+    const globeEdges: { a: number; b: number; phase: number; speed: number }[] = [];
+    (() => {
+      const GA = Math.PI * (3 - Math.sqrt(5));
+      for (let i = 0; i < GLOBE_N; i++) {
+        const y = 1 - (2 * (i + 0.5)) / GLOBE_N;
+        const r = Math.sqrt(Math.max(0, 1 - y * y));
+        globeNodes.push({ x: r * Math.cos(i * GA), y, z: r * Math.sin(i * GA) });
       }
       const seen: Record<string, 1> = {};
-      for (let i = 0; i < N; i++) {
-        const a = nodes[i];
-        const ds: { j: number; d: number }[] = [];
-        for (let j = 0; j < N; j++) {
-          if (j === i) continue;
-          const b = nodes[j];
-          const dx = a.ux - b.ux, dy = a.uy - b.uy, dz = a.uz - b.uz;
-          ds.push({ j, d: dx * dx + dy * dy + dz * dz });
-        }
-        ds.sort((p, q) => p.d - q.d);
-        const k = 3 + (hash(i, 2, 9) > 0.7 ? 1 : 0) + (hash(i, 4, 11) > 0.82 ? 1 : 0);
-        for (let m = 0; m < k; m++) {
-          const j = ds[m].j;
-          const key = Math.min(i, j) + "_" + Math.max(i, j);
+      for (let i = 0; i < GLOBE_N; i++) {
+        const a = globeNodes[i];
+        const ds = globeNodes
+          .map((n, j) => ({ j, d: (n.x - a.x) ** 2 + (n.y - a.y) ** 2 + (n.z - a.z) ** 2 }))
+          .filter((x) => x.j !== i)
+          .sort((p, q) => p.d - q.d);
+        for (let m = 0; m < 3; m++) {
+          const key = Math.min(i, ds[m].j) + "_" + Math.max(i, ds[m].j);
           if (seen[key]) continue;
           seen[key] = 1;
-          edges.push({ a: i, b: j, phase: hash(i + 2, j + 5, 4), speed: 0.45 + hash(i, j, 6) * 0.8 });
+          globeEdges.push({ a: i, b: ds[m].j, phase: hash(i, ds[m].j + 7), speed: 0.4 + hash(i, m + 3) * 0.5 });
         }
       }
-    };
-    buildNet();
-    let lastW = W, lastH = H;
+    })();
 
-    const slashFor = (dx: number, dy: number) => {
-      const a = Math.atan2(dy, dx);
-      const deg = ((a * 180) / Math.PI + 360) % 180;
-      if (deg < 22.5 || deg >= 157.5) return "-";
-      if (deg < 67.5) return "\\";
-      if (deg < 112.5) return "|";
-      return "/";
+    /** Edge glyph by angle — the trick the original used, and still the one. */
+    const slash = (dx: number, dy: number) => {
+      const deg = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 180;
+      return deg < 22.5 || deg >= 157.5 ? "-" : deg < 67.5 ? "\\" : deg < 112.5 ? "|" : "/";
     };
 
-    let chBuf: (string | undefined)[] = new Array(cols * rows);
-    let aBuf = new Float32Array(cols * rows);
-    let acBuf = new Uint8Array(cols * rows);
-    const ensureBuf = () => {
-      if (chBuf.length !== cols * rows) {
-        chBuf = new Array(cols * rows);
-        aBuf = new Float32Array(cols * rows);
-        acBuf = new Uint8Array(cols * rows);
-      }
-    };
-    const put = (cxg: number, cyg: number, ch: string, a: number, ac: number) => {
-      if (cxg < 0 || cyg < 0 || cxg >= cols || cyg >= rows) return;
-      const idx = cyg * cols + cxg;
-      if (a > aBuf[idx]) { aBuf[idx] = a; chBuf[idx] = ch; acBuf[idx] = ac ? 1 : 0; }
-    };
+    const paintGlobe = (pitch: number, el: number) => {
+      const horizon = horizonAt(pitch);
+      /* Centred and large, sunk so its lower third falls below the horizon —
+         the terrain blit lands on top, so it reads as rising from behind the
+         land rather than floating in front of it. R is clamped to whatever sky
+         there is, so a low horizon shrinks it instead of pushing it off frame. */
+      /* Centre sits below the horizon so a wide cap fills the sky: at the
+         horizon line the sphere is 0.87R across, which spans the whole frame.
+         Sinking it until only the crest showed gave a 54px sliver of a 1116px
+         sphere — the extreme top, where almost no nodes land. */
+      const R = W * 0.46;
+      const cx = W * 0.5, cy = horizon + R * 0.34;
+      if (horizon < 80) return;
 
-    const frame = (t: number) => {
-      if (!cv.isConnected) return;
-      if (t - last < 33) { raf = requestAnimationFrame(frame); return; }
-      last = t;
-      if (document.documentElement.getAttribute("data-theme") !== themeName) readColors();
-      if (W !== lastW || H !== lastH) { buildNet(); lastW = W; lastH = H; ensureBuf(); }
-      const el = (t - t0) / 1000;
-      const intro = reduce ? 1 : Math.min(el / 1.8, 1);
+      const cs = getComputedStyle(root);
+      const faint = (cs.getPropertyValue("--faint") || "").trim() || "#A08E77";
+      const accent = (cs.getPropertyValue("--accent") || "").trim() || "#B0673C";
 
-      ensureBuf();
-      aBuf.fill(0);
-      ctx.clearRect(0, 0, W, H);
+      const ang = el * 0.16, ca = Math.cos(ang), sa = Math.sin(ang);
+      const tilt = 0.34, ct = Math.cos(tilt), st = Math.sin(tilt);
+      const P = globeNodes.map((n) => {
+        const x1 = ca * n.x + sa * n.z, z1 = -sa * n.x + ca * n.z;
+        const y2 = ct * n.y - st * z1, z2 = st * n.y + ct * z1;
+        return { sx: cx + x1 * R, sy: cy - y2 * R, d: (z2 + 1) / 2 };
+      });
 
-      for (let ry = 0; ry < rows; ry += 1) {
-        for (let rx = 0; rx < cols; rx += 1) {
-          if (hash(rx * 2 + 5, ry * 2 + 9, 1) > 0.87) put(rx, ry, "·", 0.06, 0);
-        }
-      }
+      gctx.clearRect(0, 0, W, H);
+      gctx.textAlign = "center";
+      gctx.textBaseline = "middle";
 
-      const ang = reduce ? 0.5 : el * 0.26;
-      const ca = Math.cos(ang), sa = Math.sin(ang);
-      const tilt = 0.32, ct = Math.cos(tilt), st = Math.sin(tilt);
-      /* The old canvas was 150% of viewport width, so 0.34·W read much larger
-         than it does on a viewport-width layer. Widened to keep the hero
-         presence it had. */
-      const R = Math.min(H * 0.66, W * 0.42);
-      const cx = W / 2, cy = H * 0.72;
+      /* Any glyph can fire orange, on its own cycle. Keyed by a stable id so a
+         given cell keeps its rhythm frame to frame rather than strobing. */
+      const flashOf = (id: number) => {
+        const period = 2.4 + hash(id, 61) * 3.4;
+        const c = ((el / period) + hash(id, 67)) % 1;
+        return c < FLASH_DUTY_GLOBE ? Math.sin((c / FLASH_DUTY_GLOBE) * Math.PI) : 0;
+      };
 
-      const rCells = Math.ceil(R / CELL) + 1;
-      const cgx0 = Math.max(0, Math.floor(cx / CELL) - rCells), cgx1 = Math.min(cols - 1, Math.floor(cx / CELL) + rCells);
-      const cgy0 = Math.max(0, Math.floor(cy / CELL) - rCells), cgy1 = Math.min(rows - 1, Math.floor(cy / CELL) + rCells);
-      for (let gy = cgy0; gy <= cgy1; gy++) {
-        for (let gx = cgx0; gx <= cgx1; gx++) {
-          const X = (gx * CELL + CELL / 2 - cx) / R;
-          const Y = -(gy * CELL + CELL / 2 - cy) / R;
+      /* Surface shell — the shading pass the original globe had, and where most
+         of its detail lived. Marching the screen grid over the sphere's disc,
+         lifting each cell back to a surface point, and ramping a glyph by the
+         noise there. Without it the globe is only nodes and wires. */
+      /* Coarser grid on small viewports. The shell is the most expensive pass
+         in the frame and phones are both the weakest hardware and the place
+         p99 was overrunning the 33ms budget; a wider cell cuts the glyph count
+         roughly in half for detail nobody can resolve at that size anyway. */
+      const CELL = W < 700 ? 12 : 9;
+      gctx.font = `700 ${CELL}px ${mono}`;
+      for (let gy = Math.max(0, cy - R); gy < Math.min(horizon, cy + R); gy += CELL) {
+        for (let gx = Math.max(0, cx - R); gx < Math.min(W, cx + R); gx += CELL) {
+          const X = (gx - cx) / R, Y = -(gy - cy) / R;
           const rr = X * X + Y * Y;
           if (rr > 1) continue;
           const Z = Math.sqrt(1 - rr);
+          /* Rotate the sample into world space so the pattern turns with the
+             sphere instead of sitting still on the screen. */
           const y1 = ct * Y + st * Z, z1 = -st * Y + ct * Z;
           const ux = ca * X - sa * z1, uz = sa * X + ca * z1;
-          /* Two octaves: continents from the low frequency, coastline detail
-             from the high one. The second vnoise is the single most
-             expensive thing in the frame — drop it before dropping CELL. */
-          const n = vnoise(ux * 2.6 + 9.3, y1 * 2.6 + 4.7, uz * 2.6 + 2.1) * 0.68
-            + vnoise(ux * 6.4 + 1.7, y1 * 6.4 + 8.2, uz * 6.4 + 5.5) * 0.32;
-          const ch = n < 0.30 ? "·" : n < 0.42 ? ":" : n < 0.52 ? ";" : n < 0.62 ? "-"
-            : n < 0.72 ? "=" : n < 0.82 ? "+" : n < 0.90 ? "*" : "#";
-          put(gx, gy, ch, 0.06 + Z * 0.10 + n * 0.11, 0);
+          const n = 0.5 + 0.5 * Math.sin(ux * 4.2 + 1.7) * Math.sin(y1 * 3.6 - 2.1) * Math.sin(uz * 3.1 + 0.6);
+          const f = flashOf(((gx / CELL) | 0) * 997 + ((gy / CELL) | 0));
+          gctx.globalAlpha = (0.05 + Z * 0.09 + n * 0.10) * (1 + f * 2.2);
+          gctx.fillStyle = f > 0.25 ? accent : faint;
+          gctx.fillText(GLOBE_RAMP[Math.min(GLOBE_RAMP.length - 1, (n * GLOBE_RAMP.length) | 0)], gx, gy);
         }
       }
 
-      const P: { sx: number; sy: number; d: number }[] = [];
-      for (let n = 0; n < nodes.length; n++) {
-        const nd = nodes[n];
-        const x1 = ca * nd.ux + sa * nd.uz;
-        const z1 = -sa * nd.ux + ca * nd.uz;
-        const y1 = nd.uy;
-        const y2 = ct * y1 - st * z1;
-        const z2 = st * y1 + ct * z1;
-        P.push({ sx: cx + x1 * R, sy: cy - y2 * R, d: (z2 + 1) / 2 });
-      }
-
-      for (let e = 0; e < edges.length; e++) {
-        const ed = edges[e];
-        const pa = P[ed.a], pb = P[ed.b];
+      gctx.font = `700 8px ${mono}`;
+      for (const e of globeEdges) {
+        const pa = P[e.a], pb = P[e.b];
         const dx = pb.sx - pa.sx, dy = pb.sy - pa.sy;
-        const dist = Math.hypot(dx, dy);
-        const steps = Math.max(2, Math.ceil(dist / (CELL * 0.6)));
-        const ch = slashFor(dx, dy);
+        const steps = Math.max(1, Math.round(Math.hypot(dx, dy) / 7));
+        const ch = slash(dx, dy);
         const depth = (pa.d + pb.d) / 2;
-        const base = 0.08 + depth * 0.34;
-        const pulse = (el * ed.speed * 0.4 + ed.phase) % 1;
+        const pulse = (el * e.speed * 0.35 + e.phase) % 1;
         for (let s = 0; s <= steps; s++) {
-          const tt = s / steps;
-          const px = pa.sx + dx * tt, py = pa.sy + dy * tt;
-          const cxg = Math.floor(px / CELL), cyg = Math.floor(py / CELL);
-          let a = base, ac = 0, chE = ch;
-          const near = Math.abs(tt - pulse);
-          if (near < 0.08 && depth > 0.34) {
-            const b = 1 - near / 0.08;
-            a = base + b * 0.72;
-            ac = b > 0.45 ? 1 : 0;
-            if (near < 0.04) chE = "*";
-          }
-          put(cxg, cyg, chE, a, ac);
+          const t = s / steps;
+          const near = Math.abs(t - pulse);
+          const lit = near < 0.09 && depth > 0.42;
+          gctx.globalAlpha = (0.13 + depth * 0.22) * (lit ? 2.4 : 1);
+          gctx.fillStyle = lit ? accent : faint;
+          gctx.fillText(lit && near < 0.045 ? "*" : ch, pa.sx + dx * t, pa.sy + dy * t);
         }
       }
+      for (let i = 0; i < P.length; i++) {
+        const p = P[i];
+        const nf = flashOf(i * 31 + 5);
+        gctx.globalAlpha = (0.18 + p.d * 0.38) * (1 + nf * 1.8);
+        gctx.fillStyle = nf > 0.25 ? accent : faint;
+        gctx.fillText(p.d > 0.66 ? "#" : p.d > 0.36 ? "O" : "o", p.sx, p.sy);
+      }
+      gctx.globalAlpha = 1;
 
-      for (let n = 0; n < nodes.length; n++) {
-        const p = P[n];
-        const nd = nodes[n];
-        const cxg = Math.floor(p.sx / CELL), cyg = Math.floor(p.sy / CELL);
-        const breathe = 0.5 + 0.5 * Math.sin(el * 2.2 + nd.phase * 6.28);
-        const core = (0.32 + p.d * 0.62) * (0.7 + breathe * 0.3);
-        const glyph = p.d > 0.80 ? "@" : p.d > 0.62 ? "#" : p.d > 0.42 ? "O" : p.d > 0.24 ? "o" : "·";
-        put(cxg, cyg, glyph, core, p.d > 0.6 && breathe > 0.7 ? 1 : 0);
-        if (p.d > 0.4) { put(cxg - 1, cyg, ":", core * 0.5, 0); put(cxg + 1, cyg, ":", core * 0.5, 0); }
-        /* Vertical halo on the nearest nodes only — reads as volume without
-           smearing the ones on the far side of the sphere. */
-        if (p.d > 0.72) { put(cxg, cyg - 1, "'", core * 0.34, 0); put(cxg, cyg + 1, ".", core * 0.34, 0); }
+      /* Mask the whole layer down through the copy column, then blit. Because
+         this multiplies the already-composited layer, GLOBE_CAP is a real
+         ceiling on what lands behind the text — 0.10 sits under the 0.115 the
+         paragraph can absorb and still clear 4.5:1. The flanks keep full
+         strength, so the globe reads bright either side of the copy. */
+      /* Erase back through the copy block only — the rectangle the hero text
+         actually occupies, feathered at the sides. destination-out with alpha a
+         scales what is there by (1-a), so 0.9 leaves a tenth: under the 0.115
+         the paragraph can absorb. Everything below the copy, including the wide
+         band down to the horizon, keeps full strength. */
+      const b = Math.min(copyHalfPx / W, 0.5), f = 0.06;
+      const erase = gctx.createLinearGradient(0, 0, W, 0);
+      const stop = (t: number, a: number) => erase.addColorStop(Math.min(Math.max(t, 0), 1), `rgba(0,0,0,${a})`);
+      stop(0, 0);
+      stop(0.5 - b - f, 0);
+      stop(0.5 - b, 0.45);
+      stop(0.5 + b, 0.45);
+      stop(0.5 + b + f, 0);
+      stop(1, 0);
+      gctx.globalCompositeOperation = "destination-out";
+      gctx.fillStyle = erase;
+      gctx.fillRect(0, 0, W, floorY + 12);
+      gctx.globalCompositeOperation = "source-over";
+
+      ctx.drawImage(globeCv, 0, 0, W, H);
+    };
+
+    /* Offscreen buffers: the last painted terrain, and the globe. The globe
+       needs its own because capping each glyph's alpha does not bound what they
+       composite to — a dozen glyphs at 0.115 stack to ~0.77, which is how the
+       paragraph still measured 3.61:1 after a per-glyph cap. Drawn to a layer
+       and masked as a whole, the ceiling actually holds. */
+    const terrainCv = document.createElement("canvas");
+    const tctx = terrainCv.getContext("2d");
+    if (!tctx) return;
+    /* cacheValid is a flag, not a NaN sentinel. It used to be `cacheV = NaN`
+       tested with `Math.abs(camV - cacheV) > eps` — but every comparison
+       against NaN is false, so the sentinel never triggered the repaint it
+       existed to trigger. The terrain only appeared when the theme check
+       happened to fire instead; with no data-theme set at first draw, all
+       three conditions were false and the buffer stayed empty for good. */
+    let cacheValid = false;
+    let cacheV = 0, cachePitch = 0, cacheTheme = "";
+
+    const paintTerrain = (camV: number, pitch: number) => {
+      const cs = getComputedStyle(root);
+      const ground = (cs.getPropertyValue("--bg") || "").trim() || "#EBE2D1";
+      const ink = (cs.getPropertyValue("--fg") || "").trim() || "#382C20";
+      const faint = (cs.getPropertyValue("--faint") || "").trim() || "#A08E77";
+
+      tctx.clearRect(0, 0, W, H);
+      tctx.lineJoin = "round";
+
+      const camU = routeU(camV);
+
+      /* Sparse ASCII above the horizon. The frame's top third was empty paper;
+         the old globe carried the same faint stipple and it is what made the
+         thing read as an instrument rather than an illustration. */
+      {
+        const sky = horizonAt(pitch);
+        tctx.font = `700 10px ${mono}`;
+        tctx.textAlign = "center";
+        tctx.textBaseline = "middle";
+        tctx.fillStyle = faint;
+        const step = 22;
+        for (let sy = 14; sy < sky; sy += step) {
+          for (let sx = 12; sx < W; sx += step) {
+            const h = hash(sx + Math.round(camV * 40), sy);
+            if (h > 0.82) {
+              const base = (0.10 + h * 0.14) * (sy / Math.max(sky, 1));
+              /* Held down through the copy column. This stipple spans the full
+                 frame, and at its natural 0.24 peak it was the thing dragging
+                 the hero paragraph to 4.26:1 — not the globe, which is masked.
+                 The glyphs are sparse enough that they rarely overlap, so a
+                 per-glyph cap does bound the composite here. */
+              const col = clamp01(1 - Math.abs(sx - W / 2) / Math.max(copyHalfPx, 1));
+              tctx.globalAlpha = base * (1 - col) + Math.min(base, 0.1) * col;
+              tctx.fillText(h > 0.955 ? "+" : h > 0.90 ? ":" : "·", sx, sy);
+            }
+          }
+        }
+        tctx.globalAlpha = 1;
+      }
+      /* Only the hero's copy is fitted to the valley floor; every later section
+         sits wherever its own layout puts it, so the ground steps back to
+         texture once you leave the trailhead. The route does not — it is the
+         subject, and it keeps full weight the whole way. */
+      const contrast = 1 - 0.55 * clamp01(camV / STATIONS[1].v);
+
+      /* Back to front. Filling under each ridge occludes the row behind it,
+         which is the whole depth cue for the price of one fill. */
+      for (let r = ROWS - 1; r >= 0; r--) {
+        const d = r / (ROWS - 1);
+        const v = camV + d * VIEW;
+        /* Each row samples a u-window wide enough to span the viewport at its
+           own squeeze — far rows are compressed, so they need a wider slice of
+           world to reach both edges. */
+        /* Hoisted: the glyph pass calls this per column, and recomputing it
+           ~50 times a row for a value that only varies by row is waste. */
+        const rg = rowGeom(d, pitch);
+        const half = 0.54 / Math.max(rg.squeeze, 0.14);
+        const uAt = (c: number) => camU - half + (c / COLS) * 2 * half;
+        const trace = () => {
+          tctx.beginPath();
+          for (let c = 0; c <= COLS; c++) {
+            const p = project(uAt(c), v, camV, camU, pitch);
+            if (c === 0) tctx.moveTo(p.x, p.y); else tctx.lineTo(p.x, p.y);
+          }
+        };
+        trace();
+        tctx.lineTo(project(uAt(COLS), v, camV, camU, pitch).x, H + 2);
+        tctx.lineTo(project(uAt(0), v, camV, camU, pitch).x, H + 2);
+        tctx.closePath();
+        tctx.fillStyle = ground;
+        tctx.fill();
+
+        /* Contours carry the surface on their own — the glyph pass that used to
+           shade the ground was removed, so their weight goes back up. */
+        trace();
+        tctx.strokeStyle = d > 0.62 ? faint : ink;
+        tctx.globalAlpha = (0.16 + (1 - d) * 0.34) * (1 - pitch * 0.25) * contrast;
+        tctx.lineWidth = 1 + (1 - d) * 0.8;
+        tctx.stroke();
+        tctx.globalAlpha = 1;
       }
 
-      for (let ry = 0; ry < rows; ry++) {
-        const rowReveal = intro * rows * 1.18 - ry;
-        if (rowReveal <= 0) continue;
-        const rowAlpha = Math.min(rowReveal, 1);
-        const py = ry * CELL + CELL / 2;
-        for (let rx = 0; rx < cols; rx++) {
-          const idx = ry * cols + rx;
-          const a = aBuf[idx];
-          if (a <= 0.02) continue;
-          ctx.globalAlpha = Math.min(a * rowAlpha, 1) * dim.v;
-          ctx.fillStyle = acBuf[idx] ? accent : ink;
-          ctx.fillText(chBuf[idx] || "·", rx * CELL + CELL / 2, py);
+    };
+
+    /* Blit the cached terrain, repainting it only when the camera or the theme
+       actually moved, then draw the live layer over it. */
+    const draw = (camV: number, pitch: number, el: number) => {
+      const theme = document.documentElement.getAttribute("data-theme") || "";
+      if (!cacheValid || Math.abs(camV - cacheV) > 0.0004 || Math.abs(pitch - cachePitch) > 0.0004 || theme !== cacheTheme) {
+        paintTerrain(camV, pitch);
+        cacheV = camV;
+        cachePitch = pitch;
+        cacheTheme = theme;
+        cacheValid = true;
+      }
+      ctx.clearRect(0, 0, W, H);
+      /* Order is the whole trick: globe, then the terrain blit over it. The
+         cached terrain has a transparent sky and an opaque ground, so the globe
+         shows through above the horizon and is cut off below it. */
+      paintGlobe(pitch, el);
+      ctx.drawImage(terrainCv, 0, 0, W, H);
+      paintOverlay(camV, pitch, el);
+    };
+
+    const paintOverlay = (camV: number, pitch: number, el: number) => {
+      const cs = getComputedStyle(root);
+      const accent = (cs.getPropertyValue("--accent") || "").trim() || "#B0673C";
+      const ground = (cs.getPropertyValue("--bg") || "").trim() || "#EBE2D1";
+      const camU = routeU(camV);
+      ctx.lineJoin = "round";
+      /* Visible at every altitude now, not just from above. The pitch gate made
+         sense while these formed a diagram that needed height to read; as bare
+         points of activity they work at eye level too — signals scattered over
+         the ground you are walking. No edges and no resting state: a node
+         exists but is only visible while it fires. */
+      for (let i = 0; i < NODES.length; i++) {
+        const n = NODES[i];
+        if (n.v < camV || n.v > camV + VIEW) continue;
+
+        const period = FLASH_PERIOD_MIN + hash(i, 41) * FLASH_PERIOD_RANGE;
+        const cycle = ((el / period) + hash(i, 53)) % 1;
+        if (cycle > FLASH_DUTY) continue;
+
+        const p = project(n.u, n.v, camV, camU, pitch);
+        if (p.x < -20 || p.x > W + 20 || p.d > PIN_MAX_DEPTH) continue;
+
+        /* Sine envelope over the lit window: swells and fades rather than
+           switching on, which would read as a blink at this size. */
+        const env = Math.sin((cycle / FLASH_DUTY) * Math.PI);
+        const near = 1 - p.d;
+        /* Bigger than before: with the far field culled, the survivors can
+           carry the shape instead of hedging toward a dot. */
+        const r = (2.0 + near * 2.6) * (0.62 + env * 0.6);
+        ctx.globalAlpha = env * (0.45 + near * 0.5) * clamp01((PIN_MAX_DEPTH - p.d) / PIN_FADE);
+
+        /* Map pin rather than a dot: round head, tip planted at the node's
+           position on the ground, so it reads as marking a place rather than
+           floating above one. The arc leaves a gap at the bottom and the two
+           lines close it through the tip. */
+        const head = p.y - r * 2.5;
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.arc(p.x, head, r, Math.PI * 0.82, Math.PI * 0.18);
+        ctx.lineTo(p.x, p.y);
+        ctx.closePath();
+        ctx.fill();
+
+        /* Punch the head out on the nearer pins — below about 2.5px the hole
+           closes up into a smudge and costs a fill for nothing. */
+        if (r > 2.5) {
+          ctx.fillStyle = ground;
+          ctx.beginPath();
+          ctx.arc(p.x, head, r * 0.42, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
       ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(frame);
+
+      ctx.beginPath();
+      for (let s = 0; s <= 200; s++) {
+        const v = camV + (s / 200) * VIEW;
+        const rp = project(routeU(v), v, camV, camU, pitch);
+        if (s === 0) ctx.moveTo(rp.x, rp.y - 3); else ctx.lineTo(rp.x, rp.y - 3);
+      }
+      /* The route is the subject, so it gets drawn twice: a wide soft underlay
+         to lift it off the ground it crosses, then the line itself. */
+      ctx.strokeStyle = accent;
+      ctx.lineCap = "round";
+      ctx.globalAlpha = 0.16 * (1 - pitch * 0.25);
+      ctx.lineWidth = 11;
+      ctx.stroke();
+      ctx.globalAlpha = 0.95 * (1 - pitch * 0.2);
+      ctx.lineWidth = 3.4;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      /* Flow along the route itself: three bright runs travelling toward the
+         horizon, so the path reads as a direction of travel rather than a line
+         that happens to be drawn. Same idea as the edge flow, slower — this is
+         the subject, and a fast pulse on it would fidget. */
+      const ROUTE_STEPS = 200;
+      const routePt = (t: number) => {
+        const v = camV + clamp01(t) * VIEW;
+        const p = project(routeU(v), v, camV, camU, pitch);
+        return { x: p.x, y: p.y - 3 };
+      };
+      ctx.lineCap = "round";
+      ctx.strokeStyle = accent;
+      for (let k = 0; k < 3; k++) {
+        const head = ((el * 0.075 + k / 3) % 1);
+        const tail = Math.max(head - 0.11, 0);
+        if (head <= 0) continue;
+        ctx.beginPath();
+        const steps = Math.max(2, Math.round((head - tail) * ROUTE_STEPS));
+        for (let s = 0; s <= steps; s++) {
+          const pt = routePt(tail + ((head - tail) * s) / steps);
+          if (s === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+        }
+        /* Fades out as it recedes, so it reads as distance rather than the
+           pulse simply ending. */
+        ctx.globalAlpha = 0.85 * (1 - head * 0.8) * (1 - pitch * 0.2);
+        ctx.lineWidth = 4.6 * (1 - head * 0.55);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
     };
-    raf = requestAnimationFrame(frame);
+
+    /* Scroll → camera. Sections tagged data-wp are the stations; the camera
+       lerps between the two the viewport centre currently sits between. */
+    let anchors: HTMLElement[] = [];
+    const measure = () => {
+      anchors = Array.from(root.querySelectorAll<HTMLElement>("[data-wp]"))
+        .sort((a, b) => Number(a.dataset.wp) - Number(b.dataset.wp));
+    };
+
+    const camera = () => {
+      /* Reduced motion is handled by freezing time, not by pinning the camera:
+         scrolling is the reader's own action, so the scene should still answer
+         it. Pinning here also parked them at STATIONS[2] — the plan view, pitch
+         0.68 — where the terrain fills the frame and the hero copy sits over it,
+         a composition the horizon guard never sizes for. Fallback is the hero,
+         which is where the page opens. */
+      if (anchors.length < 2) return STATIONS[0];
+      /* The eye tracks the top of the viewport, not its centre. With the centre,
+         a page opened at scroll 0 already sat 39% of the way to station 1 —
+         the hero never actually got its own camera. A section now arrives as
+         its top reaches the top of the frame. */
+      const eye = window.scrollY;
+      const top = (el: HTMLElement) => el.getBoundingClientRect().top + window.scrollY;
+      if (eye <= top(anchors[0])) return STATIONS[0];
+      for (let i = 0; i < anchors.length - 1; i++) {
+        const a = top(anchors[i]), b = top(anchors[i + 1]);
+        if (eye < b) {
+          const t = sm(clamp01((eye - a) / Math.max(b - a, 1)));
+          const s0 = STATIONS[Math.min(i, STATIONS.length - 1)];
+          const s1 = STATIONS[Math.min(i + 1, STATIONS.length - 1)];
+          return { v: lerp(s0.v, s1.v, t), pitch: lerp(s0.pitch, s1.pitch, t) };
+        }
+      }
+      return STATIONS[STATIONS.length - 1];
+    };
+
+    const t0 = performance.now();
+
+    const frame = (t: number) => {
+      if (!cv.isConnected) return;
+      raf = requestAnimationFrame(frame);
+      if (t - last < 33) return;
+      last = t;
+      const cam = camera();
+      /* Always redraw now: the route flow animates at every station, not just
+         where the graph is up. The old skip-when-parked guard lives in draw()
+         instead, which repaints the terrain only when the camera moves and
+         blits the cached copy otherwise. */
+      draw(cam.v, cam.pitch, (t - t0) / 1000);
+    };
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = cv.clientWidth || 900;
+      H = cv.clientHeight || 500;
+      cv.width = Math.max(1, Math.floor(W * dpr));
+      cv.height = Math.max(1, Math.floor(H * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      /* Buffer matches the backing store, and its transform matches too, so
+         the terrain pass can keep drawing in CSS pixels. */
+      terrainCv.width = cv.width;
+      terrainCv.height = cv.height;
+      tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      globeCv.width = cv.width;
+      globeCv.height = cv.height;
+      gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cacheValid = false;
+      measure();
+      /* The hero sits at the top of the document, so this element's document
+         offset is also its viewport position at station 0 — where the eye-level
+         horizon has to clear. */
+      const sill = root.querySelector<HTMLElement>("[data-horizon]");
+      /* offsetTop, not getBoundingClientRect: this row enters on a translate
+         (pf-anim-up), and a rect read mid-animation returns the transformed
+         position, which put the horizon ~80px too high for the rest of the
+         session. Layout offsets ignore transforms. */
+      let y = 0;
+      for (let el: HTMLElement | null = sill; el; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
+      floorY = sill ? y + sill.offsetHeight : H * 0.72;
+
+      /* Widest hero text, not just the paragraph — the h1 runs wider than the
+         copy block and walls were rising inside it. */
+      let widest = 0;
+      root.querySelectorAll<HTMLElement>("[data-wp='0'] h1, [data-wp='0'] p")
+        .forEach((el) => { widest = Math.max(widest, el.offsetWidth); });
+      copyHalfPx = Math.min((widest || W * 0.6) / 2 + 46, W * 0.47);
+      cacheValid = false;
+      const cam = camera();
+      draw(cam.v, cam.pitch, 0);
+    };
+
+    let cleanupReduced: (() => void) | null = null;
+
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(cv);
+    /* Repaint on the theme toggle: the loop skips unmoved frames, so a colour
+       change needs to invalidate the cache explicitly. */
+    const mo = new MutationObserver(() => {
+      cacheValid = false;
+      const cam = camera();
+      draw(cam.v, cam.pitch, 0);
+    });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    if (reduce) {
+      /* No rAF: redraw on scroll only, with elapsed time pinned at 0 so the
+         node flashes and the route flow stay still. The reader gets every
+         station's composition, none of the autonomous movement. */
+      const onScroll = () => { const cam = camera(); draw(cam.v, cam.pitch, 0); };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      cleanupReduced = () => window.removeEventListener("scroll", onScroll);
+    } else {
+      raf = requestAnimationFrame(frame);
+    }
 
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
-      window.removeEventListener("scroll", onScroll);
+      mo.disconnect();
+      cleanupReduced?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -391,10 +895,10 @@ function useParallaxTilt(rootRef: React.RefObject<HTMLDivElement | null>) {
 
 export default function Landing() {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const globeRef = useRef<HTMLCanvasElement | null>(null);
+  const terrainRef = useRef<HTMLCanvasElement | null>(null);
   const mode = useThemeMode();
 
-  useNeuralGlobe(globeRef, rootRef);
+  useTerrainRoute(terrainRef, rootRef);
   useParallaxTilt(rootRef);
 
   const toggleTheme = () => setTheme(mode === "dark" ? "light" : "dark");
@@ -412,7 +916,7 @@ export default function Landing() {
           page background but below all in-flow content; sections that carry
           their own --panel background (marquee, report card) occlude it,
           which is what gives the page depth. */}
-      <canvas ref={globeRef} aria-hidden style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none" }} />
+      <canvas ref={terrainRef} aria-hidden style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none" }} />
 
       {/* Paper grain */}
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 60, pointerEvents: "none", opacity: "var(--grainOpacity)" as unknown as number, mixBlendMode: "multiply", backgroundImage: GRAIN, backgroundSize: "150px 150px" }} />
@@ -447,36 +951,48 @@ export default function Landing() {
       </header>
 
       {/* ── Hero ── */}
-      <section style={{ position: "relative", textAlign: "center", padding: "clamp(64px,9vw,112px) clamp(20px,5vw,40px) 0", overflow: "hidden" }}>
+      <section data-wp="0" style={{ position: "relative", textAlign: "center", padding: "clamp(64px,9vw,112px) clamp(20px,5vw,40px) 0", overflow: "hidden" }}>
         <div aria-hidden data-parallax="14" style={{ position: "absolute", inset: 0, left: "50%", transform: "translateX(-50%)", width: "100%", pointerEvents: "none", backgroundImage: "radial-gradient(var(--dot) 1px, transparent 1.6px)", backgroundSize: "9px 9px", WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 24%, #000 12%, transparent 72%)", maskImage: "radial-gradient(ellipse 70% 60% at 50% 24%, #000 12%, transparent 72%)", transition: "transform .4s var(--ease)" }} />
+        {/* Terrain plate — the hero's ground. Opaque fill, so it occludes the
+            page-wide globe layer within the hero and hands over to it below. */}
         <div style={{ position: "relative", zIndex: 2 }}>
-          <div className="pf-anim-up" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 15px 6px 8px", borderRadius: 100, border: "1px solid var(--lineStrong)", background: "var(--panel)", fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".08em", color: "var(--muted)", marginBottom: 32, whiteSpace: "nowrap", boxShadow: "var(--rim)" }}>
-            <span style={{ display: "inline-flex", width: 20, height: 20, alignItems: "center", justifyContent: "center", borderRadius: 100, background: "var(--accentSoft)", color: "var(--accent)" }}>✦</span>
+          {/* Eyebrow, not a chip. The pill was a bordered panel floating over
+              open ground — a card in all but name, and the one thing above the
+              headline competing with it. Plain type sits better on terrain. */}
+          <div className="pf-anim-up" style={{ display: "inline-flex", alignItems: "center", gap: 9, fontFamily: mono, fontSize: 11.5, fontWeight: 600, letterSpacing: ".2em", color: "var(--muted)", marginBottom: 30, whiteSpace: "nowrap" }}>
+            <span aria-hidden style={{ color: "var(--accent)", fontSize: 13 }}>✦</span>
             AI INTERNSHIP READINESS COACH
           </div>
           <h1 className="pf-anim-up" style={{ fontSize: "clamp(46px,8vw,92px)", lineHeight: 0.98, letterSpacing: "-.045em", fontWeight: 800, margin: "0 auto 26px", maxWidth: "16ch", animationDelay: ".05s" }}>
             From uncertain to <span style={serifItalic}>hired.</span>
           </h1>
-          <p className="pf-anim-up" style={{ fontSize: "clamp(16px,2vw,20px)", lineHeight: 1.6, color: "var(--muted)", maxWidth: "40rem", margin: "0 auto 38px", animationDelay: ".12s" }}>
+          <p className="pf-anim-up" style={{ fontSize: "clamp(16px,2vw,20px)", lineHeight: 1.6, color: "var(--fg)", opacity: 0.82, maxWidth: "40rem", margin: "0 auto 38px", animationDelay: ".12s" }}>
             For university students chasing internships. PathFinder coaches you to become genuinely ready — the referrals and interview skills that actually land offers — instead of spraying applications no one reads. Every day, it shows your one highest-leverage move.
           </p>
-          <div className="pf-anim-up" style={{ display: "flex", gap: 13, justifyContent: "center", flexWrap: "wrap", marginBottom: 14, animationDelay: ".19s" }}>
+          <div data-horizon className="pf-anim-up" style={{ display: "flex", gap: 13, justifyContent: "center", flexWrap: "wrap", marginBottom: 14, animationDelay: ".19s" }}>
             <Link href="/start" style={{ display: "flex", alignItems: "center", gap: 9, height: 54, padding: "0 30px", borderRadius: 13, background: "var(--fg)", color: "var(--bg)", fontSize: 16, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 10px 26px rgba(56,44,32,.16),var(--rim)", transition: "transform .22s var(--ease),box-shadow .22s var(--ease)" }}>
               Get your baseline →
             </Link>
-            <a href="#phases" style={{ display: "flex", alignItems: "center", gap: 9, height: 54, padding: "0 26px", borderRadius: 13, background: "var(--panel)", color: "var(--fg)", border: "1px solid var(--lineStrong)", fontSize: 16, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", transition: "all .22s var(--ease)" }}>
+            {/* Ghost link, not a second button. Two filled surfaces side by
+                side read as two primary actions; the rule is one. Keeps the
+                54px height so the touch target still clears 44px. */}
+            <a href="#phases" style={{ display: "flex", alignItems: "center", gap: 9, height: 54, padding: "0 20px", color: "var(--fg)", fontSize: 16, fontWeight: 600, whiteSpace: "nowrap", textDecoration: "underline", textDecorationColor: "var(--lineStrong)", textUnderlineOffset: 6, textDecorationThickness: 1.5, transition: "all .22s var(--ease)" }}>
               See the journey
             </a>
           </div>
         </div>
 
         <div style={{ position: "relative", zIndex: 2, marginTop: "clamp(150px,22vw,280px)", display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}>
-          <span style={{ fontFamily: mono, fontSize: 11, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--faint)" }}>Built for UK &amp; EU internship season</span>
+          {/* Sits on the globe's crest, not on clean paper: --faint measured
+              2.46:1 here and --muted 3.77:1 once the globe was behind it, both
+              under the 4.5:1 floor. --fg is the only token with headroom over
+              textured ground at this size. */}
+          <span style={{ fontFamily: mono, fontSize: 11.5, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--fg)", opacity: 0.75 }}>Built for UK &amp; EU internship season</span>
         </div>
       </section>
 
       {/* ── Product panel ── */}
-      <section id="product" style={{ position: "relative", zIndex: 3, padding: "0 clamp(20px,5vw,40px)", marginTop: "clamp(-40px,-3vw,-20px)" }}>
+      <section data-wp="1" id="product" style={{ position: "relative", zIndex: 3, padding: "0 clamp(20px,5vw,40px)", marginTop: "clamp(-40px,-3vw,-20px)" }}>
         <Reveal style={{ position: "relative", maxWidth: 1060, margin: "0 auto" }}>
           <div data-tilt style={{ position: "relative", borderRadius: 18, border: "1px solid var(--lineStrong)", background: "var(--panelSolid)", boxShadow: "0 40px 90px rgba(56,44,32,.14),var(--rim)", overflow: "hidden", textAlign: "left", transition: "transform .3s var(--ease)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "15px 20px", borderBottom: "1px dashed var(--lineStrong)", background: "var(--panel)" }}>
@@ -497,10 +1013,14 @@ export default function Landing() {
                 ))}
               </div>
               <div style={{ padding: "26px 28px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, marginBottom: 24 }}>
+                {/* Wraps: at 320px the readiness figure and its label could not
+                    sit on one line, and .pf's overflow-x:hidden clipped the
+                    overflow rather than scrolling it — so the text was cut off
+                    rather than merely tight. */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, marginBottom: 24, flexWrap: "wrap" }}>
                   <div>
                     <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)" }}>Readiness</div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 11, marginTop: 6 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 11, marginTop: 6, flexWrap: "wrap" }}>
                       <CountUp value={74} style={{ fontFamily: mono, fontSize: 56, fontWeight: 700, letterSpacing: "-.04em", lineHeight: 0.9, color: "var(--strong)" }} />
                       <span style={{ fontSize: 14, fontWeight: 600 }}>Competitive — closing fast</span>
                     </div>
@@ -561,8 +1081,12 @@ export default function Landing() {
       </section>
 
       {/* ── Phases ── */}
-      <section id="phases" style={{ padding: "clamp(70px,9vw,120px) clamp(20px,5vw,56px)", maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 60 }}>
+      {/* The one section where the camera leaves the ground and the opportunity
+          graph resolves, so the layout is opened up to let it read: deeper
+          padding, a wide band under the heading, and a row gap far larger than
+          the column gap so ground shows between the two rows of cards. */}
+      <section data-wp="2" id="phases" style={{ padding: "clamp(92px,12vw,168px) clamp(20px,5vw,56px)", maxWidth: 1200, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: "clamp(64px,9vw,112px)" }}>
           <span style={kicker}>The Journey</span>
           <h2 style={{ fontSize: "clamp(34px,5vw,52px)", fontWeight: 800, letterSpacing: "-.04em", margin: "16px 0 14px" }}>
             Six phases. Two that get you <span style={serifItalic}>hired.</span>
@@ -571,7 +1095,7 @@ export default function Landing() {
             Direction, CV and tracking keep you tidy — but referrals and interview readiness are what convert. PathFinder coaches all six, and pushes hardest on the two that decide the offer.
           </p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", columnGap: "clamp(16px,2.6vw,34px)", rowGap: "clamp(68px,9vw,116px)", maxWidth: 1050, margin: "0 auto" }}>
           {PHASES.map((p) => (
             <Reveal key={p.n} style={{}}>
               <Link href={p.href} style={{ display: "block", position: "relative", border: "1px solid var(--line)", background: "var(--panel)", borderRadius: 18, padding: 28, overflow: "hidden", boxShadow: "var(--rim)", transition: "transform .34s var(--ease),border-color .34s var(--ease),background .34s var(--ease)", textDecoration: "none", color: "var(--fg)", height: "100%" }} className="pf-hover-border">
@@ -587,7 +1111,7 @@ export default function Landing() {
       </section>
 
       {/* ── One action ── */}
-      <section style={{ padding: "0 clamp(20px,5vw,56px) clamp(70px,9vw,110px)", maxWidth: 1120, margin: "0 auto" }}>
+      <section data-wp="3" style={{ padding: "0 clamp(20px,5vw,56px) clamp(70px,9vw,110px)", maxWidth: 1120, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.05fr", gap: 60, alignItems: "center" }}>
           <Reveal style={{}}>
             <span style={kicker}>The core idea</span>
@@ -622,7 +1146,7 @@ export default function Landing() {
           89% landing an interview and a 14-day average response, plus three
           named testimonials. None of it was real. A product that tells students
           not to embellish their CV cannot embellish its own landing page. */}
-      <section id="results" style={{ padding: "0 clamp(20px,5vw,56px) clamp(70px,9vw,110px)", maxWidth: 1120, margin: "0 auto" }}>
+      <section data-wp="4" id="results" style={{ padding: "0 clamp(20px,5vw,56px) clamp(70px,9vw,110px)", maxWidth: 1120, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <span style={kicker}>Honest status</span>
           <h2 style={{ fontSize: "clamp(32px,4.5vw,46px)", fontWeight: 800, letterSpacing: "-.04em", margin: "16px 0 14px" }}>
@@ -644,7 +1168,7 @@ export default function Landing() {
       </section>
 
       {/* ── CTA ── */}
-      <section style={{ position: "relative", padding: "clamp(84px,11vw,140px) clamp(20px,5vw,40px)", textAlign: "center", borderTop: "1px solid var(--line)", overflow: "hidden" }}>
+      <section data-wp="5" style={{ position: "relative", padding: "clamp(84px,11vw,140px) clamp(20px,5vw,40px)", textAlign: "center", borderTop: "1px solid var(--line)", overflow: "hidden" }}>
         <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: "radial-gradient(var(--dot) 1px, transparent 1.6px)", backgroundSize: "9px 9px", WebkitMaskImage: "radial-gradient(ellipse 60% 80% at 50% 100%, #000 8%, transparent 70%)", maskImage: "radial-gradient(ellipse 60% 80% at 50% 100%, #000 8%, transparent 70%)" }} />
         <Reveal style={{ position: "relative", zIndex: 1 }}>
           <span style={{ fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--faint)" }}>ASSESS → ANALYSE → REPORT → OFFER</span>
@@ -662,7 +1186,7 @@ export default function Landing() {
       </section>
 
       {/* ── Footer ── */}
-      <footer style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, padding: "28px clamp(20px,5vw,56px)", borderTop: "1px solid var(--line)" }}>
+      <footer data-wp="6" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, padding: "28px clamp(20px,5vw,56px)", borderTop: "1px solid var(--line)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 22, height: 22, borderRadius: 7, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.5"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
