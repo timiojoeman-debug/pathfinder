@@ -80,6 +80,14 @@ const PHASES = [
   { n: "06", label: "Phase 06 · Momentum", title: "Application Tracking", href: "/tracker", desc: "Every application in one calm board, so nothing slips and momentum compounds toward the offer.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg> },
 ];
 
+/** Header height. The bar is fixed rather than sticky: sticky positions
+ *  against the nearest scrolling ancestor, and this page has three of them —
+ *  the .pf-landing root plus html and body, all carrying overflow-x:hidden to
+ *  keep phones from scrolling sideways. Sticky therefore anchored to a box that
+ *  never scrolls and the bar rode the content away. Fixed ignores all of that;
+ *  the root pads by this much to replace the flow space the bar gave up. */
+const HEADER_H = 68;
+
 /* ── Terrain, route and camera ────────────────────────────────────────
  * The landing's one visual. A height field in world space, projected in
  * perspective and drawn back-to-front so each ridge occludes the one behind
@@ -916,7 +924,7 @@ export default function Landing() {
      there, the globe's z-index:-1 escapes to the root element and paints
      *behind* this div's background, i.e. invisible. */
   return (
-    <div ref={rootRef} className="pf pf-landing" style={{ position: "relative", width: "100%", background: "var(--bg)", overflow: "hidden", isolation: "isolate" }}>
+    <div ref={rootRef} className="pf pf-landing" style={{ position: "relative", width: "100%", background: "var(--bg)", overflow: "hidden", isolation: "isolate", paddingTop: HEADER_H }}>
       {/* Neural globe — a fixed viewport layer, not a hero decoration, so it
           stays present behind every section. z-index -1 puts it above the
           page background but below all in-flow content; sections that carry
@@ -928,7 +936,7 @@ export default function Landing() {
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 60, pointerEvents: "none", opacity: "var(--grainOpacity)" as unknown as number, mixBlendMode: "multiply", backgroundImage: GRAIN, backgroundSize: "150px 150px" }} />
 
       {/* ── Nav ── */}
-      <header style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", height: 68, padding: "0 clamp(20px,4vw,56px)", borderBottom: "1px solid var(--line)", background: "color-mix(in srgb,var(--bg) 80%,transparent)", backdropFilter: "blur(12px)" }}>
+      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", height: 68, padding: "0 clamp(20px,4vw,56px)", borderBottom: "1px solid var(--line)", background: "color-mix(in srgb,var(--bg) 80%,transparent)", backdropFilter: "blur(12px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--rim)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
@@ -1192,7 +1200,12 @@ export default function Landing() {
       </section>
 
       {/* ── Footer ── */}
-      <footer data-wp="6" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, padding: "28px clamp(20px,5vw,56px)", borderTop: "1px solid var(--line)" }}>
+      {/* Opaque surface, not the page background: the terrain canvas sits at
+          z-index -1 behind all in-flow content, so a transparent footer let
+          contour lines and the route run straight through the links.
+          --panelSolid rather than --panel because --panel is only 4% alpha in
+          dark, which would have fixed light mode and left dark unchanged. */}
+      <footer data-wp="6" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, padding: "28px clamp(20px,5vw,56px)", borderTop: "1px solid var(--lineStrong)", background: "var(--panelSolid)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 22, height: 22, borderRadius: 7, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.5"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
