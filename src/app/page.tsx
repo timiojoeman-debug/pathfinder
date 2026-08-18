@@ -34,15 +34,24 @@ const PIPELINE = [
   { name: "Application Tracking", dot: "var(--faint)", textColor: "var(--muted)", weight: 500, railBg: "transparent", href: "/tracker" },
 ];
 
+/**
+ * Sample rows for the illustrative report panel. Sectors, not employers: this
+ * previously named Skyscanner, FanDuel and Monzo against invented fit scores
+ * of 86, 79 and 66, under a header reading "No. 074 · 08 JUL 2026". Nothing
+ * marked it as a mockup, so it read as a real report asserting real numbers
+ * about real companies' hiring — the same implied relationship that got the
+ * university marquee removed. The panel is labelled EXAMPLE now, and the rows
+ * describe a kind of employer rather than a named one.
+ */
 const REPORT_OPPS = [
-  { company: "Skyscanner", role: "SWE Intern", fit: 86, move: "Apply now", tone: "var(--strong)" },
-  { company: "FanDuel", role: "Backend Intern", fit: 79, move: "Tailor & apply", tone: "var(--strong)" },
-  { company: "Monzo", role: "Backend Intern", fit: 66, move: "Tailor CV", tone: "var(--warn)" },
+  { company: "Travel platform", role: "SWE Intern", fit: 86, move: "Apply now", tone: "var(--strong)" },
+  { company: "Fintech scale-up", role: "Backend Intern", fit: 79, move: "Tailor & apply", tone: "var(--strong)" },
+  { company: "Health-tech startup", role: "Backend Intern", fit: 66, move: "Tailor CV", tone: "var(--warn)" },
 ];
 
 const ACTIONS = [
   { text: "Apply to 3 matched SWE internships", tag: "jobs" },
-  { text: "Open a warm intro at FanDuel", tag: "network" },
+  { text: "Open a warm intro at a matched team", tag: "network" },
   { text: "Practice system design — interview soon", tag: "prep" },
 ];
 
@@ -1014,7 +1023,7 @@ export default function Landing() {
                 <span className="pf-anim-pulse" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--strong)" }} />
                 CAREER POSITION REPORT
               </span>
-              <span style={{ marginLeft: "auto", fontFamily: mono, fontSize: 10.5, color: "var(--faint)" }}>No. 074 · 08 JUL 2026</span>
+              <span style={{ marginLeft: "auto", fontFamily: mono, fontSize: 10.5, fontWeight: 600, letterSpacing: ".12em", color: "var(--accent)" }}>EXAMPLE · SAMPLE DATA</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "230px 1fr", minHeight: 360 }}>
               <div style={{ borderRight: "1px dashed var(--lineStrong)", padding: "22px 18px", background: "var(--panel)" }}>
