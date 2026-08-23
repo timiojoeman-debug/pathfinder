@@ -337,7 +337,36 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
          swallow whole rows — the ceiling does that now. */
       floorCap = lerp(0.1, 0.16, away);
       horizonLift = away;
-      ceilingY = lerp(copyEndY, H * 0.14, away);
+
+      /* The lowest protected block currently on screen sets the ceiling, so the
+       * range stops under whatever copy the reader is actually looking at.
+       *
+       * This used to open up to a flat H*0.14 once the trailhead was behind
+       * you, on the reasoning that later sections carry their own panels. The
+       * closing CTA does not — its heading and its "free during early access"
+       * line sit on bare ground — and the terrain was climbing straight through
+       * them.
+       *
+       * Taking the maximum is what satisfies all of them at once: the terrain
+       * starts at the ceiling and runs downward, so clearing the lowest visible
+       * block clears every block above it too. Scroll position is read here
+       * rather than element positions, because the offsets were resolved at
+       * measure time — this stays a subtraction, not a layout read. */
+      const eye = window.scrollY;
+      const OPEN = H * 0.14;
+      let ceil = OPEN;
+      for (const docY of copyEnds) {
+        const y = docY - eye;
+        if (y >= H) continue;
+        /* Eased out over the last 15% rather than switched off at y=0. A hard
+           test would drop the ceiling the instant a block cleared the top of
+           the viewport, and the whole range would jump in one frame. */
+        const fade = clamp01((y + H * 0.15) / (H * 0.15));
+        if (fade > 0) ceil = Math.max(ceil, lerp(OPEN, y, fade));
+      }
+      /* Floor on how far it can be pushed down, so a block near the bottom of
+         the viewport cannot squeeze the range off the page entirely. */
+      ceilingY = Math.min(ceil, H * 0.8);
 
 
     };
@@ -579,7 +608,10 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
     let floorY = 0;
     /* Bottom of the hero copy, in viewport pixels. The hero sits at the top of
        the document so its layout offset is also its screen position there. */
-    let copyEndY = 0;
+    /* Document-space bottoms of every block the terrain may not climb into,
+       plus a margin. Kept in document coordinates so the per-frame conversion
+       is a subtraction rather than a layout read. */
+    let copyEnds: number[] = [];
     /* Peaks rise about PEAK_RISE of the band above the horizon, and the band is
        itself whatever is left below the horizon — so the clearance the horizon
        needs depends on where the horizon ends up. Solving that rather than
@@ -613,13 +645,21 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
          a share rather than a constant, it holds on any viewport — the hero
          copy ends lower on a short window and the whole range compresses with
          it instead of inverting. */
-      /* 0.68, not 0.52. The share decides how the band splits between sky the
-         peaks climb into and flat ground in front of them, and at 0.52 nearly
-         half the terrain was foreground floor — a lot of frame for the part of
-         a landscape that has the least in it. */
+      /* 0.68 decides how the band splits between sky the peaks climb into and
+         flat ground in front of them. At 0.52 nearly half the terrain was
+         foreground floor — a lot of frame for the part of a landscape with the
+         least in it.
+       *
+       * The split is measured from the ceiling at *every* station now, not only
+       * at the trailhead. It used to lerp to a flat H*0.46 once you were past
+       * the hero, which was fine while the ceiling out there was also a flat
+       * H*0.14 — the two moved together by accident. The moment the ceiling
+       * started tracking the copy on screen, it came down to clear the closing
+       * CTA and the horizon did not follow: the range was left about 28px to
+       * live in and rendered as a flat sheet pinned to the ceiling. */
       const PEAK_SHARE = 0.68;
-      const heroBase = Math.min(Math.max(eye, H * 0.40), ceilingY + PEAK_SHARE * (H * 0.95 - ceilingY));
-      const base = lerp(heroBase, H * 0.46, horizonLift);
+      const fromCeiling = ceilingY + PEAK_SHARE * (H * 0.95 - ceilingY);
+      const base = lerp(Math.min(Math.max(eye, H * 0.40), fromCeiling), fromCeiling, horizonLift);
       return lerp(base, H * 0.02, pitch);
     };
 
@@ -1572,15 +1612,21 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
       for (let el: HTMLElement | null = sill; el; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
       floorY = sill ? y + sill.offsetHeight : H * 0.72;
 
-      /* The line the terrain may not cross. Measured from the bottom of the
-         hero paragraph rather than from the CTA row: the buttons are opaque and
-         look right sitting on the ground, but the paragraph is unpanelled text
-         and the range has to stop below it. Same offsetTop walk as above, for
-         the same reason — the copy enters on a transform. */
-      const copy = root.querySelector<HTMLElement>("[data-copy-end]");
-      let cy = 0;
-      for (let el: HTMLElement | null = copy; el; el = el.offsetParent as HTMLElement | null) cy += el.offsetTop;
-      copyEndY = copy ? cy + copy.offsetHeight + 26 : H * 0.66;
+      /* Every line the terrain may not cross, not just the hero's.
+       *
+       * Buttons and panels are opaque and look right sitting on the ground; it
+       * is the unpanelled paragraphs the range has to stop below. Marking them
+       * rather than hard-coding the hero means a section added later is
+       * protected by tagging it, not by re-deriving a constant.
+       *
+       * offsetTop walk rather than getBoundingClientRect, for the same reason
+       * as floorY above: this copy enters on a transform, and a rect read
+       * mid-animation returns the transformed position. */
+      copyEnds = Array.from(root.querySelectorAll<HTMLElement>("[data-copy-end]")).map((el) => {
+        let y = 0;
+        for (let n: HTMLElement | null = el; n; n = n.offsetParent as HTMLElement | null) y += n.offsetTop;
+        return y + el.offsetHeight + 26;
+      });
 
       /* Widest hero text, not just the paragraph — the h1 runs wider than the
          copy block and walls were rising inside it. */
@@ -2140,7 +2186,10 @@ export default function Landing() {
           {/* --muted, not --faint: this line carries the pricing terms and sits on
               bare terrain with no panel under it, where --faint measured 3.86:1
               even after being darkened to clear the floor on flat paper. */}
-          <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 18 }}>Free during early access · No credit card</p>
+          {/* Marked so the terrain stops below it: this is the lowest
+              unpanelled line in the closing section, and the range was
+              climbing past it into the heading. */}
+          <p data-copy-end style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 18 }}>Free during early access · No credit card</p>
         </Reveal>
       </section>
 
