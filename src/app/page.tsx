@@ -460,19 +460,23 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
         /* Each octave weighted by the one above it, so detail collects on the
            high ground instead of corrugating the field evenly.
          *
-         * 1.4, down from 2.2. The multiplier decides how hard fine detail
+         * 1.2, down from 2.2. The multiplier decides how hard fine detail
          * concentrates onto what is already high, and at 2.2 it was serrating
-         * the summits — the big near masses came out spiky rather than shaped.
-         * Measured over a near-row-width strip, mean absolute curvature falls
-         * from 37.75 to 15.21 while the tallest peak barely moves, 3.10 to
-         * 3.03: the summits stay, the serration goes.
+         * the summits — the big near masses came out as spiky walls rather than
+         * shaped ridges. Measured over a near-row-width strip, mean absolute
+         * curvature falls from 37.75 to 10.21 while the tallest peak barely
+         * moves, 3.10 to 2.99: the summits stay, the serration goes.
          *
          * It also lowers the bulk. Mean height against peak drops from 0.156 to
-         * 0.132, so the typical ground sits further below the skyline — which
+         * 0.125, so the typical ground sits further below the skyline — which
          * is the only way to make a mass read as smaller here, since
-         * reliefScale normalises the tallest peak to the ceiling and would
-         * simply undo a uniform reduction in gain. */
-        weight = clamp01(sig * 1.4);
+         * reliefScale normalises the tallest peak onto the ceiling and would
+         * simply undo a uniform reduction in gain.
+         *
+         * Below about 1 this stops being a ridged multifractal at all: with no
+         * feedback the octaves just add, and the field loses the concentration
+         * of detail on high ground that gives it its character. */
+        weight = clamp01(sig * 1.2);
         amp *= PERSISTENCE;
         /* Non-integer lacunarity: at exactly 2 the octaves share zero crossings
            and the creases stack into a visible grid. */
