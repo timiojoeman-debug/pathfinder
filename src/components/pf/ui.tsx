@@ -14,10 +14,14 @@ import { usePrefersReducedMotion } from "@/lib/hooks";
  * Wrapper that fades/slides its content in when scrolled into view,
  * with a small stagger based on sibling position (matches the design).
  */
-export function Reveal({ children, style, className, as: Tag = "div" }: {
+export function Reveal({ children, style, className, variant = "up", as: Tag = "div" }: {
   children: ReactNode;
   style?: CSSProperties;
   className?: string;
+  /** Direction the content arrives from. Styling lives in pf-theme.css against
+   *  the `data-reveal` value, so adding one here is a CSS change, not a prop
+   *  that has to grow a style object. */
+  variant?: "up" | "left" | "right" | "scale";
   as?: "div" | "section" | "span";
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -48,7 +52,7 @@ export function Reveal({ children, style, className, as: Tag = "div" }: {
   }, []);
 
   return (
-    <Tag ref={ref as never} data-reveal="" className={className} style={style}>
+    <Tag ref={ref as never} data-reveal={variant === "up" ? "" : variant} className={className} style={style}>
       {children}
     </Tag>
   );
