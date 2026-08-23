@@ -123,9 +123,9 @@
      luminance against a page background of 0.767 — the ground was brighter
      than the sky above it, which is why the light theme washed out while the
      dark one, whose lit tone is well below its own background, read fine.
-     Diffuse light does not do that. 0.659 keeps the highlight clearly under
-     the horizon it is lit by. */
-  --terrainLit: #E0D3B7;
+     Diffuse light does not do that. 0.604 keeps the highlight well under the
+     horizon it is lit by. */
+  --terrainLit: #D9CBAB;
 }
 [data-theme="dark"] .pf-landing {
   --dot: rgba(236, 226, 207, .16);
