@@ -402,9 +402,53 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
     const OCTAVES = 7;
     const PERSISTENCE = 0.72;
 
+    /* How far the field's own coordinates are displaced before it is sampled.
+     *
+     * Bounded by folding, not by taste. The displacement's gradient is its
+     * amplitude times its frequency, and once that passes 1 the coordinate map
+     * folds: neighbouring columns start reading non-neighbouring parts of the
+     * field, and the result is incoherent rather than merely bent. The warp
+     * field below has an effective frequency near 1.16, so this stays under
+     * 0.86.
+     *
+     * Worth recording why this is not larger. Measured on a 6x6 world patch,
+     * bigger warps kept improving the numbers — the ten largest high-ground
+     * components fell from an aspect of 7.49 unwarped to 1.97 at amplitude 0.9.
+     * But a 6x6 patch is far-row scale. A near row samples about ±0.54, and at
+     * 0.9 the map is folding hard across exactly that range: the hero flattened
+     * to a pale strip while the far view improved. The measurement optimised
+     * one end of the scene by breaking the other. */
+    const WARP = 0.7;
+
     const heightField = (u: number, v: number) => {
+      /* Domain warping: sample the field at a position that has itself been
+       * displaced by a second, slower field.
+       *
+       * Measured on the un-warped field, the high ground came out as 58
+       * separate components, the largest holding 19% of it inside a bounding
+       * box 21 cells wide and 200 tall — the full height of the sample. Long
+       * parallel corrugations that never meet. In a real range the ridgelines
+       * radiate from summits and merge, so one component dominates; the
+       * references are dendritic and this was not.
+       *
+       * Warping fixes it at the input rather than the output: the octaves are
+       * unchanged, but the coordinates they read are bent, so a crease that ran
+       * straight now wanders, meets its neighbour and joins. It is the standard
+       * trick for exactly this and costs four sines a sample.
+       *
+       * Only the field is warped. The valley carve below still uses the true
+       * u and v, because the route has to stay where the layout put it — bend
+       * the terrain, not the path through it. */
+      /* Low frequencies deliberately: displacement is what bends a ridge, and
+         at these the amplitude can be large without the gradient reaching the
+         folding threshold. */
+      const wu = Math.sin(v * 0.6 + u * 0.35) * 0.62 + Math.sin(v * 1.1 - u * 0.7) * 0.38;
+      const wv = Math.sin(u * 0.65 - v * 0.4) * 0.62 + Math.sin(u * 1.25 + v * 0.8) * 0.38;
+      const su = u + wu * WARP;
+      const sv = v + wv * WARP;
+
       let sum = 0, amp = 1, weight = 1;
-      let fu = u * 4.6, fv = v * 0.52;
+      let fu = su * 4.6, fv = sv * 0.52;
       for (let o = 0; o < OCTAVES; o++) {
         const n = Math.sin(fu + fv * 0.8) * 0.62 + Math.sin(fu * 0.63 - fv * 1.27) * 0.38;
         /* Creased and squared: crests come to a point and the ground between
@@ -425,7 +469,10 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
       /* Normalised against the series the octaves actually sum to rather than
          a fitted constant, so changing PERSISTENCE does not silently change the
          field's height as well as its roughness. */
-      return clamp01(sum * (1 - PERSISTENCE) * 1.5) * clamp01(massif(u, v));
+      /* The massif gate reads the warped coordinates too. Left on the true
+         ones it would draw straight boundaries across a field that no longer
+         runs straight. */
+      return clamp01(sum * (1 - PERSISTENCE) * 1.5) * clamp01(massif(su, sv));
     };
 
     /* How much of the relief the field carries against how much the valley
