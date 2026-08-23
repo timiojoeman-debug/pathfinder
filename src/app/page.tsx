@@ -7,7 +7,9 @@
  */
 
 import Link from "next/link";
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { setTheme, useThemeMode } from "@/lib/theme";
 import { CountUp, Reveal } from "@/components/pf/ui";
 
@@ -44,9 +46,11 @@ const PIPELINE = [
  * describe a kind of employer rather than a named one.
  */
 const REPORT_OPPS = [
-  { company: "Travel platform", role: "SWE Intern", fit: 86, move: "Apply now", tone: "var(--strong)" },
-  { company: "Fintech scale-up", role: "Backend Intern", fit: 79, move: "Tailor & apply", tone: "var(--strong)" },
-  { company: "Health-tech startup", role: "Backend Intern", fit: 66, move: "Tailor CV", tone: "var(--warn)" },
+  /* The text variants: these render as 13px numerals, where --strong and
+     --warn measure 3.97:1 and 2.89:1 against the panel. */
+  { company: "Travel platform", role: "SWE Intern", fit: 86, move: "Apply now", tone: "var(--strongText)" },
+  { company: "Fintech scale-up", role: "Backend Intern", fit: 79, move: "Tailor & apply", tone: "var(--strongText)" },
+  { company: "Health-tech startup", role: "Backend Intern", fit: 66, move: "Tailor CV", tone: "var(--warnText)" },
 ];
 
 const ACTIONS = [
@@ -207,28 +211,301 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
     const outFrom = (u: number, v: number, floorHalf: number) =>
       Math.max(0, Math.abs(u - routeU(v)) - floorHalf);
 
-    /* Linear swell plus ridge structure that only fades in past the floor —
-       a range receding outward rather than a wall at a fixed offset. */
-    const reliefAt = (u: number, v: number, floorHalf: number) => {
-      const t = outFrom(u, v, floorHalf);
-      if (t <= 0) return 0;
-      const swell = Math.min(t * RELIEF_RISE, RELIEF_CAP);
-      const ridges =
-        Math.sin(u * 4.3 + v * 0.85) * 0.42 +
-        Math.sin(u * 9.1 - v * 1.6) * 0.24 +
-        Math.sin(u * 2.1 + v * 0.4) * 0.30;
-      return swell + ridges * Math.min(t * 2.4, 1) * 0.9;
+    /** Parse a colour token to [r,g,b]. Handles `#rgb`, `#rrggbb` and
+     *  `rgb()/rgba()` — between them that is every form --terrainNear, --haze
+     *  and --snow take in either theme. Anything else returns the fallback
+     *  rather than throwing: a token edit should degrade the haze, not blank
+     *  the whole canvas. */
+    type RGB = [number, number, number];
+    const readRGB = (raw: string, fb: RGB): RGB => {
+      const h = raw.trim();
+      if (h[0] === "#") {
+        const parts =
+          h.length === 4 ? [h[1] + h[1], h[2] + h[2], h[3] + h[3]]
+          : h.length >= 7 ? [h.slice(1, 3), h.slice(3, 5), h.slice(5, 7)]
+          : null;
+        if (parts) {
+          const v = parts.map((x) => parseInt(x, 16));
+          if (v.every(Number.isFinite)) return v as RGB;
+        }
+      }
+      const m = h.match(/-?\d+(\.\d+)?/g);
+      if (m && m.length >= 3) return [+m[0], +m[1], +m[2]];
+      return fb;
+    };
+    const mixRGBArr = (a: RGB, b: RGB, t: number): RGB => [
+      a[0] + (b[0] - a[0]) * t,
+      a[1] + (b[1] - a[1]) * t,
+      a[2] + (b[2] - a[2]) * t,
+    ];
+
+    /* Aerial perspective: how far a ridge at normalised depth d has faded into
+       the sky. This is the cue every one of the reference photographs is built
+       on, and the ground had none of it — each row filled with the same flat
+       --bg, so sixty ridges stacked up as one undifferentiated mass and only
+       the contour lines said anything about distance.
+
+       The ramp is concave, which is the opposite of what it looks like it
+       should be. PERSP compresses the far half of the world into the last
+       twenty pixels below the horizon, so a convex ramp spends almost its
+       whole range inside that sliver and the entire lower two-thirds of the
+       frame — the part anyone actually reads as terrain — comes out one flat
+       tone. Measured at the plan station with pow 1.35: 224 at the horizon
+       against 217 at the bottom of the frame, a seven-value spread across the
+       whole visible band. Front-loading it puts the separation where the
+       ridges are. Looking down at the plan station most of the visible ground
+       is close below the camera, so there is less air in the way — hence the
+       pitch term. */
+    /* Smooth again. Quantising this into nine bands was how the ridges were
+       separated back when every one of them filled with a single flat tone and
+       sixty-two of them dissolved into one wash. The hillshade separates them
+       now — by which face is turned to the light, which is how they separate in
+       the photographs — and the bands became visible stepping across surfaces
+       that already had form. */
+    /* Full range. Anything less leaves the farthest ridges carrying some of the
+       near ground's weight, and the closing CTA paragraph sits on exactly that
+       mid-distance band — it measured 4.48:1 at 0.95, which is the 4.5 floor to
+       within rounding. */
+    const HAZE_MAX = 1;
+    const hazeAt = (d: number, pitch: number) =>
+      Math.pow(d, 0.62) * HAZE_MAX * (1 - pitch * 0.4);
+
+    /* How much mountain the current camera position is allowed.
+     *
+     * Everything that keeps this terrain low — the wide flat corridor, the tiny
+     * skyline cap — exists to protect one thing: the hero copy, which is the
+     * only text on the page that sits directly on the ground with no panel
+     * under it. Every later station has its own panels and headings placed
+     * against the layout, not against the terrain.
+     *
+     * Sizing the whole valley for the hero's constraint is what kept it a
+     * plain for the entire scroll. These two are set once per frame from the
+     * camera's distance past the trailhead: at v=0 the range stays low and the
+     * corridor stays wide, and by the time the report panel is behind you the
+     * mountains have their real height and the valley has closed to a corridor
+     * you can see the walls of. Walking into the mountains, rather than
+     * looking at the same field from further along it. */
+    /* Highest the terrain may reach, in screen pixels — small y is high.
+     *
+     * Everything that used to keep the ground off the copy did it by making the
+     * ground smaller: a low horizon, a wide flat corridor, suppressed gains.
+     * That trades the whole landscape against one paragraph, and the landscape
+     * kept losing. This is the same limit stated directly instead, so the range
+     * can be as dense and as three-dimensional as it likes underneath it and
+     * still never touch the text.
+     *
+     * It opens up as the camera moves off the trailhead — past the hero there
+     * is no unpanelled copy sitting on the horizon, so the view widens rather
+     * than the mountains growing. That is the difference the scroll is meant to
+     * show: the same country from a different place, not a different country. */
+    let ceilingY = 0;
+
+    /* World relief per screen pixel, chosen once per frame.
+     *
+     * The ceiling alone is not enough. Relief runs to about 11 in world units
+     * while a row's allowance under the ceiling is nearer 2, so every column
+     * saturated the soft clamp and the range came out as a dead flat plateau
+     * pinned to the ceiling — measured 506-510px across all sixteen sampled
+     * columns, a variation of four pixels. This scales the whole field so its
+     * tallest peak lands just under the tightest allowance in the frame, which
+     * puts the shape back inside the range where the clamp is the identity.
+     *
+     * One scale for the whole frame, not one per row: hMax is a per-row
+     * allowance, and normalising each row against its own would let a single
+     * world point be a different height depending on which row happened to
+     * sample it. The ground would swell and sink under the camera instead of
+     * being travelled across. */
+    let reliefScale = 1;
+
+    let floorCap = 3;
+    let horizonLift = 0;
+    const setRange = (camV: number) => {
+      const away = sm(clamp01(camV / STATIONS[1].v));
+      /* Was lerp(3, …): an effectively uncapped corridor at the trailhead,
+         which is what flattened the middle of the hero into a plain and left
+         the mountains only at the frame edges. With a ceiling overhead the
+         corridor no longer has to do the protecting, so it goes back to being
+         what it is meant to be — the flat floor the route runs along. */
+      /* 0.16 at the trailhead. A near row samples only ~0.54 world units of
+         half-window, so a 0.55 corridor was wider than the entire row — every
+         near row came out pure flat floor, and the only flanks left were the
+         far ones, which the projection makes small. The corridor that matters
+         is the one the route runs down, and it does not need to be wide. */
+      /* Narrow: the corridor's one remaining job is to give the route flat
+         ground to run along and read as a path. It used to also be the thing
+         keeping terrain off the hero copy, which is why it was wide enough to
+         swallow whole rows — the ceiling does that now. */
+      floorCap = lerp(0.1, 0.16, away);
+      horizonLift = away;
+      ceilingY = lerp(copyEndY, H * 0.14, away);
+
+
     };
 
-    const height = (u: number, v: number, d: number, floorHalf: number) => {
+    /* Height above the range floor at which rock gives way to snow, in the
+       same units reliefAt returns. Peaks reach a little over 3, so this puts
+       the snowline high enough that only the summits carry a cap. */
+    const SNOW_LINE = 2.15;
+
+    /* Where a range rises at all. The ridged sum below has no large-scale
+       structure of its own — left alone it corrugates both flanks evenly for
+       the whole length of the valley, which reads as texture rather than as
+       terrain. This gates it into separate massifs with open saddles between
+       them, so the route passes through country that has shape. */
+    /* Where a range rises at all, and how strongly.
+     *
+     * The u frequencies were 1.5 and 0.9 — low enough that a near row, which
+     * spans about half a world unit, saw one constant value across the entire
+     * foreground. The gate that is supposed to group the field into separate
+     * massifs was instead applying a single multiplier to the whole front of
+     * the scene, which is the same near/far split the rest of this rewrite
+     * removed, hiding one level down. At 5.6 and 3.4 it turns through roughly a
+     * cycle across a near row and five across a far one, so both see it vary. */
+    const massif = (u: number, v: number) =>
+      Math.max(0, 0.55 + Math.sin(v * 0.29 + u * 5.6) * 0.5 + Math.sin(v * 0.61 - u * 3.4) * 0.32);
+
+    /* ── The height field ──────────────────────────────────────────────
+     *
+     * One generator for the whole scene. There used to be three — a swell
+     * driven by lateral distance from the route, a separate term to stand a
+     * range across the horizon, and a third layer of folds bolted onto the
+     * foreground. All three existed for one reason: relief was defined as a
+     * function of distance from the route, and a near row spans only about half
+     * a world unit, so it had almost no distance to be a function of. Each term
+     * was a patch for the same missing thing.
+     *
+     * Here the field is a plain function of position, evaluated identically at
+     * every depth, and the valley is carved *into* it rather than being what
+     * produces it. Near and far are the same architecture; the only thing that
+     * differs is which octaves land at a readable size, which is what
+     * perspective is supposed to decide.
+     *
+     * On the spectrum. A near row spans ±0.54 world units across the frame
+     * against a far row's ±2.97, a ratio of 5.5, and the projection scales them
+     * by the inverse of that — so two forms of the same *world* size land at
+     * the same share of the frame when relief scales linearly with world size,
+     * a Hurst exponent of 1 (persistence = 1/lacunarity = 0.483).
+     *
+     * That is not sufficient, and it is worth being precise about why: near and
+     * far rows are not showing the same world size. The far rows show the
+     * coarse octaves, the near rows the fine ones, and at H=1 the fine octaves
+     * correctly carry proportionally less relief. Physically right, and it
+     * renders a foreground that is smooth next to a mountainous horizon —
+     * which is also what standing in a real valley looks like, and not what
+     * this page wants.
+     *
+     * So persistence is deliberately above the parity figure. That is a
+     * rougher terrain — a lower Hurst exponent, which real ranges span a wide
+     * band of anyway — and it puts enough energy in the octaves the near rows
+     * resolve for the front of the scene to read like the back.
+     */
+    const OCTAVES = 7;
+    const PERSISTENCE = 0.62;
+
+    const heightField = (u: number, v: number) => {
+      let sum = 0, amp = 1, weight = 1;
+      let fu = u * 4.6, fv = v * 0.52;
+      for (let o = 0; o < OCTAVES; o++) {
+        const n = Math.sin(fu + fv * 0.8) * 0.62 + Math.sin(fu * 0.63 - fv * 1.27) * 0.38;
+        /* Creased and squared: crests come to a point and the ground between
+           them stays broad and flat. That asymmetry is what separates rock from
+           water, and it is the whole reason for a ridged fractal. */
+        let sig = 1 - Math.abs(n);
+        sig *= sig * weight;
+        sum += sig * amp;
+        /* Each octave weighted by the one above it, so detail collects on the
+           high ground instead of corrugating the field evenly. */
+        weight = clamp01(sig * 2.2);
+        amp *= PERSISTENCE;
+        /* Non-integer lacunarity: at exactly 2 the octaves share zero crossings
+           and the creases stack into a visible grid. */
+        fu *= 2.07;
+        fv *= 2.07;
+      }
+      /* Normalised against the series the octaves actually sum to rather than
+         a fitted constant, so changing PERSISTENCE does not silently change the
+         field's height as well as its roughness. */
+      return clamp01(sum * (1 - PERSISTENCE) * 1.5) * clamp01(massif(u, v));
+    };
+
+    /* How much of the relief the field carries against how much the valley
+       walls do. The field dominates: the walls are a composition decision —
+       the route runs through a valley — not a source of landform. */
+    const FIELD_GAIN = 3.1;
+    const WALL_GAIN = 0.5;
+    /* World distance over which the flat floor becomes mountain. Short, because
+       the corridor only has to be as wide as the route needs. */
+    const VALLEY_EDGE = 0.085;
+
+    const reliefRaw = (u: number, v: number, floorHalf: number) => {
+      const t = outFrom(u, v, floorHalf);
+      if (t <= 0) return 0;
+      const c = clamp01(t / VALLEY_EDGE);
+      return (heightField(u, v) * FIELD_GAIN + Math.min(t * RELIEF_RISE, RELIEF_CAP) * WALL_GAIN)
+        * (c * c * (3 - 2 * c));
+    };
+
+    /* One-entry memo in front of it. The row loop needs the projected point and
+       the relief at the same (u,v), and project() already computes the relief
+       internally on its way to a y — so without this every sample runs the
+       five-octave loop, the massif and the skyline twice. A single slot is
+       enough because the two calls are consecutive — but only if the arguments
+       match bit for bit, which is why the caller below re-derives d exactly the
+       way project() does rather than reusing the row's own d. `camV + d*VIEW`
+       then dividing back out does not necessarily return the same float. */
+    let mU = NaN, mV = NaN, mF = NaN, mR = 0;
+    const reliefAt = (u: number, v: number, floorHalf: number) => {
+      if (u === mU && v === mV && floorHalf === mF) return mR;
+      mR = reliefRaw(u, v, floorHalf);
+      mU = u; mV = v; mF = floorHalf;
+      return mR;
+    };
+
+    const height = (u: number, v: number, d: number, floorHalf: number, hMax: number) => {
       const relief = reliefAt(u, v, floorHalf) * (1 - d * 0.25);
       const rough =
         Math.sin(u * 7.1 + v * 3.4) * 0.16 +
         Math.sin(u * 13.7 - v * 5.2) * 0.09 +
         Math.sin(u * 3.3 + v * 1.7) * 0.12;
       /* Roughness scales with the relief, so the floor stays walkable and only
-         the high ground goes craggy. */
-      return relief + rough * (0.35 + relief * 0.5);
+         the high ground goes craggy. Coupled at 0.34 rather than 0.5: the
+         ridged relief already supplies the crags, and the old coupling on top
+         of it frayed the summits into noise instead of sharpening them. */
+      const raw = (relief + rough * (0.35 + relief * 0.34)) * reliefScale;
+      /* tanh, not a clamp. Below about a third of hMax it is the identity to
+         within a percent, so the valley floor and the lower slopes are
+         untouched; above that it bends asymptotically, so a range tops out in a
+         skyline instead of being sheared flat along one horizontal line. With
+         reliefScale sizing the field to the frame this is now a guard that
+         rarely engages, rather than the thing deciding every height. */
+      /* The grain is added after the scale and the clamp, not inside them.
+       *
+       * reliefScale sizes the whole field to the frame, and it is set by the
+       * far rows, where relief runs an order of magnitude higher than it does
+       * underfoot. Folded in before it, the grain's slope was divided down with
+       * everything else until the floor was optically flat again: measured, the
+       * foreground carried a texture index of 0.063 against 0.183 on the far
+       * ridges — a wide tonal spread built from one-unit steps, which is what
+       * an unrendered smear is.
+       *
+       * Its amplitude is therefore in final height units and stays constant
+       * with distance, so it textures the near ground, where a tenth of a unit
+       * is a real slope, and is beneath notice on the far peaks, where hMax is
+       * several units. */
+      /* Matched to the far ranges by height, which is what was actually
+         mismatched. Measured across the frame, the near forms were already the
+         wider ones — 116px against 19px at the skyline — but carried an rms
+         contrast of 13 against the mid band's 37. Wide and shallow: the shape
+         was right and the relief was not, so this is amplitude rather than
+         frequency, with the frequency eased down only enough to keep the forms
+         reading as landform at the larger height. */
+      /* Grain goes inside the clamp, not after it. Outside, it was free to add
+         its full amplitude on top of an already-ceilinged height — harmless at
+         0.09, and at 0.34 enough to push the near ridges up through the hero
+         copy the ceiling exists to protect. Inside, the ceiling is the ceiling
+         for everything, and grain simply compresses as the surface approaches
+         it, which is what it should do. */
+      return hMax * Math.tanh(raw / hMax);
     };
 
     /* At eye level the horizon is placed below the hero's last content row, so
@@ -236,6 +513,9 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
        frame. Measured rather than tuned — a constant that clears the CTAs on a
        desktop cuts through them on a phone. */
     let floorY = 0;
+    /* Bottom of the hero copy, in viewport pixels. The hero sits at the top of
+       the document so its layout offset is also its screen position there. */
+    let copyEndY = 0;
     /* Peaks rise about PEAK_RISE of the band above the horizon, and the band is
        itself whatever is left below the horizon — so the clearance the horizon
        needs depends on where the horizon ends up. Solving that rather than
@@ -248,7 +528,35 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
     const PEAK_RISE = 0.16;
     const horizonAt = (pitch: number) => {
       const eye = (floorY + 16 + 0.95 * PEAK_RISE * H) / (1 + PEAK_RISE);
-      return lerp(Math.min(Math.max(eye, H * 0.40), H * 0.88), H * 0.02, pitch);
+      /* floorY is measured from a fixed element in the hero, so this solves the
+         eye-level horizon against the hero copy — and then every later station
+         inherited it, leaving a quarter-frame of ground under three quarters of
+         empty sky for the whole rest of the scroll. Past the trailhead it rises
+         to put the valley in the frame. Not all the way: the globe sits in the
+         sky above the horizon and needs somewhere to be. */
+      /* The horizon is placed inside the band the ceiling opens up, not as a
+         fraction of the frame.
+       *
+         Sizing it against H had the two limits fighting: at H*0.70 the horizon
+         sat *above* the ceiling, so every row's allowance came out negative,
+         hMax collapsed and the whole range flattened into a wash. They are not
+         independent — the ceiling is where the peaks stop and the horizon is
+         where the flat ground vanishes behind them, so the horizon belongs
+         below the ceiling by construction.
+       *
+         PEAK_SHARE splits the band between the two: the upper half is sky the
+         peaks climb into, the lower half is the ground in front of them. Being
+         a share rather than a constant, it holds on any viewport — the hero
+         copy ends lower on a short window and the whole range compresses with
+         it instead of inverting. */
+      /* 0.68, not 0.52. The share decides how the band splits between sky the
+         peaks climb into and flat ground in front of them, and at 0.52 nearly
+         half the terrain was foreground floor — a lot of frame for the part of
+         a landscape that has the least in it. */
+      const PEAK_SHARE = 0.68;
+      const heroBase = Math.min(Math.max(eye, H * 0.40), ceilingY + PEAK_SHARE * (H * 0.95 - ceilingY));
+      const base = lerp(heroBase, H * 0.46, horizonLift);
+      return lerp(base, H * 0.02, pitch);
     };
 
     /* Pitch blends two projections: eye level (strong squeeze, shallow band)
@@ -262,20 +570,32 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
       const p = 1 / (1 + PERSP * d);
       const pFar = 1 / (1 + PERSP);
       const squeeze = lerp(p, lerp(1, 0.5, d), pitch);
+      const dScreen = (1 - p) / (1 - pFar);
+      const amp = band * lerp(1.15, 0.55, pitch) * p;
+      /* The ceiling is a fixed screen line; a row's base is not, so the height
+         that reaches the ceiling differs per row. Near rows start at the bottom
+         of the frame and may rise a long way; rows at the horizon are already
+         most of the way there and may barely rise at all. */
+      const baseY = H * 0.95 - dScreen * band;
       return {
+        hMax: Math.max(baseY - ceilingY, 1) / Math.max(amp, 1),
         squeeze,
         horizon,
         /* Normalised so d=1 lands exactly on the horizon. Most of the world
            depth now compresses into the top of the band — that compression is
            what reads as distance. */
-        dScreen: (1 - p) / (1 - pFar),
+        dScreen,
         /* Constant *screen* width, so the corridor flares with distance. A
            constant world width shrinks on screen as depth grows, which is what
-           let far walls climb into the copy however wide the floor was set. */
-        floorHalf: copyHalfPx / Math.max(squeeze * W * 1.02, 1),
+           let far walls climb into the copy however wide the floor was set.
+           Capped in world units past the trailhead: the screen form grows
+           without bound as squeeze falls, so by the far end of the view the
+           "corridor" covered the whole frame and there were no flanks left to
+           see. floorCap only bites once the hero copy is behind the camera. */
+        floorHalf: Math.min(copyHalfPx / Math.max(squeeze * W * 1.02, 1), floorCap),
         /* Deliberately larger than the band: only the floor has to stay under
            the copy, and the walls are meant to overshoot it and frame the shot. */
-        amp: band * lerp(1.15, 0.55, pitch) * p,
+        amp,
       };
     };
 
@@ -287,9 +607,14 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
     const project = (u: number, v: number, camV: number, camU: number, pitch: number) => {
       const d = clamp01((v - camV) / VIEW);
       const g = rowGeom(d, pitch);
+      const h = height(u, v, d, g.floorHalf, g.hMax);
       return {
         x: (u - camU) * g.squeeze * W * 1.02 + W / 2,
-        y: H * 0.95 - g.dScreen * (H * 0.95 - g.horizon) - height(u, v, d, g.floorHalf) * g.amp,
+        y: H * 0.95 - g.dScreen * (H * 0.95 - g.horizon) - h * g.amp,
+        /* Handed back rather than discarded. The shading pass needs the height
+           at each stop and at its two neighbours along the row, and every one
+           of those has already been evaluated here. */
+        h,
         d,
       };
     };
@@ -540,16 +865,202 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
     let cacheValid = false;
     let cacheV = 0, cachePitch = 0, cacheTheme = "";
 
+    /* How much screen height one unit of relief is worth, solved against the
+     * ceiling.
+     *
+     * The ratio has to be taken per depth and then minimised — not, as it was,
+     * by dividing the tightest allowance in the frame by the tallest relief in
+     * the frame. Those two belong to different rows. The tightest allowance is
+     * always the nearest row, because its base is the bottom of the frame and
+     * the projection gives it an enormous amplitude; the tallest relief is
+     * always a far row, because that is where the corridor is narrow enough to
+     * leave room for a mountain. Dividing one by the other let a row that never
+     * produces height dictate the scale for every row that does, which is why
+     * the range kept coming out at a third of the space available however the
+     * gains were set — crest variation of 30px inside a 278px band.
+     *
+     * Each depth now answers "what scale would put my own tallest point exactly
+     * at the ceiling", and the frame takes the smallest of those answers. That
+     * is the largest scale at which nothing anywhere crosses the line.
+     *
+     * Sampled over a fixed span of the route rather than the visible window, so
+     * the answer does not shift as the camera moves — a scale that tracked the
+     * view would make the ground breathe underfoot. It sits here rather than in
+     * setRange because it costs about a sixth of a terrain pass, and this pass
+     * is already cached against camera movement; the overlay reuses whatever
+     * the last repaint settled on, which is correct precisely because a
+     * skipped repaint means the camera has not moved. */
+    const solveReliefScale = (pitch: number) => {
+      const horizon = horizonAt(pitch);
+      const band = H * 0.95 - horizon;
+      const pFar = 1 / (1 + PERSP);
+      let best = Infinity;
+      for (let i = 0; i <= 8; i++) {
+        const sd = i / 8;
+        const sp = 1 / (1 + PERSP * sd);
+        const dScreen = (1 - sp) / (1 - pFar);
+        const amp = band * lerp(1.15, 0.55, pitch) * sp;
+        const allow = Math.max(H * 0.95 - dScreen * band - ceilingY, 1);
+        const sq = lerp(sp, lerp(1, 0.5, sd), pitch);
+        const fh = Math.min(copyHalfPx / Math.max(sq * W * 1.02, 1), floorCap);
+        const halfW = 0.54 / Math.max(sq, 0.14);
+        let mx = 0.001;
+        for (let k = 0; k <= 18; k++) {
+          const sv = (k / 18) * ROUTE_LENGTH;
+          for (let j = 0; j <= 8; j++) {
+            const su = routeU(sv) - halfW + (j / 8) * 2 * halfW;
+            const r = reliefRaw(su, sv, fh);
+            if (r > mx) mx = r;
+          }
+        }
+        const fit = allow / (mx * Math.max(amp, 1));
+        if (fit < best) best = fit;
+      }
+      /* 0.95, so the tallest summit stops just short of the ceiling and the
+         clamp stays out of the way — the skyline is then the terrain's own
+         shape rather than the limit's. */
+      reliefScale = best * 0.95;
+    };
+
+    /* Direction the sun comes from, in world axes: u across, v into the
+     * screen, h up. Left and a little behind, at roughly forty degrees — the
+     * standard hillshade default, and for the same reason: a light from the
+     * side separates the two faces of every ridge, where a light from straight
+     * ahead flattens them into one tone. Normalised at the point of use. */
+    const SUN = { u: -0.62, v: 0.34, h: 0.71 };
+    /* Slope exaggeration. The height field is in relief units and u in world
+     * units, so the raw gradient carries no meaningful scale; this sets how
+     * steep the surface reads to the light, independent of how tall it is
+     * drawn. */
+    const SLOPE_EXAG = 2.6;
+    /* Shading samples per row. Deliberately far below COLS: the silhouette
+     * needs 150 points to stay crisp, but the shading only has to be smooth,
+     * and each sample costs a second height evaluation at the neighbouring
+     * depth to get the gradient along v. At COLS that second evaluation would
+     * roughly double an already ~10ms pass. */
+    const SHADE_STOPS = 58;
+
     const paintTerrain = (camV: number, pitch: number) => {
+      solveReliefScale(pitch);
       const cs = getComputedStyle(root);
-      const ground = (cs.getPropertyValue("--bg") || "").trim() || "#EBE2D1";
       const ink = (cs.getPropertyValue("--fg") || "").trim() || "#382C20";
       const faint = (cs.getPropertyValue("--faint") || "").trim() || "#A08E77";
+      const snow = (cs.getPropertyValue("--snow") || "").trim() || "#FBF7EE";
+      const inkRGB = readRGB(ink, [56, 44, 32]);
+      const faintRGB = readRGB(faint, [160, 142, 119]);
+
+      /* Contours fade out through the middle of the frame.
+       *
+       * Body copy on this page is a centred column with no panel behind it, and
+       * a contour crossing a paragraph is a hard dark line directly under the
+       * text. Measured behind the closing CTA paragraph: line work at roughly
+       * (153,143,122) over ground of (223,212,192), which dragged that
+       * paragraph to 3.95:1 against a 4.5 floor — and lightening the ground
+       * barely moved it, because the ground was never the problem. The sky
+       * stipple above already damps itself over this same column for the same
+       * reason.
+       *
+       * Done as a gradient stroke rather than by clipping each row twice: one
+       * pass, and two gradient objects for the whole repaint instead of a
+       * hundred and twenty clip operations. */
+      const copyFade = (rgb: [number, number, number]) => {
+        const gd = tctx.createLinearGradient(0, 0, W, 0);
+        const c = (a: number) => `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+        const halfPx = Math.max(copyHalfPx, 1) * 1.45;
+        /* Clamped so the stops stay monotonic: on a narrow viewport the copy
+           column is the whole frame, and an unclamped left stop would land past
+           the centre one, which throws. */
+        const l = Math.min(Math.max((W / 2 - halfPx) / W, 0), 0.49);
+        const r = Math.max(Math.min((W / 2 + halfPx) / W, 1), 0.51);
+        gd.addColorStop(0, c(1));
+        gd.addColorStop(l, c(1));
+        gd.addColorStop(0.5, c(0.1));
+        gd.addColorStop(r, c(1));
+        gd.addColorStop(1, c(1));
+        return gd;
+      };
+      const inkFade = copyFade(inkRGB);
+      const faintFade = copyFade(faintRGB);
+
+      /* Parsed once per repaint rather than per row: the mix runs ROWS times
+         and only the ratio changes. */
+      const nearRGB = readRGB(cs.getPropertyValue("--terrainNear"), [217, 204, 180]);
+      const hazeRGB = readRGB(cs.getPropertyValue("--haze"), [237, 229, 214]);
+      const shadowRGB = readRGB(cs.getPropertyValue("--terrainShadow"), [154, 129, 88]);
+      const litRGB = readRGB(cs.getPropertyValue("--terrainLit"), [252, 248, 237]);
 
       tctx.clearRect(0, 0, W, H);
       tctx.lineJoin = "round";
 
       const camU = routeU(camV);
+
+      /* Fill for one ridge: aerial haze, hillshade, and the copy-column wash,
+       * baked into a single horizontal gradient.
+       *
+       * One gradient rather than three passes because they all vary along the
+       * same axis and canvas can only carry one fill per path. The stops are the
+       * shading samples; between them the gradient interpolates, which is what
+       * makes 34 samples enough to read as a smooth surface. */
+      const shadedFill = (
+        v: number, d: number, half: number, haze: number,
+        rg: { floorHalf: number; hMax: number }, xs: number[], hs: number[],
+      ) => {
+        const gd = tctx.createLinearGradient(0, 0, W, 0);
+        const base = mixRGBArr(nearRGB, hazeRGB, haze);
+        const lit = mixRGBArr(base, litRGB, 0.85);
+        const shadow = mixRGBArr(base, shadowRGB, 0.85);
+
+        /* Steps in world units for the two partial derivatives. dv is a fraction
+           of the row spacing so the slope it measures is the local one rather
+           than an average across the gap to the next ridge. */
+        const du = (2 * half) / COLS;
+        const dv = (VIEW / (ROWS - 1)) * 0.5;
+        const len = Math.hypot(SUN.u, SUN.v, SUN.h);
+        const lu = SUN.u / len, lv = SUN.v / len, lh = SUN.h / len;
+
+        const halfPx = Math.max(copyHalfPx, 1) * 1.1;
+        for (let i = 0; i <= SHADE_STOPS; i++) {
+          const c = Math.round((i / SHADE_STOPS) * COLS);
+          const u = camU - half + (c / COLS) * 2 * half;
+
+          /* Central difference across u taken from the row the silhouette pass
+             already evaluated, forward difference along v from the one
+             evaluation this pass still has to make. Taking all four fresh cost
+             four height evaluations per stop on top of the 151 the silhouette
+             had already done — roughly 24,000 a repaint against 9,400 before
+             the shading existed, enough to stall the renderer under continuous
+             scrolling. */
+          const cL = Math.max(c - 1, 0), cR = Math.min(c + 1, COLS);
+          const hL = hs[cL], hR = hs[cR], hC = hs[c];
+          const hF = height(u, v + dv, d, rg.floorHalf, rg.hMax);
+          const dhdu = ((hR - hL) / Math.max((cR - cL) * du, 1e-6)) * SLOPE_EXAG;
+          const dhdv = ((hF - hC) / dv) * SLOPE_EXAG;
+
+          /* n = (-dh/du, -dh/dv, 1) normalised; shade is its dot with the sun,
+             clamped — a face turned past the terminator is simply unlit, not
+             negatively lit. */
+          const nl = Math.hypot(dhdu, dhdv, 1);
+          const shade = clamp01((-dhdu * lu + -dhdv * lv + lh) / nl);
+          /* Lifted off zero: a real shadowed face still receives sky light, and
+             at a hard zero the dark sides read as holes cut in the page. */
+          const kEnv = 0.28 + 0.72 * shade;
+
+          let col = mixRGBArr(shadow, lit, kEnv);
+          /* Haze washes the shading out with distance, because the air between
+             does not care which way the rock faces. */
+          col = mixRGBArr(col, mixRGBArr(nearRGB, hazeRGB, haze), haze * 0.75);
+          /* And the centred copy column is carried further toward the sky again
+             — the guarantee that keeps body text legible whatever the range
+             does. */
+          const dist = Math.abs(xs[c] - W / 2);
+          const fade = clamp01(1 - dist / halfPx) * 0.5;
+          col = mixRGBArr(col, hazeRGB, fade);
+
+          gd.addColorStop(clamp01(i / SHADE_STOPS), `rgb(${col[0] | 0},${col[1] | 0},${col[2] | 0})`);
+        }
+        return gd;
+      };
+
 
       /* Sparse ASCII above the horizon. The frame's top third was empty paper;
          the old globe carried the same faint stipple and it is what made the
@@ -597,27 +1108,124 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
            ~50 times a row for a value that only varies by row is waste. */
         const rg = rowGeom(d, pitch);
         const half = 0.54 / Math.max(rg.squeeze, 0.14);
-        const uAt = (c: number) => camU - half + (c / COLS) * 2 * half;
+
+        /* Points and relief cached per row. The old code traced the row twice —
+           once to fill, once to stroke — reprojecting all COLS+1 points each
+           time; the snowline pass below would have made it three. Caching pays
+           for the extra reliefAt call and still comes out ahead. */
+        const xs: number[] = [], ys: number[] = [], rel: number[] = [], hs: number[] = [];
+        for (let c = 0; c <= COLS; c++) {
+          const u = camU - half + (c / COLS) * 2 * half;
+          const pt = project(u, v, camV, camU, pitch);
+          xs.push(pt.x);
+          ys.push(pt.y);
+          hs.push(pt.h);
+          /* Same expression project() uses internally, so the memo slot it just
+             filled is hit rather than recomputed. */
+          rel.push(reliefAt(u, v, rg.floorHalf));
+        }
         const trace = () => {
           tctx.beginPath();
-          for (let c = 0; c <= COLS; c++) {
-            const p = project(uAt(c), v, camV, camU, pitch);
-            if (c === 0) tctx.moveTo(p.x, p.y); else tctx.lineTo(p.x, p.y);
-          }
+          tctx.moveTo(xs[0], ys[0]);
+          for (let c = 1; c <= COLS; c++) tctx.lineTo(xs[c], ys[c]);
         };
+        const haze = hazeAt(d, pitch);
+        /* How much rock this row actually crosses. Contour drawn at even weight
+           over the flat corridor is the thing that made the valley floor read
+           as combed sand: sixty long parallel sweeps across an otherwise
+           featureless plain, which is a texture, not a surface. Weighting the
+           line by the relief it describes puts it on the mountains and takes it
+           off the floor — which is what a contour map does anyway. The 0.28
+           floor keeps the hero's valley floor legible as ground rather than
+           dropping it out entirely. */
+        let relMax = 0;
+        for (let c = 0; c <= COLS; c++) if (rel[c] > relMax) relMax = rel[c];
+        /* Floor raised from 0.28. It was set when the near ground was a
+           featureless plain, where a contour was describing nothing and sixty
+           of them read as combed sand. The floor has folds now, so a line along
+           each crest is describing real form — and the front rows were the only
+           part of the frame with no line work at all, which is what made them
+           read as a choppy mass next to the drawn ridges behind. */
+        const relWeight = 0.62 + 0.38 * clamp01(relMax / 1.6);
+
         trace();
-        tctx.lineTo(project(uAt(COLS), v, camV, camU, pitch).x, H + 2);
-        tctx.lineTo(project(uAt(0), v, camV, camU, pitch).x, H + 2);
+        tctx.lineTo(xs[COLS], H + 2);
+        tctx.lineTo(xs[0], H + 2);
         tctx.closePath();
-        tctx.fillStyle = ground;
+        /* Each ridge is filled a step further toward the sky than the one in
+           front of it, which is what turns sixty stacked silhouettes into
+           depth. The fill is opaque, so a near ridge still occludes the one
+           behind it completely — the haze changes its tone, not its solidity.
+         *
+         * Across the copy column the ridge is also carried further toward the
+         * sky than its depth alone would put it. Every text block on this page
+         * that is not on a panel is a centred column, and the mountains are at
+         * the frame edges by construction — so lightening the middle costs the
+         * terrain nothing visible and buys the copy a floor it keeps no matter
+         * what the range does. That matters more than it sounds: three separate
+         * times, raising the mountains dropped the closing CTA paragraph back
+         * under 4.5:1, and each time the fix was to retune the range. This
+         * makes the guarantee structural instead, so the two stop trading off.
+         * It reads as haze gathering in the middle of the valley, which is
+         * where haze in fact gathers. */
+        tctx.fillStyle = shadedFill(v, d, half, haze, rg, xs, hs);
         tctx.fill();
 
         /* Contours carry the surface on their own — the glyph pass that used to
-           shade the ground was removed, so their weight goes back up. */
+           shade the ground was removed, so their weight goes back up. They fade
+           with the haze too; a crisp contour on a washed-out ridge reads as a
+           drawing laid over the photograph rather than as distance. */
         trace();
-        tctx.strokeStyle = d > 0.62 ? faint : ink;
-        tctx.globalAlpha = (0.16 + (1 - d) * 0.34) * (1 - pitch * 0.25) * contrast;
+        tctx.strokeStyle = d > 0.62 ? faintFade : inkFade;
+        /* Lighter than they were. With the bands carrying the form, contour at
+           the old weight turned the whole valley into hatching — a topographic
+           map laid over the mountains rather than the surface of them. */
+        /* Back to a trace. This carried the foreground's line work only while
+           the crest highlight could not reach it; now that the highlight runs
+           along every ridge, a dark contour under it states the same geometry a
+           second time and in the opposite colour, which is what made the front
+           and the back look like two different drawings. */
+        tctx.globalAlpha = (0.03 + (1 - d) * 0.07) * (1 - pitch * 0.25) * contrast * (1 - haze * 0.7) * relWeight;
         tctx.lineWidth = 1 + (1 - d) * 0.8;
+        tctx.stroke();
+
+        /* The lit crest line, along every ridge in the frame.
+         *
+         * This used to fire only where relief cleared SNOW_LINE, which meant
+         * only the far ranges were ever high enough to get it — the pale line
+         * that gives the back of the scene its definition simply could not
+         * reach the foreground, and the front was left carrying dark contour
+         * instead. Two different treatments for the same landform, and the
+         * seam between them was visible.
+         *
+         * Physically it is a rim light rather than snow: a crest is the one
+         * part of a ridge turned edge-on to a low sun, so it catches light the
+         * faces below it do not. That is true of a foreground fold as much as
+         * a distant summit, which is why it belongs on every row.
+         *
+         * Still stroked as its own pass, because a canvas stroke cannot change
+         * colour partway along a path. Summits above the old snowline keep a
+         * brighter, heavier line, so the far peaks still read as capped rather
+         * than merely lit. */
+        tctx.strokeStyle = snow;
+        tctx.lineWidth = 1.1 + (1 - d) * 1.1;
+        tctx.globalAlpha = 0.52 * (1 - haze * 0.4) * (1 - pitch * 0.4) * contrast;
+        tctx.beginPath();
+        tctx.moveTo(xs[0], ys[0]);
+        for (let c = 1; c <= COLS; c++) tctx.lineTo(xs[c], ys[c]);
+        tctx.stroke();
+
+        /* Second pass over the summits only, so height still reads. */
+        tctx.lineWidth = 1.9 + (1 - d) * 1.4;
+        tctx.globalAlpha = 0.62 * (1 - haze * 0.45) * (1 - pitch * 0.4) * contrast;
+        tctx.beginPath();
+        let open = false;
+        for (let c = 0; c <= COLS; c++) {
+          if (rel[c] > SNOW_LINE) {
+            if (open) tctx.lineTo(xs[c], ys[c]);
+            else { tctx.moveTo(xs[c], ys[c]); open = true; }
+          } else open = false;
+        }
         tctx.stroke();
         tctx.globalAlpha = 1;
       }
@@ -627,6 +1235,11 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
     /* Blit the cached terrain, repainting it only when the camera or the theme
        actually moved, then draw the live layer over it. */
     const draw = (camV: number, pitch: number, el: number) => {
+      /* Before anything projects: rowGeom and skyline both read these, and the
+         overlay pass projects against the same geometry as the cached terrain
+         it draws on top of. Setting them here rather than inside paintTerrain
+         keeps them correct on the frames where the terrain cache is reused. */
+      setRange(camV);
       const theme = document.documentElement.getAttribute("data-theme") || "";
       if (!cacheValid || Math.abs(camV - cacheV) > 0.0004 || Math.abs(pitch - cachePitch) > 0.0004 || theme !== cacheTheme) {
         paintTerrain(camV, pitch);
@@ -756,32 +1369,100 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
         .sort((a, b) => Number(a.dataset.wp) - Number(b.dataset.wp));
     };
 
-    const camera = () => {
-      /* Reduced motion is handled by freezing time, not by pinning the camera:
-         scrolling is the reader's own action, so the scene should still answer
-         it. Pinning here also parked them at STATIONS[2] — the plan view, pitch
-         0.68 — where the terrain fills the frame and the hero copy sits over it,
-         a composition the horizon guard never sizes for. Fallback is the hero,
-         which is where the page opens. */
-      if (anchors.length < 2) return STATIONS[0];
-      /* The eye tracks the top of the viewport, not its centre. With the centre,
-         a page opened at scroll 0 already sat 39% of the way to station 1 —
-         the hero never actually got its own camera. A section now arrives as
-         its top reaches the top of the frame. */
-      const eye = window.scrollY;
-      const top = (el: HTMLElement) => el.getBoundingClientRect().top + window.scrollY;
-      if (eye <= top(anchors[0])) return STATIONS[0];
+    /* ── The camera, driven by ScrollTrigger ────────────────────────────
+     *
+     * The mapping is unchanged: the camera travels from station i to station
+     * i+1 as the top of section i passes the top of the viewport, easing with
+     * smoothstep inside each leg. What changed is who reads the scroll.
+     *
+     * The previous version resolved that mapping from scratch on every frame,
+     * calling getBoundingClientRect on all seven section anchors to find their
+     * document offsets. Measured on this page, those reads cost 0.033ms while
+     * layout is clean — and a forced synchronous layout, which is what they
+     * become if anything has written to the DOM earlier in the same frame,
+     * costs 8.86ms. The page has a second rAF loop writing --pf-progress to
+     * this very element tree, so whether the frame paid 0.03ms or 8.9ms came
+     * down to which of the two callbacks the browser happened to run first.
+     * That is not a thing to leave to chance.
+     *
+     * ScrollTrigger resolves the positions once per refresh — creation, resize
+     * (debounced 200ms), or an explicit refresh() — and hands the frame a
+     * number that is already computed. camera() becomes a property read.
+     *
+     * `scrub` also gives the camera a playhead that lags the scroll rather
+     * than being welded to it, which is the difference between a camera and a
+     * scrubber. It is deliberately small: every camera movement invalidates
+     * the terrain cache, so a long scrub keeps repainting after the reader has
+     * stopped, and the repaint is the expensive part of this scene.
+     */
+    gsap.registerPlugin(ScrollTrigger);
+    /* GSAP has no smoothstep, and the easing inside each leg is not cosmetic —
+       it is what stops the camera changing direction abruptly at a station. */
+    gsap.registerEase("pfSmoothstep", (t: number) => t * t * (3 - 2 * t));
+
+    const camState = { v: STATIONS[0].v, pitch: STATIONS[0].pitch };
+    const camTl = gsap.timeline({ paused: true, defaults: { ease: "pfSmoothstep" } });
+    let camST: ScrollTrigger | null = null;
+
+    /* Leg durations are proportional to the scroll distance each section
+       actually occupies. A single evenly-divided timeline would scrub linearly
+       across the whole range and quietly detach the stations from the sections
+       they were composed for — the sections are different heights. */
+    const docTop = (el: HTMLElement) => el.getBoundingClientRect().top + window.scrollY;
+
+    const buildCamera = () => {
+      camTl.clear();
+      if (anchors.length < 2) return;
+      const tops = anchors.map(docTop);
+      const total = Math.max(tops[tops.length - 1] - tops[0], 1);
       for (let i = 0; i < anchors.length - 1; i++) {
-        const a = top(anchors[i]), b = top(anchors[i + 1]);
-        if (eye < b) {
-          const t = sm(clamp01((eye - a) / Math.max(b - a, 1)));
-          const s0 = STATIONS[Math.min(i, STATIONS.length - 1)];
-          const s1 = STATIONS[Math.min(i + 1, STATIONS.length - 1)];
-          return { v: lerp(s0.v, s1.v, t), pitch: lerp(s0.pitch, s1.pitch, t) };
-        }
+        const from = STATIONS[Math.min(i, STATIONS.length - 1)];
+        const to = STATIONS[Math.min(i + 1, STATIONS.length - 1)];
+        /* fromTo, not to: a refresh rebuilds these legs while the camera is
+           mid-flight, and a plain `to` would capture whatever camState happened
+           to hold at that moment as the leg's start. Each leg states both ends,
+           so a rebuild cannot smear the route. immediateRender is off so
+           building the timeline does not itself snap the camera to leg one. */
+        camTl.fromTo(camState,
+          { v: from.v, pitch: from.pitch },
+          {
+            v: to.v,
+            pitch: to.pitch,
+            duration: Math.max(tops[i + 1] - tops[i], 1) / total,
+            immediateRender: false,
+          });
       }
-      return STATIONS[STATIONS.length - 1];
     };
+
+    const initCamera = () => {
+      if (anchors.length < 2) return;
+      camST?.kill();
+      buildCamera();
+      camST = ScrollTrigger.create({
+        animation: camTl,
+        /* Numeric start/end, not "top top" against an endTrigger. The last
+           anchor is the footer, whose document top (4271px, measured) sits past
+           the maximum scroll (3820px) — it can never reach the top of the
+           viewport, and asking ScrollTrigger to end there resolved the range to
+           NaN and pinned progress at 0. Absolute scroll positions say exactly
+           what the old camera meant, and an end beyond max scroll simply means
+           the final station is approached but never quite arrived at, which is
+           what the previous implementation also did. */
+        start: () => docTop(anchors[0]),
+        end: () => docTop(anchors[anchors.length - 1]),
+        /* Small on purpose — see the note above about repaint cost. */
+        scrub: 0.45,
+        invalidateOnRefresh: true,
+        onRefresh: buildCamera,
+      });
+    };
+
+    /* Reduced motion is handled by freezing time, not by pinning the camera:
+       scrolling is the reader's own action, so the scene should still answer
+       it. Pinning here also parked them at STATIONS[2] — the plan view, pitch
+       0.68 — where the terrain fills the frame and the hero copy sits over it,
+       a composition the horizon guard never sizes for. */
+    const camera = () => (anchors.length < 2 ? STATIONS[0] : camState);
 
     const t0 = performance.now();
 
@@ -827,13 +1508,35 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
       for (let el: HTMLElement | null = sill; el; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
       floorY = sill ? y + sill.offsetHeight : H * 0.72;
 
+      /* The line the terrain may not cross. Measured from the bottom of the
+         hero paragraph rather than from the CTA row: the buttons are opaque and
+         look right sitting on the ground, but the paragraph is unpanelled text
+         and the range has to stop below it. Same offsetTop walk as above, for
+         the same reason — the copy enters on a transform. */
+      const copy = root.querySelector<HTMLElement>("[data-copy-end]");
+      let cy = 0;
+      for (let el: HTMLElement | null = copy; el; el = el.offsetParent as HTMLElement | null) cy += el.offsetTop;
+      copyEndY = copy ? cy + copy.offsetHeight + 26 : H * 0.66;
+
       /* Widest hero text, not just the paragraph — the h1 runs wider than the
          copy block and walls were rising inside it. */
       let widest = 0;
       root.querySelectorAll<HTMLElement>("[data-wp='0'] h1, [data-wp='0'] p")
         .forEach((el) => { widest = Math.max(widest, el.offsetWidth); });
-      copyHalfPx = Math.min((widest || W * 0.6) / 2 + 46, W * 0.47);
+      /* The 0.47 clamp left 3% of the half-frame for terrain once the copy
+         column had taken its share — on a 750px viewport the corridor reached
+         353px of a 375px half-frame and the flanks were a 22px strip at each
+         edge. 0.38 keeps the corridor under the copy at desktop widths, where
+         it is the measured text width that binds anyway, and only bites where
+         the frame is too narrow for both. */
+      copyHalfPx = Math.min((widest || W * 0.6) / 2 + 46, W * 0.38);
       cacheValid = false;
+      /* The anchors have just been re-measured, so the camera's scroll mapping
+         has to be rebuilt against them. ScrollTrigger refreshes itself on
+         resize, but this also runs for the observers that watch content
+         changing, which it cannot know about. */
+      if (camST) ScrollTrigger.refresh();
+      else initCamera();
       const cam = camera();
       draw(cam.v, cam.pitch, 0);
     };
@@ -868,6 +1571,8 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
       ro.disconnect();
       mo.disconnect();
       cleanupReduced?.();
+      camST?.kill();
+      camTl.kill();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -875,6 +1580,17 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
 
 /* ── Parallax + panel tilt ────────────────────────────────────────── */
 
+/**
+ * One pointer listener drives four things: the hero's dot-grid parallax, the
+ * report panel's tilt, the spotlight wash inside whichever card the pointer is
+ * over, and the magnetic pull on whichever CTA it is over.
+ *
+ * All four are delegated from the root rather than bound per element. That is
+ * not tidiness — the spotlight needs the pointer's position *inside* the card,
+ * which means a getBoundingClientRect per frame, and six cards each measuring
+ * themselves on every mousemove is six forced layouts. `closest()` narrows it
+ * to the one element actually under the pointer, so it stays at one.
+ */
 function useParallaxTilt(rootRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const root = rootRef.current;
@@ -883,7 +1599,36 @@ function useParallaxTilt(rootRef: React.RefObject<HTMLDivElement | null>) {
     if (reduce || !window.matchMedia("(pointer: fine)").matches) return;
     const spots = Array.from(root.querySelectorAll<HTMLElement>("[data-parallax]"));
     const panel = root.querySelector<HTMLElement>("[data-tilt]");
+    /* The last CTA that was pulled, so its offset can be released when the
+       pointer moves off it — a magnet with no reset leaves the button parked
+       off-centre for the rest of the session. */
+    let magnet: HTMLElement | null = null;
+
     const onMove = (ev: MouseEvent) => {
+      const target = ev.target as Element | null;
+
+      const card = target?.closest?.(".pf-card") as HTMLElement | null;
+      if (card) {
+        const cr = card.getBoundingClientRect();
+        card.style.setProperty("--mx", ((ev.clientX - cr.left) / cr.width) * 100 + "%");
+        card.style.setProperty("--my", ((ev.clientY - cr.top) / cr.height) * 100 + "%");
+      }
+
+      const cta = target?.closest?.(".pf-cta") as HTMLElement | null;
+      if (cta !== magnet) {
+        magnet?.style.removeProperty("--mx");
+        magnet?.style.removeProperty("--my");
+        magnet = cta;
+      }
+      if (cta) {
+        const br = cta.getBoundingClientRect();
+        /* Capped at 12x7px. Past roughly a sixth of the button the cursor and
+           the surface it is meant to be attracting visibly separate, and the
+           effect reads as lag rather than pull. */
+        cta.style.setProperty("--mx", ((ev.clientX - br.left) / br.width - 0.5) * 12 + "px");
+        cta.style.setProperty("--my", ((ev.clientY - br.top) / br.height - 0.5) * 7 + "px");
+      }
+
       const r = root.getBoundingClientRect();
       const nx = (ev.clientX - r.left) / r.width - 0.5;
       const ny = (ev.clientY - r.top) / r.height - 0.5;
@@ -903,6 +1648,9 @@ function useParallaxTilt(rootRef: React.RefObject<HTMLDivElement | null>) {
     const onLeave = () => {
       spots.forEach((s) => { s.style.transform = "translateX(-50%)"; });
       if (panel) panel.style.transform = "";
+      magnet?.style.removeProperty("--mx");
+      magnet?.style.removeProperty("--my");
+      magnet = null;
     };
     root.addEventListener("mousemove", onMove);
     root.addEventListener("mouseleave", onLeave);
@@ -914,6 +1662,105 @@ function useParallaxTilt(rootRef: React.RefObject<HTMLDivElement | null>) {
   }, []);
 }
 
+/* ── Scroll-linked chrome ─────────────────────────────────────────── */
+
+/**
+ * Two things that both answer "how far along the route am I": the rail across
+ * the bottom of the header, and the nav link for the section you are standing
+ * in. They share one source so they can never disagree.
+ *
+ * The rail stays live under prefers-reduced-motion. It is scroll-linked, not
+ * animated — it moves only because the user moved, which is the class of
+ * motion the query is meant to leave alone.
+ */
+function useJourneyProgress(rootRef: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        root.style.setProperty("--pf-progress", String(max > 0 ? Math.min(window.scrollY / max, 1) : 0));
+      });
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    /* Scroll-spy by observer rather than by measuring offsets on every scroll
+       event: the sections are clamp()-padded and the canvas resizes them, so
+       cached offsets go stale and re-measuring each frame is the expensive
+       version of what the observer does for free. The margins collapse the
+       viewport to a band across its middle, so "active" means the section
+       under the centre of the screen, not merely one that is visible. */
+    const links = Array.from(root.querySelectorAll<HTMLElement>("[data-nav]"));
+
+    /* The observer reports only what *changed*, so the active link has to be
+       derived from a running set rather than from the callback's entries. The
+       first version marked on intersect and never unmarked, which left "Phases"
+       lit in the hero after scrolling back to the top — the nav claimed you
+       were somewhere you had already left. */
+    const live = new Set<string>();
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) live.add(e.target.id);
+          else live.delete(e.target.id);
+        });
+        links.forEach((l) => {
+          if (l.dataset.nav && live.has(l.dataset.nav)) l.setAttribute("data-active", "");
+          else l.removeAttribute("data-active");
+        });
+      },
+      { rootMargin: "-45% 0px -45% 0px" },
+    );
+    links.forEach((l) => {
+      const el = l.dataset.nav ? document.getElementById(l.dataset.nav) : null;
+      if (el) io.observe(el);
+    });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
+/* ── Split-text entrance ──────────────────────────────────────────── */
+
+/**
+ * A line of display type where each word rides up out of its own clipping
+ * box, staggered — the anime.js split-text entrance, built from one span per
+ * word and a CSS custom property for the delay instead of a runtime timeline.
+ *
+ * The separating spaces are emitted *between* the clip boxes rather than
+ * inside them, so the line still wraps on word boundaries: a space sealed
+ * inside an inline-block is not a break opportunity, and the headline would
+ * overflow instead of wrapping on a phone.
+ */
+function Words({ text, delay = 0, step = 0.055, style }: {
+  text: string;
+  delay?: number;
+  step?: number;
+  style?: CSSProperties;
+}) {
+  const out: ReactNode[] = [];
+  text.split(" ").forEach((w, i) => {
+    if (i) out.push(" ");
+    out.push(
+      <span key={i} className="pf-split" style={style}>
+        <span style={{ "--d": delay + i * step + "s" } as CSSProperties}>{w}</span>
+      </span>,
+    );
+  });
+  return <>{out}</>;
+}
+
 /* ── Page ─────────────────────────────────────────────────────────── */
 
 export default function Landing() {
@@ -923,11 +1770,15 @@ export default function Landing() {
 
   useTerrainRoute(terrainRef, rootRef);
   useParallaxTilt(rootRef);
+  useJourneyProgress(rootRef);
 
   const toggleTheme = () => setTheme(mode === "dark" ? "light" : "dark");
 
   const navLink: CSSProperties = { color: "inherit", textDecoration: "none", padding: "8px 12px", margin: "-8px 0", borderRadius: 9, transition: "color .2s var(--ease), background .2s var(--ease)" };
-  const kicker: CSSProperties = { fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--accent)" };
+  /* --accentText, not --accent: at 11px this is small text and needs 4.5:1,
+     which --accent misses at 3.37:1 on paper. The large serif accents keep
+     --accent — large text only needs 3:1 and they clear it. */
+  const kicker: CSSProperties = { fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--accentText)" };
 
   /* isolation:isolate on the root is load-bearing — without a stacking context
      there, the globe's z-index:-1 escapes to the root element and paints
@@ -946,6 +1797,10 @@ export default function Landing() {
 
       {/* ── Nav ── */}
       <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", height: 68, padding: "0 clamp(20px,4vw,56px)", borderBottom: "1px solid var(--line)", background: "color-mix(in srgb,var(--bg) 80%,transparent)", backdropFilter: "blur(12px)" }}>
+        {/* How far along the route you are, carried by the chrome. The page is
+            literally a walk through seven stations, so a plain scrollbar is a
+            weaker answer than the journey's own progress. */}
+        <div aria-hidden className="pf-rail" />
         <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--rim)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
@@ -953,21 +1808,22 @@ export default function Landing() {
           <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.02em" }}>PathFinder</span>
         </div>
         <nav className="pf-hide-mobile" style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13.5, fontWeight: 500, color: "var(--muted)" }}>
-          <a href="#product" className="pf-hover-row" style={navLink}>Product</a>
-          <a href="#phases" className="pf-hover-row" style={navLink}>Phases</a>
-          <a href="#results" className="pf-hover-row" style={navLink}>Approach</a>
-          <Link href="/universities" className="pf-hover-row" style={navLink}>For universities</Link>
+          <a href="#product" data-nav="product" className="pf-nav-link" style={navLink}>Product</a>
+          <a href="#phases" data-nav="phases" className="pf-nav-link" style={navLink}>Phases</a>
+          <a href="#results" data-nav="results" className="pf-nav-link" style={navLink}>Approach</a>
+          <Link href="/universities" className="pf-nav-link" style={navLink}>For universities</Link>
         </nav>
         <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
           <button
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 7, height: 36, padding: "0 13px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", fontFamily: mono, fontSize: 11, fontWeight: 500, transition: "all .2s var(--ease)" }}
+            className="pf-cta"
+            style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 7, height: 36, padding: "0 13px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", fontFamily: mono, fontSize: 11, fontWeight: 500 }}
           >
             <span style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid currentColor" }} />
             {mode === "dark" ? "Paper" : "Night"}
           </button>
-          <Link href="/intel" style={{ display: "flex", alignItems: "center", height: 39, padding: "0 19px", borderRadius: 11, background: "var(--fg)", color: "var(--bg)", fontSize: 13.5, fontWeight: 600, textDecoration: "none", boxShadow: "var(--rim)", transition: "transform .2s var(--ease)" }}>
+          <Link href="/intel" className="pf-cta" style={{ display: "flex", alignItems: "center", height: 39, padding: "0 19px", borderRadius: 11, background: "var(--fg)", color: "var(--bg)", fontSize: 13.5, fontWeight: 600, textDecoration: "none", boxShadow: "var(--rim)" }}>
             Start free →
           </Link>
         </div>
@@ -983,23 +1839,30 @@ export default function Landing() {
               open ground — a card in all but name, and the one thing above the
               headline competing with it. Plain type sits better on terrain. */}
           <div className="pf-anim-up" style={{ display: "inline-flex", alignItems: "center", gap: 9, fontFamily: mono, fontSize: 11.5, fontWeight: 600, letterSpacing: ".2em", color: "var(--muted)", marginBottom: 30, whiteSpace: "nowrap" }}>
-            <span aria-hidden style={{ color: "var(--accent)", fontSize: 13 }}>✦</span>
+            <span aria-hidden className="pf-breathe" style={{ color: "var(--accent)", fontSize: 13 }}>✦</span>
             AI INTERNSHIP READINESS COACH
           </div>
-          <h1 className="pf-anim-up" style={{ fontSize: "clamp(46px,8vw,92px)", lineHeight: 0.98, letterSpacing: "-.045em", fontWeight: 800, margin: "0 auto 26px", maxWidth: "16ch", animationDelay: ".05s" }}>
-            From uncertain to <span style={serifItalic}>hired.</span>
+          {/* Word by word rather than one fade: the headline is the only type
+              on the page big enough for a stagger to read as deliberate rather
+              than as jank. "hired." lands last and alone, which is the whole
+              sentence made visible. */}
+          <h1 style={{ fontSize: "clamp(46px,8vw,92px)", lineHeight: 0.98, letterSpacing: "-.045em", fontWeight: 800, margin: "0 auto 26px", maxWidth: "16ch" }}>
+            <Words text="From uncertain to" delay={0.06} />{" "}
+            <span className="pf-split" style={serifItalic}>
+              <span style={{ "--d": ".33s" } as CSSProperties}>hired.</span>
+            </span>
           </h1>
-          <p className="pf-anim-up" style={{ fontSize: "clamp(16px,2vw,20px)", lineHeight: 1.6, color: "var(--fg)", opacity: 0.82, maxWidth: "40rem", margin: "0 auto 38px", animationDelay: ".12s" }}>
+          <p data-copy-end className="pf-anim-up" style={{ fontSize: "clamp(16px,2vw,20px)", lineHeight: 1.6, color: "var(--fg)", opacity: 0.82, maxWidth: "40rem", margin: "0 auto 38px", animationDelay: ".12s" }}>
             For university students chasing internships. PathFinder coaches you to become genuinely ready — the referrals and interview skills that actually land offers — instead of spraying applications no one reads. Every day, it shows your one highest-leverage move.
           </p>
           <div data-horizon className="pf-anim-up" style={{ display: "flex", gap: 13, justifyContent: "center", flexWrap: "wrap", marginBottom: 14, animationDelay: ".19s" }}>
-            <Link href="/start" style={{ display: "flex", alignItems: "center", gap: 9, height: 54, padding: "0 30px", borderRadius: 13, background: "var(--fg)", color: "var(--bg)", fontSize: 16, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 10px 26px rgba(56,44,32,.16),var(--rim)", transition: "transform .22s var(--ease),box-shadow .22s var(--ease)" }}>
+            <Link href="/start" className="pf-cta" style={{ display: "flex", alignItems: "center", gap: 9, height: 54, padding: "0 30px", borderRadius: 13, background: "var(--fg)", color: "var(--bg)", fontSize: 16, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 10px 26px rgba(56,44,32,.16),var(--rim)" }}>
               Get your baseline →
             </Link>
             {/* Ghost link, not a second button. Two filled surfaces side by
                 side read as two primary actions; the rule is one. Keeps the
                 54px height so the touch target still clears 44px. */}
-            <a href="#phases" style={{ display: "flex", alignItems: "center", gap: 9, height: 54, padding: "0 20px", color: "var(--fg)", fontSize: 16, fontWeight: 600, whiteSpace: "nowrap", textDecoration: "underline", textDecorationColor: "var(--lineStrong)", textUnderlineOffset: 6, textDecorationThickness: 1.5, transition: "all .22s var(--ease)" }}>
+            <a href="#phases" className="pf-ghost" style={{ display: "flex", alignItems: "center", gap: 9, height: 54, padding: "0 20px", color: "var(--fg)", fontSize: 16, fontWeight: 600, whiteSpace: "nowrap" }}>
               See the journey
             </a>
           </div>
@@ -1016,21 +1879,24 @@ export default function Landing() {
 
       {/* ── Product panel ── */}
       <section data-wp="1" id="product" style={{ position: "relative", zIndex: 3, padding: "0 clamp(20px,5vw,40px)", marginTop: "clamp(-40px,-3vw,-20px)" }}>
-        <Reveal style={{ position: "relative", maxWidth: 1060, margin: "0 auto" }}>
+        <Reveal variant="scale" style={{ position: "relative", maxWidth: 1060, margin: "0 auto" }}>
           <div data-tilt style={{ position: "relative", borderRadius: 18, border: "1px solid var(--lineStrong)", background: "var(--panelSolid)", boxShadow: "0 40px 90px rgba(56,44,32,.14),var(--rim)", overflow: "hidden", textAlign: "left", transition: "transform .3s var(--ease)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "15px 20px", borderBottom: "1px dashed var(--lineStrong)", background: "var(--panel)" }}>
+            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 9, padding: "15px 20px", borderBottom: "1px dashed var(--lineStrong)", background: "var(--panel)", overflow: "hidden" }}>
+              {/* A scan crossing the header, so the panel reads as a report
+                  being computed rather than a screenshot of one that was. */}
+              <span aria-hidden className="pf-scanline" />
               <span style={{ display: "flex", alignItems: "center", gap: 9, fontFamily: mono, fontSize: 10.5, fontWeight: 500, letterSpacing: ".12em", color: "var(--faint)" }}>
                 <span className="pf-anim-pulse" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--strong)" }} />
                 CAREER POSITION REPORT
               </span>
-              <span style={{ marginLeft: "auto", fontFamily: mono, fontSize: 10.5, fontWeight: 600, letterSpacing: ".12em", color: "var(--accent)" }}>EXAMPLE · SAMPLE DATA</span>
+              <span style={{ marginLeft: "auto", fontFamily: mono, fontSize: 10.5, fontWeight: 600, letterSpacing: ".12em", color: "var(--accentText)" }}>EXAMPLE · SAMPLE DATA</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "230px 1fr", minHeight: 360 }}>
               <div style={{ borderRight: "1px dashed var(--lineStrong)", padding: "22px 18px", background: "var(--panel)" }}>
                 <div style={{ fontFamily: mono, fontSize: 9.5, fontWeight: 500, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 16 }}>Your pipeline</div>
                 {PIPELINE.map((p) => (
-                  <Link key={p.name} href={p.href} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 10px", borderRadius: 9, marginBottom: 2, background: p.railBg, textDecoration: "none" }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.dot, flexShrink: 0 }} />
+                  <Link key={p.name} href={p.href} className="pf-pipe" style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 10px", borderRadius: 9, marginBottom: 2, background: p.railBg, textDecoration: "none" }}>
+                    <span data-dot style={{ width: 8, height: 8, borderRadius: "50%", background: p.dot, flexShrink: 0 }} />
                     <span style={{ fontSize: 12.5, fontWeight: p.weight, color: p.textColor }}>{p.name}</span>
                   </Link>
                 ))}
@@ -1068,12 +1934,12 @@ export default function Landing() {
                     ))}
                   </div>
                   {REPORT_OPPS.map((o) => (
-                    <div key={o.company} style={{ display: "grid", gridTemplateColumns: "1.6fr 54px 1.2fr", gap: 10, alignItems: "center", padding: "12px 15px", borderBottom: "1px solid var(--line2)" }}>
+                    <div key={o.company} className="pf-oppo" style={{ display: "grid", gridTemplateColumns: "1.6fr 54px 1.2fr", gap: 10, alignItems: "center", padding: "12px 15px", borderBottom: "1px solid var(--line2)" }}>
                       <div>
                         <span style={{ display: "block", fontSize: 12.5, fontWeight: 600 }}>{o.company}</span>
                         <span style={{ display: "block", fontSize: 11, color: "var(--muted)" }}>{o.role}</span>
                       </div>
-                      <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 700, color: o.tone }}>{o.fit}</span>
+                      <CountUp value={o.fit} style={{ fontFamily: mono, fontSize: 13, fontWeight: 700, color: o.tone }} />
                       <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{o.move}</span>
                     </div>
                   ))}
@@ -1081,7 +1947,7 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          <div style={{ position: "absolute", bottom: -24, right: -14, display: "flex", alignItems: "center", gap: 11, padding: "13px 17px", borderRadius: 14, background: "var(--fg)", color: "var(--bg)", boxShadow: "0 20px 40px rgba(56,44,32,.22)", animation: "pfFloat 5.5s ease-in-out infinite" }}>
+          <div data-float-chip style={{ position: "absolute", bottom: -24, right: -14, display: "flex", alignItems: "center", gap: 11, padding: "13px 17px", borderRadius: 14, background: "var(--fg)", color: "var(--bg)", boxShadow: "0 20px 40px rgba(56,44,32,.22)", animation: "pfFloat 5.5s ease-in-out infinite" }}>
             <span style={{ display: "flex", width: 26, height: 26, alignItems: "center", justifyContent: "center", borderRadius: 8, background: "var(--accent)" }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="#F7F1E4"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
             </span>
@@ -1094,9 +1960,9 @@ export default function Landing() {
       </section>
 
       {/* ── Marquee ── */}
-      <section style={{ marginTop: "clamp(60px,7vw,90px)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", padding: "22px 0", overflow: "hidden", position: "relative", background: "var(--panel)" }}>
+      <section className="pf-marquee-wrap" style={{ marginTop: "clamp(60px,7vw,90px)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", padding: "22px 0", overflow: "hidden", position: "relative", background: "var(--panel)" }}>
         <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", background: "linear-gradient(90deg,var(--panel),transparent 12%,transparent 88%,var(--panel))" }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 60, width: "max-content", animation: "pfMarquee 32s linear infinite", fontFamily: mono, fontSize: 15, fontWeight: 500, letterSpacing: ".02em", color: "var(--faint)" }}>
+        <div className="pf-marquee" style={{ display: "flex", alignItems: "center", gap: 60, width: "max-content", fontFamily: mono, fontSize: 15, fontWeight: 500, letterSpacing: ".02em", color: "var(--faint)" }}>
           {[...COVERAGE, ...COVERAGE].map((u, i) => (
             <span key={u + i}>{u}</span>
           ))}
@@ -1109,7 +1975,7 @@ export default function Landing() {
           padding, a wide band under the heading, and a row gap far larger than
           the column gap so ground shows between the two rows of cards. */}
       <section data-wp="2" id="phases" style={{ padding: "clamp(92px,12vw,168px) clamp(20px,5vw,56px)", maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: "clamp(64px,9vw,112px)" }}>
+        <Reveal style={{ textAlign: "center", marginBottom: "clamp(64px,9vw,112px)" }}>
           <span style={kicker}>The Journey</span>
           <h2 style={{ fontSize: "clamp(34px,5vw,52px)", fontWeight: 800, letterSpacing: "-.04em", margin: "16px 0 14px" }}>
             Six phases. Two that get you <span style={serifItalic}>hired.</span>
@@ -1117,14 +1983,14 @@ export default function Landing() {
           <p style={{ fontSize: 17, color: "var(--muted)", maxWidth: "34rem", margin: "0 auto", lineHeight: 1.6 }}>
             Direction, CV and tracking keep you tidy — but referrals and interview readiness are what convert. PathFinder coaches all six, and pushes hardest on the two that decide the offer.
           </p>
-        </div>
+        </Reveal>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", columnGap: "clamp(16px,2.6vw,34px)", rowGap: "clamp(68px,9vw,116px)", maxWidth: 1050, margin: "0 auto" }}>
           {PHASES.map((p) => (
             <Reveal key={p.n} style={{}}>
-              <Link href={p.href} style={{ display: "block", position: "relative", border: "1px solid var(--line)", background: "var(--panel)", borderRadius: 18, padding: 28, overflow: "hidden", boxShadow: "var(--rim)", transition: "transform .34s var(--ease),border-color .34s var(--ease),background .34s var(--ease)", textDecoration: "none", color: "var(--fg)", height: "100%" }} className="pf-hover-border">
-                <span aria-hidden style={{ position: "absolute", top: -18, right: 6, fontFamily: "var(--font-serif), 'Instrument Serif', serif", fontSize: 96, lineHeight: 1, color: "var(--fg)", opacity: 0.06, pointerEvents: "none" }}>{p.n}</span>
-                <div style={{ width: 46, height: 46, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accentSoft)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", color: "var(--accent)", marginBottom: 22 }}>{p.icon}</div>
-                <div style={{ fontFamily: mono, fontSize: 9.5, fontWeight: 500, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 9 }}>{p.label}</div>
+              <Link href={p.href} style={{ display: "block", position: "relative", border: "1px solid var(--line)", background: "var(--panel)", borderRadius: 18, padding: 28, overflow: "hidden", boxShadow: "var(--rim)", textDecoration: "none", color: "var(--fg)", height: "100%" }} className="pf-card">
+                <span aria-hidden data-ghost-num style={{ position: "absolute", top: -18, right: 6, fontFamily: "var(--font-serif), 'Instrument Serif', serif", fontSize: 96, lineHeight: 1, color: "var(--fg)", opacity: 0.06, pointerEvents: "none" }}>{p.n}</span>
+                <div data-icon style={{ width: 46, height: 46, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accentSoft)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", color: "var(--accent)", marginBottom: 22 }}>{p.icon}</div>
+                <div style={{ fontFamily: mono, fontSize: 9.5, fontWeight: 500, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accentText)", marginBottom: 9 }}>{p.label}</div>
                 <h3 style={{ fontSize: 19, fontWeight: 700, letterSpacing: "-.02em", margin: "0 0 8px" }}>{p.title}</h3>
                 <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--muted)", margin: 0 }}>{p.desc}</p>
               </Link>
@@ -1136,7 +2002,7 @@ export default function Landing() {
       {/* ── One action ── */}
       <section data-wp="3" style={{ padding: "0 clamp(20px,5vw,56px) clamp(70px,9vw,110px)", maxWidth: 1120, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.05fr", gap: 60, alignItems: "center" }}>
-          <Reveal style={{}}>
+          <Reveal variant="left" style={{}}>
             <span style={kicker}>The core idea</span>
             <h2 style={{ fontSize: "clamp(32px,4.5vw,46px)", fontWeight: 800, letterSpacing: "-.04em", margin: "16px 0 18px", lineHeight: 1.04 }}>
               One action<br />at a <span style={serifItalic}>time.</span>
@@ -1145,7 +2011,7 @@ export default function Landing() {
               No spreadsheet paralysis. No guessing. PathFinder reads your whole pipeline and surfaces the single highest-impact move — then the next, and the next, until the offer is signed.
             </p>
           </Reveal>
-          <Reveal style={{ position: "relative", border: "1px solid var(--lineStrong)", borderRadius: 18, overflow: "hidden", background: "var(--panelSolid)", boxShadow: "0 30px 70px rgba(56,44,32,.12),var(--rim)" }}>
+          <Reveal variant="right" style={{ position: "relative", border: "1px solid var(--lineStrong)", borderRadius: 18, overflow: "hidden", background: "var(--panelSolid)", boxShadow: "0 30px 70px rgba(56,44,32,.12),var(--rim)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "17px 20px", borderBottom: "1px dashed var(--lineStrong)", background: "var(--accentSoft)" }}>
               <span style={{ display: "flex", width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: 7, background: "var(--accent)" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="#F7F1E4"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
@@ -1154,8 +2020,8 @@ export default function Landing() {
               <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 500, color: "var(--accentText)", background: "var(--accentSoft)", padding: "3px 9px", borderRadius: 6 }}>cv</span>
             </div>
             {ACTIONS.map((a) => (
-              <div key={a.text} style={{ display: "flex", alignItems: "center", gap: 12, padding: "15px 20px", borderBottom: "1px solid var(--line2)" }}>
-                <span style={{ width: 18, height: 18, borderRadius: 6, border: "1.5px solid var(--lineStrong)", flexShrink: 0 }} />
+              <div key={a.text} className="pf-task" style={{ display: "flex", alignItems: "center", gap: 12, padding: "15px 20px", borderBottom: "1px solid var(--line2)" }}>
+                <span data-box style={{ width: 18, height: 18, borderRadius: 6, border: "1.5px solid var(--lineStrong)", flexShrink: 0 }} />
                 <span style={{ flex: 1, fontSize: 13.5, color: "var(--muted)" }}>{a.text}</span>
                 <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 500, color: "var(--faint)", border: "1px solid var(--line)", background: "var(--panel)", padding: "3px 9px", borderRadius: 6 }}>{a.tag}</span>
               </div>
@@ -1170,7 +2036,7 @@ export default function Landing() {
           named testimonials. None of it was real. A product that tells students
           not to embellish their CV cannot embellish its own landing page. */}
       <section data-wp="4" id="results" style={{ padding: "0 clamp(20px,5vw,56px) clamp(70px,9vw,110px)", maxWidth: 1120, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
+        <Reveal style={{ textAlign: "center", marginBottom: 48 }}>
           <span style={kicker}>Honest status</span>
           <h2 style={{ fontSize: "clamp(32px,4.5vw,46px)", fontWeight: 800, letterSpacing: "-.04em", margin: "16px 0 14px" }}>
             No numbers we haven&apos;t <span style={serifItalic}>earned.</span>
@@ -1178,11 +2044,11 @@ export default function Landing() {
           <p style={{ fontSize: 17, color: "var(--muted)", maxWidth: "42rem", margin: "0 auto", lineHeight: 1.6 }}>
             PathFinder is new. Rather than borrow university logos or invent testimonials, here is what it measures for you — and what we will publish once there is real data behind it.
           </p>
-        </div>
+        </Reveal>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
           {TRACKED.map((t) => (
-            <Reveal key={t.title} style={{ border: "1px solid var(--line)", borderRadius: 18, padding: 34, background: "var(--panel)", boxShadow: "var(--rim)" }}>
-              <div style={{ fontFamily: mono, fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)" }}>Tracked</div>
+            <Reveal key={t.title} className="pf-card" style={{ border: "1px solid var(--line)", borderRadius: 18, padding: 34, background: "var(--panel)", boxShadow: "var(--rim)", overflow: "hidden" }}>
+              <div style={{ fontFamily: mono, fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accentText)" }}>Tracked</div>
               <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-.02em", margin: "12px 0 10px" }}>{t.title}</div>
               <div style={{ fontSize: 14.5, color: "var(--muted)", lineHeight: 1.6 }}>{t.note}</div>
             </Reveal>
@@ -1194,17 +2060,23 @@ export default function Landing() {
       <section data-wp="5" style={{ position: "relative", padding: "clamp(84px,11vw,140px) clamp(20px,5vw,40px)", textAlign: "center", borderTop: "1px solid var(--line)", overflow: "hidden" }}>
         <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: "radial-gradient(var(--dot) 1px, transparent 1.6px)", backgroundSize: "9px 9px", WebkitMaskImage: "radial-gradient(ellipse 60% 80% at 50% 100%, #000 8%, transparent 70%)", maskImage: "radial-gradient(ellipse 60% 80% at 50% 100%, #000 8%, transparent 70%)" }} />
         <Reveal style={{ position: "relative", zIndex: 1 }}>
-          <span style={{ fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--faint)" }}>ASSESS → ANALYSE → REPORT → OFFER</span>
+          {/* The one shimmer on the page, and it earns its place: the line
+              names a process, so a gradient travelling along it reads as that
+              process running. Anywhere else it would be decoration. */}
+          <span className="pf-grad" style={{ fontFamily: mono, fontSize: 11, fontWeight: 500, letterSpacing: ".16em", textTransform: "uppercase" }}>ASSESS → ANALYSE → REPORT → OFFER</span>
           <h2 style={{ fontSize: "clamp(38px,6vw,66px)", fontWeight: 800, letterSpacing: "-.045em", margin: "20px auto 18px", maxWidth: "16ch", lineHeight: 1.02 }}>
             Stop guessing your career. Start <span style={serifItalic}>measuring</span> it.
           </h2>
           <p style={{ fontSize: 17, color: "var(--muted)", maxWidth: "32rem", margin: "0 auto 36px", lineHeight: 1.6 }}>
             The assessment takes five minutes and builds your complete career-intelligence profile — readiness, gaps, opportunities, and your highest-leverage next move.
           </p>
-          <Link href="/start" style={{ display: "inline-flex", alignItems: "center", gap: 9, height: 56, padding: "0 32px", borderRadius: 15, background: "var(--fg)", color: "var(--bg)", fontSize: 16, fontWeight: 600, textDecoration: "none", boxShadow: "0 12px 34px rgba(56,44,32,.2),var(--rim)", transition: "transform .22s var(--ease)" }}>
+          <Link href="/start" className="pf-cta" style={{ display: "inline-flex", alignItems: "center", gap: 9, height: 56, padding: "0 32px", borderRadius: 15, background: "var(--fg)", color: "var(--bg)", fontSize: 16, fontWeight: 600, textDecoration: "none", boxShadow: "0 12px 34px rgba(56,44,32,.2),var(--rim)" }}>
             Get your baseline →
           </Link>
-          <p style={{ fontSize: 12.5, color: "var(--faint)", marginTop: 18 }}>Free during early access · No credit card</p>
+          {/* --muted, not --faint: this line carries the pricing terms and sits on
+              bare terrain with no panel under it, where --faint measured 3.86:1
+              even after being darkened to clear the floor on flat paper. */}
+          <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 18 }}>Free during early access · No credit card</p>
         </Reveal>
       </section>
 
