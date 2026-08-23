@@ -400,7 +400,7 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
      * resolve for the front of the scene to read like the back.
      */
     const OCTAVES = 7;
-    const PERSISTENCE = 0.62;
+    const PERSISTENCE = 0.72;
 
     const heightField = (u: number, v: number) => {
       let sum = 0, amp = 1, weight = 1;
