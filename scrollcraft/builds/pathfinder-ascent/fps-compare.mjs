@@ -1,0 +1,11 @@
+import fs from "node:fs"; import path from "node:path"; import { createRequire } from "node:module";
+const { chromium } = createRequire(path.join(process.cwd(), "package.json"))("playwright-core");
+const CHROME = ["C:/Program Files/Google/Chrome/Application/chrome.exe","/usr/bin/google-chrome"].find(p=>fs.existsSync(p));
+const b = await chromium.launch({ executablePath: CHROME, headless: true });
+const p = await b.newPage({ viewport:{width:1440,height:900} });
+await p.goto(process.argv[2]||"http://localhost:3000",{waitUntil:"domcontentloaded"});
+await p.waitForSelector("canvas"); await p.waitForTimeout(1500);
+const fps = async (y) => { await p.evaluate(v=>scrollTo(0,v),y); await p.waitForTimeout(900);
+  return p.evaluate(async()=>{let f=0;const t0=performance.now();await new Promise(r=>{const c=()=>{f++;if(performance.now()-t0<1500)requestAnimationFrame(c);else r();};requestAnimationFrame(c);});return Math.round(f/1.5);}); };
+for (const y of [0,1500,3000,3900,4400,5023]) console.log(`  y=${String(y).padStart(4)}  ${await fps(y)} fps`);
+await b.close();

@@ -113,8 +113,46 @@ const HEADER_H = 68;
  * section does.
  */
 
-/** How much of the route is visible ahead of the camera at once. */
+/** How much of the route is visible ahead of the camera at once, walking. */
 const VIEW = 3;
+
+/* ── The arrival ──────────────────────────────────────────────────────
+ * At the last station the camera stops walking and the country opens out.
+ *
+ * The obvious way to show a reader how far they have come is to look back, and
+ * it cannot be done here: project() clamps depth to [0,1] and the perspective
+ * term 1/(1+PERSP·d) diverges at d = -1/PERSP, so anything more than about half
+ * a world unit behind the camera has no projection at all.
+ *
+ * Receding instead of turning gets the same picture with the geometry the
+ * renderer already has. The camera draws back down the route toward the
+ * trailhead while the visible depth grows from three units to the whole
+ * journey, so the corridor the reader has been walking in opens into the range
+ * it was always cut through, and the entire route lies ahead of them — which is
+ * the one direction this projection can draw. Nothing new is rendered: it is
+ * the same height field at a distance it has never been seen from.
+ */
+
+/** Visible depth at full arrival. Slightly past ROUTE_LENGTH so the far end
+ *  sits inside the frame rather than exactly on the horizon. */
+const VIEW_FAR = 6.6;
+
+/** Where the camera retreats to. Not 0: standing exactly on the trailhead puts
+ *  the near ridges in the reader's face, and the route wants a little run-up
+ *  in front of it to read as a path rather than as a line starting at the
+ *  bottom of the screen. */
+const ARRIVE_V = 5.4;
+
+/** Pitch at full arrival. Above the walking stations so the range reads as
+ *  landscape rather than as a wall, below the station-2 plan view so it is
+ *  still a place being looked at and not a diagram. */
+const ARRIVE_PITCH = 0.5;
+
+/** How far either side of the route the arrival sweep reaches, in world units.
+ *  Nodes spawn across +/-0.7, so this lights roughly the inner third and fades
+ *  over the outer quarter of that. Lighting the full width put 520 markers on
+ *  screen at once and the ending read as busy instead of dense. */
+const SWEEP_REACH = 0.24;
 
 /** Perspective strength. Screen position and scale both go as 1/(1+PERSP·d),
  *  so the far end of the valley compresses toward a vanishing point instead of
@@ -162,8 +200,25 @@ const STATIONS: { v: number; pitch: number }[] = [
   { v: 9.9, pitch: 0.08 }, // 5 CTA — a 0.3 crawl against 2.4 everywhere else, so
                            //   the stretch across "no numbers we haven't earned"
                            //   is the one that doesn't perform.
-  { v: 12.6, pitch: 0.14 }, // 6 footer — point B
+  { v: 12.6, pitch: 0.86 }, // 6 arrival — point B, and the summit turn. Nearly
+                           //   straight down, which is the camera a plan view
+                           //   wants, and higher than the station-2 climb on
+                           //   purpose: that one shows the structure ahead,
+                           //   this one shows the route behind. Measured at 23
+                           //   fps parked here against 15-21 across the rest of
+                           //   the page — the arrival is cheaper than mid-page,
+                           //   because most of the frame is a cached blit over
+                           //   a veil rather than live terrain.
 ];
+
+
+/* The footer deliberately carries no `data-wp`. ScrollTrigger ends the camera
+   at the LAST anchor's document top, and the footer's top sits past the maximum
+   scroll — it can never reach the top of the viewport — so while it was the
+   final anchor the camera spent the page's longest leg approaching a station it
+   could never arrive at. With the arrival section last, the camera reaches
+   station 6 exactly as that section tops out, and the remaining scroll shows
+   the footer with the view held. Arriving is the point of a journey page. */
 
 /** Total distance travelled, for spacing the waypoints across the journey. */
 const ROUTE_LENGTH = STATIONS[STATIONS.length - 1].v;
@@ -666,6 +721,34 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
     /* Pitch blends two projections: eye level (strong squeeze, shallow band)
        and plan view (near-orthographic, full frame). Relief is a fraction of
        the band, so peaks can never out-climb the horizon they belong to. */
+    /* Visible depth for THIS frame. A mutable closure value rather than a
+       parameter threaded through project, rowGeom and every drawing loop:
+       every one of them already reads the module constant, and the frame is
+       the only thing that ever changes it. draw() sets it once at the top. */
+    let viewNow = VIEW;
+
+    /* Rows scale with visible depth. The row count is a SAMPLING RATE, not a
+       constant: 62 rows over three world units is a row every 0.048 units, and
+       holding that count while the arrival opens the view out stretched the
+       same 62 rows over the whole journey. The height field simply was not
+       sampled often enough to have ridges any more, and the range rendered as
+       flat horizontal bands — the terrain did not get further away, it got
+       destroyed. Scaling keeps the rate fixed.
+       This is also what caps VIEW_FAR. Cost is rows x COLS projections per
+       repaint, and every projection evaluates the five-octave warped field, so
+       depth is paid for linearly: the full 12.6-unit journey needs about 300
+       rows and 45,000 projections, which is fine once parked and far too slow
+       to scrub. 6.6 units is the most that still repaints every frame. */
+    const rowsNow = () => Math.round(ROWS * (viewNow / VIEW));
+
+    /* Arrival progress for THIS frame, hoisted for the same reason as viewNow:
+       paintOverlay is a separate function and the sweep needs it too. */
+    let arrNow = 0;
+
+    /* TEMPORARY — comparing arrival treatments. `?arrival=a` is the country
+       opening out on its own, `b` the ground lighting up on its own, `ab` both
+       (the default), `map` the earlier plan-view resolve. Delete this and the
+       branches it gates once one is chosen. */
     const rowGeom = (d: number, pitch: number) => {
       const horizon = horizonAt(pitch);
       const band = H * 0.95 - horizon;
@@ -709,7 +792,7 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
        you — it reads as a line drawn over the ground rather than one you are
        walking. */
     const project = (u: number, v: number, camV: number, camU: number, pitch: number) => {
-      const d = clamp01((v - camV) / VIEW);
+      const d = clamp01((v - camV) / viewNow);
       const g = rowGeom(d, pitch);
       const h = height(u, v, d, g.floorHalf, g.hMax);
       return {
@@ -747,7 +830,7 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
        nothing connects the nodes now, so none of that structure was read. */
     const NODES: { u: number; v: number }[] = [];
     (() => {
-      const span = ROUTE_LENGTH + VIEW;
+      const span = ROUTE_LENGTH + VIEW_FAR;
       const N = 520;
 
       /* Stratified rather than pure random. Uniform random is correct but it
@@ -967,7 +1050,7 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
        happened to fire instead; with no data-theme set at first draw, all
        three conditions were false and the buffer stayed empty for good. */
     let cacheValid = false;
-    let cacheV = 0, cachePitch = 0, cacheTheme = "";
+    let cacheV = 0, cachePitch = 0, cacheTheme = "", cacheView = VIEW;
 
     /* How much screen height one unit of relief is worth, solved against the
      * ceiling.
@@ -1118,7 +1201,7 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
            of the row spacing so the slope it measures is the local one rather
            than an average across the gap to the next ridge. */
         const du = (2 * half) / COLS;
-        const dv = (VIEW / (ROWS - 1)) * 0.5;
+        const dv = (viewNow / (rowsNow() - 1)) * 0.5;
         const len = Math.hypot(SUN.u, SUN.v, SUN.h);
         const lu = SUN.u / len, lv = SUN.v / len, lh = SUN.h / len;
 
@@ -1202,9 +1285,10 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
 
       /* Back to front. Filling under each ridge occludes the row behind it,
          which is the whole depth cue for the price of one fill. */
-      for (let r = ROWS - 1; r >= 0; r--) {
-        const d = r / (ROWS - 1);
-        const v = camV + d * VIEW;
+      const RN = rowsNow();
+      for (let r = RN - 1; r >= 0; r--) {
+        const d = r / (RN - 1);
+        const v = camV + d * viewNow;
         /* Each row samples a u-window wide enough to span the viewport at its
            own squeeze — far rows are compressed, so they need a wider slice of
            world to reach both edges. */
@@ -1338,17 +1422,41 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
 
     /* Blit the cached terrain, repainting it only when the camera or the theme
        actually moved, then draw the live layer over it. */
-    const draw = (camV: number, pitch: number, el: number) => {
+    /* ── The arrival map ──────────────────────────────────────────────
+     * Relief and route are static geometry, so they are stippled once into an
+     * offscreen canvas and composited each frame at whatever alpha the reveal
+     * has reached. The station marks are drawn live on top, because they land
+    /* Blit the cached terrain, repainting it only when the camera or the theme
+       actually moved, then draw the live layer over it. */
+    const draw = (camVIn: number, pitchIn: number, el: number) => {
+      /* The arrival transform. arrP runs the height of the last section, so
+         the opening-out is scrubbed by the reader rather than played at them,
+         and it is eased: a linear retreat reads as the camera being dragged,
+         where this reads as the walk coming to rest.
+         Everything below is written against camV/pitch and does not know the
+         difference, which is why this shadows the parameters instead of
+         branching through the whole function. */
+      const arr = sm(clamp01(arrP));
+      arrNow = arr;
+      const camV = arr > 0 ? lerp(camVIn, ARRIVE_V, arr) : camVIn;
+      const pitch = arr > 0 ? lerp(pitchIn, ARRIVE_PITCH, arr) : pitchIn;
+      viewNow = arr > 0 ? lerp(VIEW, VIEW_FAR, arr) : VIEW;
       /* Before anything projects: rowGeom and skyline both read these, and the
          overlay pass projects against the same geometry as the cached terrain
          it draws on top of. Setting them here rather than inside paintTerrain
          keeps them correct on the frames where the terrain cache is reused. */
       setRange(camV);
       const theme = document.documentElement.getAttribute("data-theme") || "";
-      if (!cacheValid || Math.abs(camV - cacheV) > 0.0004 || Math.abs(pitch - cachePitch) > 0.0004 || theme !== cacheTheme) {
+      /* cacheView is in the key because the arrival changes visible depth, and
+         depth is baked into every row's projection. Without it the retreat
+         would keep blitting terrain drawn for a three-unit view. In practice
+         camV moves alongside it and would invalidate anyway, but the two are
+         independent inputs and only one of them was being checked. */
+      if (!cacheValid || Math.abs(camV - cacheV) > 0.0004 || Math.abs(pitch - cachePitch) > 0.0004 || Math.abs(viewNow - cacheView) > 0.0004 || theme !== cacheTheme) {
         paintTerrain(camV, pitch);
         cacheV = camV;
         cachePitch = pitch;
+        cacheView = viewNow;
         cacheTheme = theme;
         cacheValid = true;
       }
@@ -1374,23 +1482,61 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
          exists but is only visible while it fires. */
       for (let i = 0; i < NODES.length; i++) {
         const n = NODES[i];
-        if (n.v < camV || n.v > camV + VIEW) continue;
+        if (n.v < camV || n.v > camV + viewNow) continue;
+
+        /* The arrival sweep. Walking, a node is only visible while it happens
+           to be firing, so about a quarter of the ground is alight at any
+           moment and the rest is dark. At the arrival a front runs the length
+           of the route and everything it has passed stays lit, so the country
+           that was a scattering of signals fills in behind it.
+           This is what makes the ending dense rather than loud: nothing gets
+           bigger or faster, there is simply more of it, and it accumulates
+           instead of flashing. The front leads slightly past the route's end so
+           the last nodes have somewhere to arrive from. */
+        /* Gated on distance from the route, not just on the front having
+           passed. Lighting every node the front swept lit the whole country at
+           once: 520 markers across the full +/-0.7 spawn width, which reads as
+           busy rather than as detail, and competes with the terrain it is
+           sitting on. Keeping it near the path means the light gathers along
+           the route the reader actually walked, which is the thing worth
+           pointing at, and leaves the ranges either side to be landscape. */
+        const lateral = Math.abs(n.u - routeU(n.v));
+        const nearRoute = clamp01((SWEEP_REACH - lateral) / (SWEEP_REACH * 0.75));
+        const swept = arrNow > 0 && nearRoute > 0
+          ? clamp01((arrNow * (ROUTE_LENGTH + 2.5) - n.v) / 1.4) * nearRoute
+          : 0;
 
         const period = FLASH_PERIOD_MIN + hash(i, 41) * FLASH_PERIOD_RANGE;
         const cycle = ((el / period) + hash(i, 53)) % 1;
-        if (cycle > FLASH_DUTY) continue;
+        /* A swept node ignores its own cycle: it is lit because the front has
+           reached it, not because its turn came round. */
+        if (cycle > FLASH_DUTY && swept <= 0) continue;
 
         const p = project(n.u, n.v, camV, camU, pitch);
-        if (p.x < -20 || p.x > W + 20 || p.d > PIN_MAX_DEPTH) continue;
+        /* The depth cull opens up during the arrival. PIN_MAX_DEPTH is set for
+           walking, where anything past it is a few pixels of noise; once the
+           view has expanded to the whole journey that same limit would cut the
+           sweep off six route units out and light only the near third of a
+           country the reader can plainly see all of. */
+        const cull = PIN_MAX_DEPTH + arrNow * 0.46;
+        if (p.x < -20 || p.x > W + 20 || p.d > cull) continue;
 
         /* Sine envelope over the lit window: swells and fades rather than
            switching on, which would read as a blink at this size. */
-        const env = Math.sin((cycle / FLASH_DUTY) * Math.PI);
+        /* Envelope: the node's own swell while walking, held up to a steady
+           value once the front has passed it. Math.max rather than a branch,
+           so a node already mid-flash when the front arrives brightens into
+           the sweep instead of stepping down to meet it. */
+        const own = cycle <= FLASH_DUTY ? Math.sin((cycle / FLASH_DUTY) * Math.PI) : 0;
+        const env = Math.max(own, swept * 0.85);
         const near = 1 - p.d;
         /* Bigger than before: with the far field culled, the survivors can
            carry the shape instead of hedging toward a dot. */
         const r = (2.0 + near * 2.6) * (0.62 + env * 0.6);
-        ctx.globalAlpha = env * (0.45 + near * 0.5) * clamp01((PIN_MAX_DEPTH - p.d) / PIN_FADE);
+        /* Fade against the cull actually in force, not the walking one —
+           otherwise every node past 0.42 comes out at zero alpha and the
+           widened cull above buys nothing. */
+        ctx.globalAlpha = env * (0.45 + near * 0.5) * clamp01((cull - p.d) / PIN_FADE);
 
         /* Map pin rather than a dot: round head, tip planted at the node's
            position on the ground, so it reads as marking a place rather than
@@ -1417,7 +1563,7 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
 
       ctx.beginPath();
       for (let s = 0; s <= 200; s++) {
-        const v = camV + (s / 200) * VIEW;
+        const v = camV + (s / 200) * viewNow;
         const rp = project(routeU(v), v, camV, camU, pitch);
         if (s === 0) ctx.moveTo(rp.x, rp.y - 3); else ctx.lineTo(rp.x, rp.y - 3);
       }
@@ -1439,7 +1585,7 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
          the subject, and a fast pulse on it would fidget. */
       const ROUTE_STEPS = 200;
       const routePt = (t: number) => {
-        const v = camV + clamp01(t) * VIEW;
+        const v = camV + clamp01(t) * viewNow;
         const p = project(routeU(v), v, camV, camU, pitch);
         return { x: p.x, y: p.y - 3 };
       };
@@ -1561,6 +1707,45 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
       });
     };
 
+    /* ── The arrival's own playhead ─────────────────────────────────────
+     * The map reveal cannot be driven off camV. Camera legs are proportional
+     * to the scroll each section occupies, and the arrival section is the last
+     * anchor, so the camera finishes its travel the moment that section tops
+     * out — everything after is a hold at v=12.6. Tying the reveal to camV
+     * would therefore land the whole ending during the approach and leave the
+     * section itself with nothing happening in it.
+     *
+     * A hold is the right camera behaviour: the brief asks for the end to be
+     * calmer and denser at once, which means motion stopping while detail
+     * arrives. So the detail gets its own playhead, running the full height of
+     * the arrival section. That makes the reveal the longest single span on
+     * the page, which is what a peak is.
+     *
+     * A separate ScrollTrigger rather than a rect read in the rAF loop, for
+     * the reason the camera uses one: a getBoundingClientRect in a frame that
+     * has already written to the DOM is a forced synchronous layout, measured
+     * on this page at 8.86ms against 0.033ms clean.
+     */
+    let arrP = 0;
+    let arrST: ScrollTrigger | null = null;
+    const initArrival = () => {
+      const el = root.querySelector<HTMLElement>("[data-wp='6']");
+      if (!el) return;
+      arrST?.kill();
+      arrST = ScrollTrigger.create({
+        trigger: el,
+        /* Starts while the section is still rising into view, so the world
+           begins receding before the reader gets there and the resolve reads
+           as an approach rather than a switch being thrown. Ends at the
+           bottom, which is past the point the camera stopped — the last of the
+           marks land with nothing else on the page moving at all. */
+        start: "top 70%",
+        end: "bottom bottom",
+        scrub: 0.4,
+        onUpdate: (self) => { arrP = self.progress; },
+      });
+    };
+
     /* Reduced motion is handled by freezing time, not by pinning the camera:
        scrolling is the reader's own action, so the scene should still answer
        it. Pinning here also parked them at STATIONS[2] — the plan view, pitch
@@ -1647,6 +1832,7 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
          changing, which it cannot know about. */
       if (camST) ScrollTrigger.refresh();
       else initCamera();
+      if (!arrST) initArrival();
       const cam = camera();
       draw(cam.v, cam.pitch, 0);
     };
@@ -1682,6 +1868,7 @@ function useTerrainRoute(canvasRef: React.RefObject<HTMLCanvasElement | null>, r
       mo.disconnect();
       cleanupReduced?.();
       camST?.kill();
+      arrST?.kill();
       camTl.kill();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2193,13 +2380,142 @@ export default function Landing() {
         </Reveal>
       </section>
 
+      {/* ── Arrival ──
+          Point B, and the page's peak. The camera has travelled 2.7 route
+          units to get here, the longest leg on the page, and before this
+          section existed it spent that entire leg arriving at a bar of links
+          it could never actually reach: the footer's document top sits past
+          the maximum scroll, so the final station was approached and never
+          made. A journey page whose destination is unreachable is the defect,
+          not a detail.
+
+          Full viewport height is load-bearing rather than styling. The camera
+          reaches station 6 when this section's top reaches the top of the
+          viewport, which can only happen if what sits below that point is at
+          least a viewport tall. At 108vh it arrives with room to spare.
+
+          No panel and no card: the map is drawn on the canvas behind, and a
+          surface here would occlude the one thing the section exists to show.
+          Copy sits at the edges for the same reason. */}
+      <section
+        data-wp="6"
+        style={{
+          position: "relative",
+          minHeight: "180vh",
+          /* Copy at the TOP, not spread to the edges, and this is structural
+             rather than layout taste. setRange drops the terrain's ceiling to
+             clear the lowest [data-copy-end] currently on screen, so a line
+             parked near the bottom of the viewport squeezes the whole range
+             into the last 15% of the frame — which is exactly what happened
+             here: the arrival rendered as flat bands and read as a broken
+             renderer, when the range had simply been given nowhere to be.
+             Kept high, the ceiling stays near its open value and the country
+             this section exists to show gets the frame. */
+          display: "flex",
+          flexDirection: "column",
+          /* Split, not stacked. Every word used to sit in the top 500px of a
+             1620px section, so after the last line the reader scrolled more
+             than a full viewport of silent terrain and the ending felt drawn
+             out however good the view was. The heading still leads the reveal;
+             the ask now lands at the foot, which is where the world finishes
+             opening. Shortening the section was the obvious alternative and it
+             is the wrong one: at 155vh the reveal span drops to about 1125px,
+             under the 1302px longest leg, and the peak stops being the longest
+             thing on the page. Fill the space rather than remove it. */
+          justifyContent: "space-between",
+          padding: "clamp(48px,7vw,88px) clamp(20px,5vw,56px) clamp(40px,5vw,64px)",
+          textAlign: "center",
+        }}
+      >
+        {/* A scrim exactly where the copy sits, and nothing anywhere else.
+            This section carries no [data-copy-end] on purpose: that attribute
+            drops the terrain's ceiling to clear the lowest protected line on
+            screen, which on a section whose copy block is 320px tall pinned
+            the range into a 250px strip at the foot of the frame. The result
+            was an arrival whose FIRST screen was flat — the reader met the
+            peak as a smear and only saw the country after scrolling past the
+            words describing it.
+            So the range gets the whole frame from the first pixel and the text
+            is lifted off it here instead. Not a full-frame wash: that would
+            grey out the one view the page has been walking toward. */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute", top: 0, left: 0, right: 0, height: "62vh",
+            pointerEvents: "none",
+            /* Solid through the copy block, then released. Measured on the
+               composited frame, the earlier 82%-at-42% ramp left the paragraph
+               at 3.54:1 on paper — under the 4.5:1 floor for body text, and
+               the ramp was already thinning where the words actually sit. */
+            background: "linear-gradient(to bottom, var(--bg) 0%, var(--bg) 46%, color-mix(in srgb, var(--bg) 72%, transparent) 68%, transparent 100%)",
+          }}
+        />
+        {/* Not sticky, however much this wants to be. The landing root carries
+            overflow:hidden, which makes it the nearest scroll container and
+            silently kills position:sticky on everything inside it — the same
+            reason the header is fixed rather than sticky (see HEADER_H). A
+            sticky heading here rendered and then simply scrolled away, so the
+            context is split instead: the heading leads the reveal, and the
+            legend at the foot of the section carries the meaning to the end. */}
+        <Reveal style={{ position: "relative", zIndex: 1 }}>
+          <span style={kicker}>Arrival</span>
+          <h2 style={{ fontSize: "clamp(30px,4.2vw,44px)", fontWeight: 800, letterSpacing: "-.04em", margin: "16px auto 14px", maxWidth: "18ch", lineHeight: 1.06 }}>
+            You just walked <span style={serifItalic}>the whole thing.</span>
+          </h2>
+          {/* --fg at 0.82, the hero's treatment, not --muted. This line sits
+              over terrain rather than over a panel, and --muted measured
+              3.54:1 there against a 4.5:1 requirement at this size. */}
+          <p style={{ fontSize: 16.5, color: "var(--fg)", opacity: 0.82, maxWidth: "38rem", margin: "0 auto", lineHeight: 1.6 }}>
+            Every station you passed, on the route you actually took. This is what PathFinder does with a search: keeps the record, so the next step is never a guess.
+          </p>
+        </Reveal>
+
+        {/* A plain link, not a second button. The one filled CTA on this page
+            is a screen above; putting another here would give the page two
+            endings and no peak. After twelve viewport-heights the quiet ask is
+            the stronger one. */}
+        {/* The landing. Reveal animates on intersection, so this arrives on its
+            own as the reader reaches the foot of the section — which is the
+            frame where the retreat has finished and the country is fully open.
+            Detail arriving after the motion stops is the ending the brief asked
+            for; before this the motion stopped and nothing arrived.
+
+            Its own scrim, mirroring the one at the top: the range now has the
+            whole frame, so a line down here is sitting on lit contour rather
+            than on paper. */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "34vh",
+            pointerEvents: "none",
+            background: "linear-gradient(to top, var(--bg) 0%, color-mix(in srgb, var(--bg) 78%, transparent) 52%, transparent 100%)",
+          }}
+        />
+        <Reveal style={{ position: "relative", zIndex: 1 }}>
+          <p style={{ fontSize: "clamp(19px,2.4vw,26px)", fontWeight: 700, letterSpacing: "-.02em", color: "var(--fg)", margin: "0 0 16px", lineHeight: 1.25 }}>
+            You&apos;ve seen the whole route. <span style={serifItalic}>Now walk yours.</span>
+          </p>
+          <p style={{ fontSize: 15, margin: 0 }}>
+            {/* Deliberately NOT .pf-ghost. That class draws its rule as an
+                ::after pinned to bottom:14px, which is measured for the 54px
+                hero button it was written for; on a 15px inline link the same
+                rule lands across the middle of the words and reads as a
+                strikethrough. It also forces text-decoration:none !important,
+                so a real underline cannot be put back while the class is on. */}
+            <Link href="/start" style={{ color: "var(--fg)", fontWeight: 600, textUnderlineOffset: 5, textDecoration: "underline", textDecorationThickness: 1 }}>
+              Start at the trailhead
+            </Link>
+          </p>
+        </Reveal>
+      </section>
+
       {/* ── Footer ── */}
       {/* Opaque surface, not the page background: the terrain canvas sits at
           z-index -1 behind all in-flow content, so a transparent footer let
           contour lines and the route run straight through the links.
           --panelSolid rather than --panel because --panel is only 4% alpha in
           dark, which would have fixed light mode and left dark unchanged. */}
-      <footer data-wp="6" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, padding: "28px clamp(20px,5vw,56px)", borderTop: "1px solid var(--lineStrong)", background: "var(--panelSolid)" }}>
+      <footer style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, padding: "28px clamp(20px,5vw,56px)", borderTop: "1px solid var(--lineStrong)", background: "var(--panelSolid)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 22, height: 22, borderRadius: 7, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.5"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
