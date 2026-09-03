@@ -18,6 +18,11 @@ const PUBLIC_API_ROUTES = [
   // Intel console is a logged-out surface; this route analyses request-body
   // text only (no user-specific server data).
   '/api/intel/analyze',
+  // Pilot enquiries from /universities. The people this page is for do not
+  // have accounts; requiring one to say "we're interested" is the conversion
+  // path failing in a different way. Writes one row, calls no model, and
+  // carries its own per-IP daily cap on top of the strict per-minute bucket.
+  '/api/pilot-interest',
 ];
 
 function isPublicRoute(pathname: string): boolean {
