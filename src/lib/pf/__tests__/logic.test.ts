@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   toneFor, fitTone,
   readinessFrom,
+  callbackSummary,
   directionReady, directionStatement, directionSpecificity, extractChatPatch,
   targetKeywords, analyzeCvText,
   roleFit, analyzeJobDescription,
@@ -50,13 +51,18 @@ describe('readinessFrom', () => {
   const complete: OnbState = { step: 3, role: 'SWE', industry: 'Fintech', stage: 'Big Tech', cv: 80, projects: 70, outreach: 60, cadence: 80 };
 
   it('counts an unanswered self-assessment as 0, never an invented baseline', () => {
-    // 8.2 + 24 + 22.75 + 0 = 54.95 → 55 (it used to return a flat 74 here)
-    expect(readinessFrom({ ...complete, cadence: null })).toBe(55);
-    expect(readinessFrom({ ...complete, cv: null, projects: null, outreach: null, cadence: null })).toBe(8);
+    // 10 + 24 + 22.75 + 0 = 56.75 → 57 (it used to return a flat 74 here)
+    expect(readinessFrom({ ...complete, cadence: null })).toBe(57);
+    // a complete direction alone earns its 10% share
+    expect(readinessFrom({ ...complete, cv: null, projects: null, outreach: null, cadence: null })).toBe(10);
+  });
+  it('scores a blank form 0 (a fixed 82 used to give it 8)', () => {
+    expect(readinessFrom({ step: 1, role: null, industry: null, stage: null, cv: null, projects: null, outreach: null, cadence: null })).toBe(0);
+    expect(readinessFrom({ step: 1, role: 'SWE', industry: null, stage: null, cv: null, projects: null, outreach: null, cadence: null })).toBe(3);
   });
   it('computes a weighted score once complete', () => {
-    // 82*.1 + 80*.3 + ((70+60)/2)*.35 + 80*.25 = 8.2 + 24 + 22.75 + 20 = 74.95 → 75
-    expect(readinessFrom(complete)).toBe(75);
+    // 100*.1 + 80*.3 + ((70+60)/2)*.35 + 80*.25 = 10 + 24 + 22.75 + 20 = 76.75 → 77
+    expect(readinessFrom(complete)).toBe(77);
   });
 });
 
@@ -292,5 +298,24 @@ describe('composeSharedAttributes', () => {
   it('falls back when there is nothing real to personalise on', () => {
     expect(composeSharedAttributes(null, {}, 'Student targeting internships')).toBe('Student targeting internships');
     expect(composeSharedAttributes(null, { about: '   ' }, 'fallback')).toBe('fallback');
+  });
+});
+
+describe('callbackSummary', () => {
+  it('shows no rate before anything is sent, rather than a projection', () => {
+    expect(callbackSummary(0, 0)).toEqual({ value: '—', note: "Shows once you've sent an application" });
+  });
+  it('is the real share of applications that reached interview', () => {
+    expect(callbackSummary(10, 3)).toEqual({ value: '30%', note: '3 of 10 applications reached an interview' });
+  });
+  it('flags a small sample as early', () => {
+    expect(callbackSummary(2, 1).note).toBe('1 of 2 applications reached an interview · early, small numbers swing');
+    expect(callbackSummary(1, 0)).toEqual({ value: '0%', note: '0 of 1 application reached an interview · early, small numbers swing' });
+  });
+});
+
+describe('trackerDerived funnel', () => {
+  it('draws no Applied bar before anything is applied to', () => {
+    expect(trackerDerived(EMPTY_BOARD, 0).funnel[0]).toMatchObject({ value: 0, pct: '0%' });
   });
 });
