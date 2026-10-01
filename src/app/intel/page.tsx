@@ -22,6 +22,8 @@ const mono = "'JetBrains Mono',monospace";
 export default function IntelPage() {
   const router = useRouter();
   const openJob = usePfStore((s) => s.openJob);
+  const openApp = usePfStore((s) => s.openApp);
+  const board = usePfStore((s) => s.board);
   const profile = useProfile();
   const progress = useProgress();
   const user = useAuthStore((s) => s.user);
@@ -43,7 +45,15 @@ export default function IntelPage() {
         ? "afternoon"
         : "evening";
 
-  const openOpportunity = (company: string) => {
+  // A pipeline row is either a tracker card or a saved job. Tracker cards open the
+  // application drawer on /tracker; only saved jobs have a job drawer to open.
+  const openOpportunity = (company: string, role: string) => {
+    const card = board.flatMap((col) => col.cards).find((c) => c.company === company && c.role === role);
+    if (card) {
+      openApp(card.key);
+      router.push("/tracker");
+      return;
+    }
     openJob(company);
     router.push("/jobs");
   };
@@ -160,10 +170,10 @@ export default function IntelPage() {
           return (
             <div
               key={`${o.company}|${o.role}`}
-              onClick={() => openOpportunity(o.company)}
+              onClick={() => openOpportunity(o.company, o.role)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openOpportunity(o.company); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openOpportunity(o.company, o.role); } }}
               className="pf-hover-row"
               style={{ cursor: "pointer", display: "grid", gridTemplateColumns: "minmax(0,2fr) 96px 150px minmax(0,1.2fr)", gap: 14, alignItems: "center", padding: "13px 24px", borderBottom: "1px solid var(--line2)", transition: "background .16s var(--ease)" }}
             >

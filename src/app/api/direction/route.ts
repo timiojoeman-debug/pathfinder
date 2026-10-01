@@ -136,7 +136,10 @@ export async function POST(req: Request) {
       DirectionResponse,
       "direction",
     );
+    // `source` lets the client tell a model answer from the local fallback below,
+    // which is also a 200: a degraded statement must never be labelled as AI.
     return NextResponse.json({
+      source: "ai",
       statement: aiResult.data.directionStatement,
       specificity: aiResult.data.specificityTier,
       suggestions: aiResult.data.sharpeningSuggestions ?? [],
@@ -146,6 +149,7 @@ export async function POST(req: Request) {
       error: e instanceof Error ? e.message : String(e),
     });
     return NextResponse.json({
+      source: "local",
       statement,
       specificity: level,
       suggestions,

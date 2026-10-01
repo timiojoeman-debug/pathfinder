@@ -80,6 +80,14 @@ describe('deriveProfile — reflects real activity only', () => {
     expect(p.currentPhase).toBe('cv');
   });
 
+  it('shows the AI statement when one was composed, else the local one', () => {
+    const dir = { dirRole: 'Backend', dirIndustry: 'Fintech', dirSize: 'Big Tech', dirGenerated: true };
+    expect(deriveProfile(makeInput(dir)).directionStatement).toMatch(/^Backend internships in fintech/);
+    expect(deriveProfile(makeInput({ ...dir, dirStatementAi: { statement: 'AI words.' } })).directionStatement).toBe('AI words.');
+    // An AI statement never stands in for a direction that isn't set.
+    expect(deriveProfile(makeInput({ dirStatementAi: { statement: 'AI words.' } })).directionStatement).toBeNull();
+  });
+
   it('counts only real logged LeetCode progress', () => {
     // Trees holds 11 problems, so 5 is a real count that passes through
     // unclamped (unlike a value above a small category's size).

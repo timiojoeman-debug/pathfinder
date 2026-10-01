@@ -62,6 +62,7 @@ Follow the TechTalk Four Pillars methodology.
 Your job is to ask follow-up questions to narrow down to a Direction Statement.
 Use the nextQuestion pattern — always end with a specific follow-up question.
 After enough information (typically 3-5 turns), recommend a Direction Statement.
+In extractedPreferences, fill only what the student has actually said. Leave a field empty rather than guessing.
 
 Conversation so far:
 ${conversationHistory}
@@ -79,7 +80,7 @@ Respond ONLY with valid JSON:
   "shouldRepeatAnalysis": false,
   "data": {
     "response": string,
-    "extractedPreferences": { "role": string, "industry": string, "techStack": string[], "location": string },
+    "extractedPreferences": { "role": string, "industry": string, "techStack": string[], "location": string, "companySize": string },
     "readyForStatement": boolean,
     "suggestedStatement": string | null
   }

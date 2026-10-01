@@ -25,6 +25,8 @@ export interface ProfileInput {
   dirSize: string | null;
   dirSetting: string | null;
   dirGenerated: boolean;
+  /** The AI-composed statement, when one exists for the current chips. */
+  dirStatementAi?: { statement: string } | null;
   chat: ChatMsg[];
   cvText: string;
   cvAnalyzed: boolean;
@@ -209,7 +211,7 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
     targetIndustry: s.dirIndustry,
     companySize: s.dirSize,
     workSetting: s.dirSetting,
-    directionStatement: directionSet ? directionStatement(s) : null,
+    directionStatement: directionSet ? (s.dirStatementAi?.statement ?? directionStatement(s)) : null,
     directionSet,
     targetStack: s.dirStack,
 

@@ -8,7 +8,7 @@ import {
   roleFit, analyzeJobDescription, cardWhen,
   buildCoverLetter, followUpMessage,
   trackerDerived,
-  roleFamiliesFor, outreachSubject, buildOutreachTemplate,
+  roleFamiliesFor, targetRoleOptions, mapExplorePreferences, outreachSubject, buildOutreachTemplate,
   jobPassesFit, composeSharedAttributes,
   type OnbState, type DirectionFields,
 } from '../logic';
@@ -346,5 +346,29 @@ describe('callbackSummary', () => {
 describe('trackerDerived funnel', () => {
   it('draws no Applied bar before anything is applied to', () => {
     expect(trackerDerived(EMPTY_BOARD, 0).funnel[0]).toMatchObject({ value: 0, pct: '0%' });
+  });
+});
+
+describe('targetRoleOptions', () => {
+  it('leads with the chosen family and offers more than three distinct titles', () => {
+    const opts = targetRoleOptions('Backend');
+    expect(opts.slice(0, 3).map((o) => o.title)).toEqual(roleFamiliesFor('Backend').map((r) => r.title));
+    expect(opts.length).toBeGreaterThan(3);
+    expect(new Set(opts.map((o) => o.title)).size).toBe(opts.length);
+    expect(opts.slice(3).every((o) => o.relation === 'Other')).toBe(true);
+  });
+});
+
+describe('mapExplorePreferences', () => {
+  it('maps the explore route preferences onto wizard chips, stack and size included', () => {
+    expect(mapExplorePreferences({
+      role: 'Backend Engineer', industry: 'FinTech', companySize: 'early-stage startup', techStack: ['Node.js', 'python', 'Rust'],
+    })).toEqual({ dirRole: 'Backend', dirIndustry: 'Fintech', dirSize: 'Startups 0–50', dirStack: ['Node', 'Python'] });
+  });
+
+  it('leaves a non-engineering role unset instead of forcing it into one', () => {
+    expect(mapExplorePreferences({ role: 'Product Manager' }).dirRole).toBeUndefined();
+    expect(mapExplorePreferences({ role: 'HTML wizard' }).dirRole).toBeUndefined();
+    expect(mapExplorePreferences(undefined)).toEqual({});
   });
 });
