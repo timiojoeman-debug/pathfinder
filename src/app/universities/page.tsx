@@ -111,6 +111,57 @@ const SAMPLE_PHASES = [
   { label: "Interview-prep started", pct: 45, tone: "var(--warn)" },
 ];
 
+/**
+ * The illustrative cohort dashboard.
+ *
+ * Extracted so it can lead the page rather than sit a screen and a half down
+ * it. This is the only concrete thing on the surface — the staff view is what
+ * a careers director is actually evaluating, and everything above it was
+ * claims about that view rather than the view itself. The hero was type on
+ * empty ground; now it opens on the product.
+ *
+ * The 'Illustrative · sample data' badge is load-bearing and stays: CLAUDE.md
+ * forbids invented statistics, and moving this into the hero makes the numbers
+ * MORE prominent, not less, so the labelling matters more here than it did
+ * further down the page.
+ */
+function CohortPreview() {
+  return (
+        <div style={{ border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", overflow: "hidden", boxShadow: "var(--rim)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--line)", background: "var(--panel2)" }}>
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Cohort readiness — CS, Year 2</span>
+            <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--warn)", border: "1px solid color-mix(in srgb,var(--warn) 34%,transparent)", background: "color-mix(in srgb,var(--warn) 10%,transparent)", borderRadius: 6, padding: "3px 9px" }}>Illustrative · sample data</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18, padding: "24px 22px" }}>
+            <div>
+              <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 14 }}>Where the cohort stands</div>
+              {SAMPLE_PHASES.map((s) => (
+                <div key={s.label} style={{ marginBottom: 13 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 13 }}>{s.label}</span>
+                    <span style={{ fontFamily: mono, fontSize: 12, fontWeight: 700, color: s.tone }}>{s.pct}%</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 3, background: "var(--panel3)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${s.pct}%`, borderRadius: 3, background: s.tone }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ border: "1px solid var(--line)", borderRadius: 13, padding: "16px 18px", background: "var(--panel2)" }}>
+                <div style={{ fontFamily: mono, fontSize: 26, fontWeight: 700, letterSpacing: "-.03em", color: "var(--risk)" }}>66%</div>
+                <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>have opened <b style={{ color: "var(--fg)" }}>zero referrals</b> — the biggest lever, untouched.</div>
+              </div>
+              <div style={{ border: "1px solid color-mix(in srgb,var(--accent) 26%,transparent)", borderRadius: 13, padding: "16px 18px", background: "var(--accentSoft)" }}>
+                <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accentText)", marginBottom: 6 }}>Suggested outreach</div>
+                <div style={{ fontSize: 13, lineHeight: 1.55 }}>Nudge the <b>41 students</b> below interview-ready before the autumn deadline.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+  );
+}
+
 export default function UniversitiesPage() {
   // <html data-theme> is kept in sync globally by ThemeController (layout.tsx)
   // plus the no-flash inline script, so this only needs to read the value.
@@ -120,7 +171,10 @@ export default function UniversitiesPage() {
 
   const navLink: CSSProperties = { color: "inherit", textDecoration: "none", padding: "8px 12px", margin: "-8px 0", borderRadius: 9, transition: "color .2s var(--ease), background .2s var(--ease)" };
   const card: CSSProperties = { border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "26px 26px 28px", boxShadow: "var(--rim)", height: "100%" };
-  const sectionPad = "clamp(64px,9vw,110px) clamp(20px,5vw,56px)";
+  /* Tightened from 64-110px. This audience scans; the page was six and a half
+     viewport-heights with most of it empty, so the sections read as further
+     apart than they are related. */
+  const sectionPad = "clamp(48px,6vw,78px) clamp(20px,5vw,56px)";
   const h2: CSSProperties = { fontSize: "clamp(30px,4.4vw,48px)", fontWeight: 800, letterSpacing: "-.035em", margin: "14px 0 14px", textWrap: "balance" as CSSProperties["textWrap"] };
   const lead: CSSProperties = { fontSize: 17, color: "var(--muted)", lineHeight: 1.6, maxWidth: "38rem" };
 
@@ -158,21 +212,35 @@ export default function UniversitiesPage() {
         </div>
       </header>
 
-      {/* ── Hero ── */}
-      <section style={{ padding: "clamp(64px,10vw,120px) clamp(20px,5vw,56px) clamp(40px,6vw,70px)", maxWidth: 980, margin: "0 auto", textAlign: "center" }}>
-        <span style={{ ...kicker, display: "inline-block", marginBottom: 18 }}>For universities &amp; career services</span>
-        <h1 style={{ fontSize: "clamp(38px,6.5vw,74px)", lineHeight: 1.02, letterSpacing: "-.04em", fontWeight: 800, margin: "0 auto 24px", maxWidth: "18ch" }}>
-          Give every student a coach — not just a <span style={serifItalic}>job board.</span>
-        </h1>
-        <p style={{ ...lead, margin: "0 auto 32px", fontSize: "clamp(16px,2vw,20px)" }}>
-          Your team can’t run 1:1 readiness coaching for thousands of students. PathFinder is the AI layer that does — referrals, interviews, CVs — with a staff view of exactly who’s ready and who needs a nudge.
-        </p>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <a href="#how" style={primaryBtn}>See how it works →</a>
+      {/* ── Hero ──
+          Two columns, and the right-hand one is the product. This was centred
+          type on empty ground for the full height of the first screen, which
+          on a page whose entire argument is "look at the staff view" meant the
+          staff view was a screen and a half away and the first impression was
+          a claim. Copy left, the cohort dashboard right: the thing being sold
+          is visible before a single scroll.
+          Left-aligned rather than centred, because the column is now half the
+          width and centred ragged type in a narrow measure reads as a poster,
+          not as an argument someone is meant to follow. */}
+      <section style={{ padding: "clamp(52px,7vw,88px) clamp(20px,5vw,56px) clamp(36px,5vw,60px)", maxWidth: 1240, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(430px,1fr))", gap: "clamp(32px,4vw,56px)", alignItems: "center" }}>
+          <div>
+            <span style={{ ...kicker, display: "inline-block", marginBottom: 18 }}>For universities &amp; career services</span>
+            <h1 style={{ fontSize: "clamp(36px,4.6vw,58px)", lineHeight: 1.04, letterSpacing: "-.04em", fontWeight: 800, margin: "0 0 22px", maxWidth: "16ch" }}>
+              Give every student a coach — not just a <span style={serifItalic}>job board.</span>
+            </h1>
+            <p style={{ ...lead, margin: "0 0 30px", fontSize: "clamp(16px,1.5vw,18.5px)" }}>
+              Your team can’t run 1:1 readiness coaching for thousands of students. PathFinder is the AI layer that does — referrals, interviews, CVs — with a staff view of exactly who’s ready and who needs a nudge.
+            </p>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <a href="#how" style={primaryBtn}>See how it works →</a>
+            </div>
+            <p style={{ fontFamily: mono, fontSize: 11.5, letterSpacing: ".04em", color: "var(--faint)", marginTop: 24 }}>
+              Complements your existing tools · your branding · students never pay
+            </p>
+          </div>
+          <CohortPreview />
         </div>
-        <p style={{ fontFamily: mono, fontSize: 11.5, letterSpacing: ".04em", color: "var(--faint)", marginTop: 26 }}>
-          Complements your existing tools · your branding · students never pay
-        </p>
       </section>
 
       {/* ── Problem ── */}
@@ -210,7 +278,12 @@ export default function UniversitiesPage() {
           <span style={kicker}>For your team</span>
           <h2 style={h2}>1:1 coaching outcomes, at cohort <span style={serifItalic}>scale.</span></h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16 }}>
+        {/* Two columns, not auto-fit. GETS holds four items and auto-fit
+            resolved to three at this width, leaving the fourth alone on a
+            row beside two empty cells — a visible hole in the middle of the
+            section that read as a missing card. Four items want an even
+            grid; the count is the constraint, not the track size. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))", gap: 16, maxWidth: 940, marginInline: "auto" }}>
           {GETS.map((g, i) => (
             <Reveal key={g.t} style={{ animationDelay: `${i * 0.05}s` }}>
               <div style={card}>
@@ -220,44 +293,6 @@ export default function UniversitiesPage() {
             </Reveal>
           ))}
         </div>
-      </section>
-
-      {/* ── Illustrative cohort dashboard ── */}
-      <section style={{ padding: `0 clamp(20px,5vw,56px) ${sectionPad.split(" ")[0]}`, maxWidth: 1140, margin: "0 auto" }}>
-        <Reveal>
-          <div style={{ border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", overflow: "hidden", boxShadow: "var(--rim)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--line)", background: "var(--panel2)" }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Cohort readiness — CS, Year 2</span>
-              <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--warn)", border: "1px solid color-mix(in srgb,var(--warn) 34%,transparent)", background: "color-mix(in srgb,var(--warn) 10%,transparent)", borderRadius: 6, padding: "3px 9px" }}>Illustrative · sample data</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18, padding: "24px 22px" }}>
-              <div>
-                <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 14 }}>Where the cohort stands</div>
-                {SAMPLE_PHASES.map((s) => (
-                  <div key={s.label} style={{ marginBottom: 13 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                      <span style={{ fontSize: 13 }}>{s.label}</span>
-                      <span style={{ fontFamily: mono, fontSize: 12, fontWeight: 700, color: s.tone }}>{s.pct}%</span>
-                    </div>
-                    <div style={{ height: 6, borderRadius: 3, background: "var(--panel3)", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${s.pct}%`, borderRadius: 3, background: s.tone }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ border: "1px solid var(--line)", borderRadius: 13, padding: "16px 18px", background: "var(--panel2)" }}>
-                  <div style={{ fontFamily: mono, fontSize: 26, fontWeight: 700, letterSpacing: "-.03em", color: "var(--risk)" }}>66%</div>
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>have opened <b style={{ color: "var(--fg)" }}>zero referrals</b> — the biggest lever, untouched.</div>
-                </div>
-                <div style={{ border: "1px solid color-mix(in srgb,var(--accent) 26%,transparent)", borderRadius: 13, padding: "16px 18px", background: "var(--accentSoft)" }}>
-                  <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accentText)", marginBottom: 6 }}>Suggested outreach</div>
-                  <div style={{ fontSize: 13, lineHeight: 1.55 }}>Nudge the <b>41 students</b> below interview-ready before the autumn deadline.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Reveal>
       </section>
 
       {/* ── How a pilot works ── */}
