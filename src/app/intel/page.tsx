@@ -169,7 +169,7 @@ export default function IntelPage() {
           const tone = o.fit === null ? "var(--faint)" : fitTone(o.fit);
           return (
             <div
-              key={o.company}
+              key={`${o.company}|${o.role}`}
               onClick={() => openOpportunity(o.company, o.role)}
               role="button"
               tabIndex={0}

@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { getProfile, getProgress, usePfStore, useProfile } from "@/lib/pf/store";
+import { getProfile, getProgress, usePfStore } from "@/lib/pf/store";
 import { useAuthStore } from "@/lib/stores";
 import type { PfPhase } from "@/lib/pf/events";
 
@@ -79,8 +79,16 @@ function postSnapshot(clientState: Record<string, unknown> | null) {
   }).catch(() => { /* local store remains source of truth */ });
 }
 
+/** True when this device has no saved work. Read from storage itself, not the in-memory
+ *  store: the store hydrates after mount, so on first render it looks empty even when it isn't. */
+function localIsEmpty(): boolean {
+  const s = readLocalState();
+  if (!s) return true;
+  const events = Array.isArray(s.events) ? s.events.length : 0;
+  return events === 0 && !s.dirGenerated && !s.cvAnalyzed && !s.onbDone;
+}
+
 export function ProfileSync() {
-  const profile = useProfile();
   const user = useAuthStore((s) => s.user);
   const hydratedFor = useRef<string | null>(null);
 
@@ -88,9 +96,7 @@ export function ProfileSync() {
   useEffect(() => {
     if (!user || hydratedFor.current === user.userId) return;
     hydratedFor.current = user.userId;
-
-    const localEmpty = !profile.directionSet && !profile.cvAnalyzed && profile.events.length === 0;
-    if (!localEmpty) return; // never clobber active local work
+    if (!localIsEmpty()) return; // never clobber active local work
 
     let cancelled = false;
     void fetch("/api/profile")
@@ -98,11 +104,12 @@ export function ProfileSync() {
       .then((json: unknown) => {
         if (cancelled || !json || typeof json !== "object") return;
         const state = (json as { clientState?: Record<string, unknown> | null }).clientState;
-        if (state && Object.keys(state).length) hydrateFrom(state);
+        // Re-check: the student may have started working while the request was in flight.
+        if (state && Object.keys(state).length && localIsEmpty()) hydrateFrom(state);
       })
       .catch(() => { /* stay local-first */ });
     return () => { cancelled = true; };
-  }, [user, profile.directionSet, profile.cvAnalyzed, profile.events.length]);
+  }, [user]);
 
   // ── Sync to server whenever the persisted slice changes ──
   useEffect(() => {
