@@ -137,15 +137,15 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
         transition: "width .3s var(--ease)",
       }}
     >
-      {/* Fixed, not sticky. The aside keeps its width so the flex row still
-          reserves the space, and this column pins to the viewport so the rail
-          follows you down the page. Sticky was the obvious choice and did not
-          work: .pf, body and html all carry overflow-x:hidden to stop phones
-          scrolling sideways, which makes each a scroll container, so the column
-          anchored to a box that never scrolls and rode the page away. Under the
-          mobile drawer .pf-sidebar carries a transform, which becomes the
-          containing block for this element — so it still slides with the
-          drawer rather than pinning to the viewport. */}
+      {/* Fixed to the viewport. The aside keeps its width so the flex row still
+          reserves the space, and this column pins so the rail follows you down
+          the page. (It went fixed while html, body and .pf carried
+          overflow-x:hidden, which made each a scroll container and broke
+          sticky; they now use overflow-x:clip, so sticky would work too, but
+          fixed needs no scroll container at all.) Under the mobile drawer
+          .pf-sidebar carries a transform, which becomes the containing block for
+          this element, so it still slides with the drawer rather than pinning
+          to the viewport. */}
       <div style={{ position: "fixed", top: 0, left: 0, width: collapsed ? 74 : 266, height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width .3s var(--ease)" }}>
       <Link href="/" title="Back to the site" style={{ display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "22px 0 18px" : "22px 22px 18px", justifyContent: collapsed ? "center" : undefined, textDecoration: "none", color: "var(--fg)" }}>
         <BrandMark size={26} wordmark={!collapsed} />
