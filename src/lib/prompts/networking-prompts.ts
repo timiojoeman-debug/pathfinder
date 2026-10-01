@@ -1,4 +1,5 @@
 import { NETWORKING_STRATEGY, COFFEE_CHAT } from "@/lib/methodology";
+import { CONTACT_TYPE_LABEL, canReferYou, type ContactType } from "@/lib/contact-type";
 
 type OutreachParams = {
   studentProfile: string;
@@ -68,12 +69,23 @@ Respond ONLY with valid JSON:
 }`;
 }
 
+/* Who the contact is decides the close. Peers can refer; recruiters and hiring
+   managers cannot, so asking them for a referral is the wrong ask. */
+function contactFraming(t: ContactType): string {
+  return canReferYou(t)
+    ? `CONTACT TYPE: Peer on the team. TRUST-DRIVEN: they are the only kind of contact who can refer the student. Keep the conversation about them and their work; build trust first. Never open with an ask.`
+    : `CONTACT TYPE: ${CONTACT_TYPE_LABEL[t]}. FIT-DRIVEN: they cannot refer the student, so never suggest asking them for a referral. Show fit instead: name the specific role, the student's matching proof, and one clear ask.`;
+}
+
+const NO_REFERRAL_CLOSE = `Close with one clear, fit-driven ask (for example, whether the student's background fits the role, or what the team looks for at this level). closingStrategy.script is that ask, never a referral request.`;
+
 export function buildCoffeeChatPrepPrompt(
   contactName: string,
   contactRole: string,
   contactCompany: string,
   studentProfile: string,
-  coffeeChatsDone: number
+  coffeeChatsDone: number,
+  contactType: ContactType = "peer"
 ): string {
   const { framework, questionBank, experienceLevelCalibration } = COFFEE_CHAT;
   const categories = Object.entries(questionBank)
@@ -96,10 +108,12 @@ EXPERIENCE LEVEL: ${level} (${coffeeChatsDone} chats done) — ${calibration.app
    Actions: ${framework.coreConversation.actions.join("; ")}
 4. Positioning (${framework.positioning.duration}): ${framework.positioning.description}
    Actions: ${framework.positioning.actions.join("; ")}
-5. Closing: ${framework.closing.description}
+5. Closing: ${canReferYou(contactType) ? `${framework.closing.description}
    Direct referral ask: "${framework.closing.referralAsk.direct.script}" (${framework.closing.referralAsk.direct.when})
    Indirect referral ask: "${framework.closing.referralAsk.indirect.script}" (${framework.closing.referralAsk.indirect.when})
-   Guidance: ${framework.closing.referralAsk.guidance}
+   Guidance: ${framework.closing.referralAsk.guidance}` : NO_REFERRAL_CLOSE}
+
+${contactFraming(contactType)}
 
 QUESTION BANK BY CATEGORY:
 ${categories}
@@ -132,7 +146,8 @@ Respond ONLY with valid JSON:
 export function buildFollowUpPrompt(
   contactName: string,
   chatNotes: string,
-  cadenceStep: number
+  cadenceStep: number,
+  contactType: ContactType = "peer"
 ): string {
   const step = COFFEE_CHAT.followUpCadence[cadenceStep - 1];
   if (!step) throw new Error("Invalid cadence step");
@@ -146,6 +161,8 @@ export function buildFollowUpPrompt(
 Timing: ${step.timing}
 Template: ${step.template}
 Rule: ${step.rule}
+
+${contactFraming(contactType)}
 
 Contact: ${contactName}
 Chat notes: ${chatNotes}

@@ -4,6 +4,10 @@
  * One contact, through the whole arc: prep the coffee chat, write the follow-up
  * from what was actually said, then ask for the referral.
  *
+ * Who the contact is changes the arc. Only a peer on the team can refer you, so a
+ * recruiter or hiring manager gets fit-driven prep and no referral step at all:
+ * asking them for one is the wrong ask, not a bolder one.
+ *
  * These are three separate routes but one relationship, so they share the
  * contact fields and the chat notes rather than making a student retype the
  * same person three times. The order is deliberate — each stage unlocks from
@@ -17,7 +21,8 @@ import { FOLLOW_UP_CADENCE } from "@/lib/pf/data";
 import { usePfStore, useProfile } from "@/lib/pf/store";
 import { cvStrengthLines, networkingProfileLine } from "@/lib/pf/ai-context";
 import { useAiTask, type AiEnvelope } from "@/lib/pf/use-ai";
-import { Panel } from "@/components/pf/ui";
+import { Chip, Panel } from "@/components/pf/ui";
+import { CONTACT_TYPES, CONTACT_TYPE_LABEL, canReferYou, type ContactType } from "@/lib/contact-type";
 import { AiCaveat, AiError, AiList, AiSection, AiTag, GenerateButton } from "@/components/pf/ai-panel";
 import { NaturalnessNote, type Naturalness } from "@/components/pf/networking/naturalness-note";
 
@@ -83,6 +88,7 @@ export function ContactWorkspace() {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [company, setCompany] = useState("");
+  const [kind, setKind] = useState<ContactType>("peer");
   const [notes, setNotes] = useState("");
   const [step, setStep] = useState(1);
 
@@ -102,6 +108,7 @@ export function ContactWorkspace() {
   // Step 1 is the thank-you note; the route hard-refuses it without notes.
   const canFollow = contactName.length > 0 && (step > 1 || chatNotes.length > 0);
   const canRefer = contactName.length > 0 && role.trim().length > 0;
+  const referable = canReferYou(kind);
 
   const runPrep = async () => {
     const result = await prep.run({
@@ -110,12 +117,13 @@ export function ContactWorkspace() {
       contactCompany,
       studentProfile: networkingProfileLine(profile),
       coffeeChatsDone,
+      contactType: kind,
     });
     if (result?.data) emit("AiConsulted", "networking", `Prepped a coffee chat with ${contactName}`);
   };
 
   const runFollow = async () => {
-    const result = await follow.run({ contactName, chatNotes, cadenceStep: step });
+    const result = await follow.run({ contactName, chatNotes, cadenceStep: step, contactType: kind });
     if (result?.data?.message) {
       emit("AiConsulted", "networking", `Drafted follow-up step ${step} for ${contactName}`);
     }
@@ -150,6 +158,13 @@ export function ContactWorkspace() {
         <Field value={name} onChange={setName} placeholder="Contact name" />
         <Field value={role} onChange={setRole} placeholder="Their role / the role you want" flex="1 1 200px" />
         <Field value={company} onChange={setCompany} placeholder="Company" />
+      </div>
+
+      <div role="group" aria-label="Who are they?" style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap", marginTop: 12 }}>
+        <span style={{ fontSize: 12, color: "var(--muted)", marginRight: 3 }}>Who are they?</span>
+        {CONTACT_TYPES.map((t) => (
+          <Chip key={t} size="sm" label={CONTACT_TYPE_LABEL[t]} on={kind === t} onClick={() => setKind(t)} />
+        ))}
       </div>
 
       {/* ── 1 · Coffee chat prep ── */}
@@ -294,15 +309,24 @@ export function ContactWorkspace() {
           <span className="pf-mono" style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)", fontFamily: mono }}>
             3 · The referral
           </span>
-          <GenerateButton onClick={runReferral} loading={referral.loading} disabled={!canRefer} loadingLabel="Building…" variant="ghost">
-            {pack ? "Rebuild package" : "Build referral package"}
-          </GenerateButton>
-          {!canRefer && <span style={{ fontSize: 11.5, color: "var(--faint)" }}>Needs the contact name and the role.</span>}
+          {referable && (
+            <GenerateButton onClick={runReferral} loading={referral.loading} disabled={!canRefer} loadingLabel="Building…" variant="ghost">
+              {pack ? "Rebuild package" : "Build referral package"}
+            </GenerateButton>
+          )}
+          {referable && !canRefer && <span style={{ fontSize: 11.5, color: "var(--faint)" }}>Needs the contact name and the role.</span>}
         </div>
+
+        {!referable && (
+          <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.65, margin: "10px 0 0", maxWidth: "58ch" }}>
+            Only people on the team can refer you. Show fit here: the role, your matching proof, one clear ask.
+            For the referral itself, find a peer at {contactCompany || "the company"}.
+          </p>
+        )}
 
         <AiError message={referral.error} needsAuth={referral.needsAuth} />
 
-        {pack?.referralMessage && (
+        {referable && pack?.referralMessage && (
           <div style={{ marginTop: 14 }}>
             <div className="pf-mono" style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 8, fontFamily: mono }}>
               Written for {contactName} to forward{typeof pack.wordCount === "number" ? ` · ${pack.wordCount} words` : ""}

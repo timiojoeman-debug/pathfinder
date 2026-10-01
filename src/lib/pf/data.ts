@@ -36,6 +36,10 @@ export interface BoardCard {
   rejected?: boolean;
   appliedDate?: number;
   remind?: string; // yyyy-mm-dd
+  /** The scheme's opening and closing dates, entered by the student from the
+   *  company's own careers page. Never seeded: an invented deadline is worse than none. */
+  opens?: string; // yyyy-mm-dd
+  deadline?: string; // yyyy-mm-dd
 }
 
 export interface BoardColumn {

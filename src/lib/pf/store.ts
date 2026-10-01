@@ -179,6 +179,7 @@ interface PfState {
   advanceCard: (key: string) => void;
   removeCard: (key: string) => void;
   setRemind: (key: string, value: string) => void;
+  setCardDate: (key: string, field: "opens" | "deadline", value: string) => void;
   setDiag: (key: string, timing: string) => void;
   trackJob: (job: { company: string; role: string; fit: number; tone: string }) => void;
 }
@@ -553,6 +554,13 @@ export const usePfStore = create<PfState>()(
           board: s.board.map((col) => ({
             ...col,
             cards: col.cards.map((c) => (c.key === key ? { ...c, remind: value } : c)),
+          })),
+        })),
+      setCardDate: (key, field, value) =>
+        set((s) => ({
+          board: s.board.map((col) => ({
+            ...col,
+            cards: col.cards.map((c) => (c.key === key ? { ...c, [field]: value || undefined } : c)),
           })),
         })),
       setDiag: (key, timing) => {
