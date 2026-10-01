@@ -16,11 +16,13 @@ import {
 
 /* ── Shared scales ─────────────────────────────────────────────────── */
 
-export function bandFor(v: number): { name: string; range: string } {
-  if (v < 45) return { name: "Early stage", range: "3–6%" };
-  if (v < 65) return { name: "Competitive", range: "8–14%" };
-  if (v < 80) return { name: "Strong", range: "18–28%" };
-  return { name: "Top decile", range: "30%+" };
+/* The bands once carried "typical callback rate" ranges (3–6%, 8–14%, 18–28%, 30%+) shown as a
+   projection. Nothing sourced them, so they're gone; the tracker shows the student's real rate. */
+export function bandFor(v: number): { name: string } {
+  if (v < 45) return { name: "Early stage" };
+  if (v < 65) return { name: "Competitive" };
+  if (v < 80) return { name: "Strong" };
+  return { name: "Top decile" };
 }
 
 /** Tone token for a 0–100 score (thresholds 65 / 45). */
@@ -46,11 +48,13 @@ export interface OnbState {
   cadence: number | null;
 }
 
-/** The self-assessed baseline from the Stage-00 sliders. An unanswered slider counts as 0:
- *  this used to return a flat 74 until all four were set, a readiness nobody had claimed. */
+/** The self-assessed baseline from Stage 00. An unanswered slider counts as 0 (this used to
+ *  return a flat 74 until all four were set), and the 10% direction share is how much of step 1
+ *  (role, industry, stage) is answered. It was a fixed 82, so a blank form scored 8. */
 export function readinessFrom(onb: OnbState): number {
   const cv = onb.cv ?? 0, projects = onb.projects ?? 0, outreach = onb.outreach ?? 0, cadence = onb.cadence ?? 0;
-  return Math.round(82 * 0.1 + cv * 0.3 + ((projects + outreach) / 2) * 0.35 + cadence * 0.25);
+  const direction = ([onb.role, onb.industry, onb.stage].filter(Boolean).length / 3) * 100;
+  return Math.round(direction * 0.1 + cv * 0.3 + ((projects + outreach) / 2) * 0.35 + cadence * 0.25);
 }
 
 /* ── Direction ─────────────────────────────────────────────────────── */
@@ -311,7 +315,8 @@ export function trackerDerived(board: BoardColumn[], netSent: number) {
   ];
   const ivRate = submitted ? interviews / submitted : 0;
   const funnel: FunnelStage[] = [
-    { label: "Applied", value: submitted, pct: "100%", color: "var(--fg)" },
+    // a full bar only when something was applied to: at zero it drew "100%" of nothing
+    { label: "Applied", value: submitted, pct: submitted ? "100%" : "0%", color: "var(--fg)" },
     { label: "Interviews", value: interviews, pct: Math.round(ivRate * 100) + "%", color: "var(--active)" },
     { label: "Offers", value: offers, pct: (submitted ? Math.round((offers / submitted) * 100) : 0) + "%", color: "var(--strong)" },
   ];
@@ -323,6 +328,15 @@ export function trackerDerived(board: BoardColumn[], netSent: number) {
   else { leakLabel = "Pipeline healthy — keep the cadence"; leakHref = "/jobs"; }
 
   return { submitted, interviews, offers, weeklyCount, weeklyGoal, weeklyPct, weeklyTone, weeklyNote, stats, funnel, leakLabel, leakHref };
+}
+
+/** The student's own callback rate: how many sent applications reached an interview. Nothing is
+ *  projected. With nothing sent there is no rate, and a handful of applications is called early. */
+export function callbackSummary(submitted: number, interviews: number): { value: string; note: string } {
+  if (submitted === 0) return { value: "—", note: "Shows once you've sent an application" };
+  const pct = Math.round((interviews / submitted) * 100);
+  const of = `${interviews} of ${submitted} application${submitted === 1 ? "" : "s"} reached an interview`;
+  return { value: pct + "%", note: submitted < 5 ? `${of} · early, small numbers swing` : of };
 }
 
 /** Rejection-pattern insight over the diagnosed timings map. */

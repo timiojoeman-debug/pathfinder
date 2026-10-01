@@ -217,7 +217,6 @@ export default function StartPage() {
               </div>
             </div>
             <div style={{ fontSize: 17, fontWeight: 700 }}>{band.name}</div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 5 }}>Typical interview-callback rate at this level: {band.range}</div>
           </Reveal>
 
           <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 18 }}>

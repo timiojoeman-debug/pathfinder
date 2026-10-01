@@ -9,17 +9,15 @@
 import Link from "next/link";
 import type { DragEvent } from "react";
 import { REJECTION_DIAGNOSIS } from "@/lib/pf/data";
-import { bandFor, formatReminder, rejectionInsight, trackerDerived } from "@/lib/pf/logic";
-import { usePfStore, useProgress } from "@/lib/pf/store";
+import { callbackSummary, formatReminder, rejectionInsight, trackerDerived } from "@/lib/pf/logic";
+import { usePfStore } from "@/lib/pf/store";
 import { PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 
 export default function TrackerPage() {
   const s = usePfStore();
   const d = trackerDerived(s.board, s.netSent);
-  // The evidence-derived readiness, the same number /intel and the sidebar show
-  const readiness = useProgress().overall;
-  const bandRange = bandFor(readiness).range;
+  const callback = callbackSummary(d.submitted, d.interviews);
   const insight = rejectionInsight(s.diags, REJECTION_DIAGNOSIS);
 
   const onCardDragStart = (e: DragEvent, key: string) => {
@@ -48,9 +46,9 @@ export default function TrackerPage() {
           <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>{d.weeklyNote}</div>
         </div>
         <div style={{ border: "1px solid var(--line)", borderRadius: 16, background: "var(--panel)", padding: "20px 24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-          <div className="pf-mono" style={{ fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 6 }}>Projected callback rate</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{bandRange}</div>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>at your current {readiness} readiness</div>
+          <div className="pf-mono" style={{ fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 6 }}>Your callback rate</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>{callback.value}</div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>{callback.note}</div>
         </div>
       </Reveal>
 
