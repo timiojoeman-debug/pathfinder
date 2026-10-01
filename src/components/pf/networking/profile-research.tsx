@@ -74,7 +74,7 @@ export function ProfileResearch({ contact, onContactChange, onResult }: ProfileR
       experience: c.experience.trim() || undefined,
     });
     if (result?.summary) {
-      emit("AiConsulted", "networking", `Researched ${c.name.trim() || "a contact"} before outreach`);
+      emit("AiConsulted", "networking", `Researched ${c.name.trim() || "a contact"} before outreach`, { kind: "profile-research" });
       onResult?.({ contact: c, data: result });
     }
   };

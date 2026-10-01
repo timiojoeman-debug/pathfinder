@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const emit = vi.fn();
+const completeCoffeeChat = vi.fn((c: { contact: string }) => c.contact.trim().length > 0);
 vi.mock("@/lib/pf/store", () => ({
-  usePfStore: (sel: (s: { emit: typeof emit }) => unknown) => sel({ emit }),
-  useProfile: () => ({ events: [] }),
+  usePfStore: (sel: (s: { emit: typeof emit; completeCoffeeChat: typeof completeCoffeeChat }) => unknown) =>
+    sel({ emit, completeCoffeeChat }),
+  useProfile: () => ({ events: [], coffeeChatsDone: 0 }),
 }));
 vi.mock("@/lib/pf/ai-context", () => ({
   networkingProfileLine: () => "A CS student targeting backend internships.",
@@ -33,6 +35,7 @@ let referralTask: Task;
 
 beforeEach(() => {
   emit.mockClear();
+  completeCoffeeChat.mockClear();
   prepTask = aiTask();
   followTask = aiTask();
   referralTask = aiTask();
@@ -56,7 +59,7 @@ describe("ContactWorkspace — coffee chat prep", () => {
     expect(btn).not.toBeDisabled();
     fireEvent.click(btn);
     await waitFor(() => expect(prepTask.run).toHaveBeenCalledWith(expect.objectContaining({ contactName: "Dana", contactCompany: "Stripe" })));
-    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("Dana")));
+    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("Dana"), { kind: "coffee-chat-prep" }));
   });
 });
 
@@ -87,7 +90,7 @@ describe("ContactWorkspace — referral", () => {
     expect(btn).not.toBeDisabled();
     fireEvent.click(btn);
     await waitFor(() => expect(referralTask.run).toHaveBeenCalledWith(expect.objectContaining({ contactName: "Dana", roleName: "Backend Intern", cvStrengths: ["Shipped a Go service"] })));
-    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("referral package")));
+    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("referral package"), { kind: "referral-package" }));
   });
 });
 
@@ -112,5 +115,28 @@ describe("ContactWorkspace — who the contact is", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Peer" }));
     expect(screen.getByRole("button", { name: /build referral package/i })).toBeTruthy();
+  });
+});
+
+describe("ContactWorkspace — shared contact + chat done", () => {
+  it("prefills from the page's shared contact and reports edits back", () => {
+    const onContactChange = vi.fn();
+    render(<ContactWorkspace contact={{ name: "Dana", company: "Stripe" }} onContactChange={onContactChange} />);
+    expect(screen.getByPlaceholderText(/contact name/i)).toHaveValue("Dana");
+    expect(screen.getByPlaceholderText(/^company$/i)).toHaveValue("Stripe");
+    fill(/contact name/i, "Dana Kim");
+    expect(onContactChange).toHaveBeenCalledWith({ name: "Dana Kim" });
+  });
+
+  it("marks a chat done only with a named contact, once per contact", () => {
+    render(<ContactWorkspace />);
+    expect(screen.getByRole("button", { name: /mark chat done/i })).toBeDisabled();
+    fill(/contact name/i, "Dana");
+    fill(/^company$/i, "Stripe");
+    fireEvent.click(screen.getByRole("button", { name: /mark chat done/i }));
+    expect(completeCoffeeChat).toHaveBeenCalledWith({ contact: "Dana", company: "Stripe" });
+    // A double click cannot count one conversation twice.
+    expect(screen.getByRole("button", { name: /chat with dana logged/i })).toBeDisabled();
+    expect(completeCoffeeChat).toHaveBeenCalledTimes(1);
   });
 });
