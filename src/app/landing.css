@@ -76,7 +76,6 @@ em{font-style:italic}
 .band.live{pointer-events:auto}
 .band::before{content:"";position:absolute;inset:-34% -26%;z-index:-1;pointer-events:none;opacity:calc(.35 + .65*var(--k,1));background:radial-gradient(closest-side,rgba(235,226,209,var(--sa,.9)) 0%,rgba(235,226,209,calc(var(--sa,.9)*.78)) 62%,rgba(235,226,209,0) 100%)}
 .band .btn{text-shadow:none}
-.kicker{display:block;color:var(--muted);margin-bottom:18px}
 .h-hero{margin:0;font:400 clamp(3rem,6.4vw,6rem)/.98 var(--serif);letter-spacing:-.012em;max-width:12ch;color:var(--ink)}
 .h-hero em{color:var(--accent-text)}
 .sub-hero{margin:22px 0 0;max-width:34ch;font-size:clamp(1.05rem,1.45vw,1.22rem);color:var(--ink-soft)}

@@ -11,7 +11,7 @@ export const LANDING_HTML = `
     PathFinder
   </a>
   <ul>
-    <li><a href="#route">The route</a></li>
+    <li><a href="#route">The Route</a></li>
     <li><a href="#score">Scoring</a></li>
     <li><a href="#faq">FAQ</a></li>
     <li><a class="btn btn-accent" href="/start">Start your path</a></li>
@@ -29,7 +29,6 @@ export const LANDING_HTML = `
       <canvas class="outline" id="outlineCv" aria-hidden="true"></canvas>
 
       <div class="band b1" style="--sa:.9">
-        <span class="kicker mono">PathFinder · Alt 000</span>
         <h1 class="h-hero">
           <span class="sr">You sent the applications. Nobody wrote back.</span>
           <span aria-hidden="true" class="sharp">You sent the applications. <em>Nobody wrote back.</em></span>
@@ -66,7 +65,6 @@ export const LANDING_HTML = `
     <div class="pstage" id="pstage">
       <img alt="" aria-hidden="true" data-src="/landing/place-1.jpg" width="1920" height="1072">
       <div class="pcap">
-        <span class="kicker mono">PathFinder</span>
         <h1 class="h-hero">You sent the applications. <em>Nobody wrote back.</em></h1>
       </div>
       <img alt="" aria-hidden="true" data-src="/landing/place-2.jpg" width="1920" height="1072">
@@ -102,7 +100,7 @@ export const LANDING_HTML = `
   <section id="route" aria-labelledby="route-h" tabindex="-1">
     <canvas id="routeCv" aria-hidden="true"></canvas>
     <div class="rpanel" id="rpanel" aria-live="polite">
-      <span class="eyebrow mono">The route</span>
+      <span class="eyebrow mono">The Route</span>
       <h2 id="route-h">Six stages. <em>Two of them are steep.</em></h2>
       <p class="line">You never need the whole mountain. Just the next step on it.</p>
     </div>
@@ -168,7 +166,7 @@ export const LANDING_HTML = `
 <footer>
   <a class="brand" href="#top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L2 12l10 10 10-10z" fill="#b0673c"/></svg>PathFinder</a>
   <ul>
-    <li><a href="#route">The route</a></li>
+    <li><a href="#route">The Route</a></li>
     <li><a href="#score">Scoring</a></li>
     <li><a href="#faq">FAQ</a></li>
     <li><a href="/universities">For universities</a></li>
