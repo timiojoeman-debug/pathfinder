@@ -5,7 +5,7 @@ import {
   callbackSummary,
   directionReady, directionStatement, directionSpecificity, extractChatPatch,
   targetKeywords, analyzeCvText,
-  roleFit, analyzeJobDescription,
+  roleFit, analyzeJobDescription, cardWhen,
   buildCoverLetter, followUpMessage,
   trackerDerived,
   roleFamiliesFor, outreachSubject, buildOutreachTemplate,
@@ -132,16 +132,45 @@ describe('analyzeCvText', () => {
 /* ── job-description analysis ─────────────────────────────────────── */
 
 describe('roleFit', () => {
-  it('penalises senior / high-YOE postings', () => {
-    const fit = roleFit('Senior engineer, 5+ years required', 74, '', []);
-    expect(fit).toBeLessThan(74);
+  it('is null with no CV or a posting that names no tech', () => {
+    expect(roleFit('React and TypeScript role', '')).toBeNull();
+    expect(roleFit('A great team to work with', 'react typescript')).toBeNull();
   });
-  it('rewards keyword overlap with CV / target stack', () => {
-    const fit = roleFit('React and TypeScript role', 70, 'react typescript', ['React', 'TypeScript']);
-    expect(fit).toBeGreaterThan(70);
+  it('scores the share of the posting tech the CV evidences, ignoring self-ratings', () => {
+    expect(roleFit('React and TypeScript role', 'react typescript')).toBe(95);
+    expect(roleFit('React and TypeScript role', 'react only')).toBe(50);
   });
-  it('clamps to the 20–95 range', () => {
-    expect(roleFit('senior staff phd 9+ years', 30, '', [])).toBeGreaterThanOrEqual(20);
+  it('penalises senior / high-YOE postings and stays in range', () => {
+    expect(roleFit('Senior React engineer, 5+ years', 'react')).toBeLessThan(95);
+    expect(roleFit('senior staff phd 9+ years Go', 'python')).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe('cardWhen', () => {
+  const day = 864e5;
+  it('ages a "today" stamp instead of saying today forever', () => {
+    expect(cardWhen({ when: 'today', movedAt: 1000 * day }, 1000 * day + 3600e3)).toBe('today');
+    expect(cardWhen({ when: 'today', movedAt: 1000 * day }, 1003 * day)).toBe('3d ago');
+    expect(cardWhen({ when: 'today', appliedDate: 1000 * day }, 1021 * day)).toBe('3w ago');
+  });
+  it('leaves other labels alone', () => {
+    expect(cardWhen({ when: 'prep now', movedAt: 1 }, 1e12)).toBe('prep now');
+  });
+});
+
+describe('trackerDerived callbacks', () => {
+  it('keeps a callback after the card moves to Rejected', () => {
+    const board = EMPTY_BOARD.map((c) => ({ ...c, cards: [] as BoardCard[] }));
+    board.find((c) => c.id === 'rejected')!.cards.push({ key: 'a', company: 'A', role: 'R', tag: '', tone: '', when: 'today', note: '', reachedInterview: true });
+    board.find((c) => c.id === 'applied')!.cards.push({ key: 'b', company: 'B', role: 'R', tag: '', tone: '', when: 'today', note: '' });
+    const d = trackerDerived(board, 0);
+    expect(d.submitted).toBe(2);
+    expect(d.interviews).toBe(1);
+  });
+  it('does not count legacy "2d ago" labels as this week', () => {
+    const board = EMPTY_BOARD.map((c) => ({ ...c, cards: [] as BoardCard[] }));
+    board.find((c) => c.id === 'applied')!.cards.push({ key: 'a', company: 'A', role: 'R', tag: '', tone: '', when: '2d ago', note: '' });
+    expect(trackerDerived(board, 0).weeklyCount).toBe(0);
   });
 });
 

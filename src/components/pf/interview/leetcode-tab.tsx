@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The LeetCode practice list — 18 categories, 100 real problems.
+ * The LeetCode practice list: the Blind 75, in 18 categories.
  *
  * This replaced a counter-per-pattern UI built on five invented categories.
  * Because the problems are now real, progress is tracked per problem rather

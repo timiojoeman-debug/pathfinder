@@ -27,14 +27,16 @@ function clamp(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-/** Direction: statement drafted = done, otherwise scaled by fields chosen. */
+/** Direction: statement drafted = done, otherwise scaled by fields chosen.
+ *  The stack bonus needs a stack the student picked: `targetKeywords` falls back
+ *  to defaults, so reading it here gave every student the +10 for free. */
 function directionPct(p: CareerProfile): number {
   if (p.directionSet) {
-    const bonus = [p.workSetting, p.targetKeywords.length >= 3].filter(Boolean).length * 0;
-    return clamp(80 + (p.workSetting ? 10 : 0) + (p.targetKeywords.length >= 3 ? 10 : 0) + bonus);
+    return clamp(80 + (p.workSetting ? 10 : 0) + (p.targetStack.length >= 3 ? 10 : 0));
   }
   const chosen = [p.targetRole, p.targetIndustry, p.companySize].filter(Boolean).length;
-  return clamp((chosen / 3) * 60);
+  // Chips alone (often pre-filled by onboarding) stay under half: the statement is the work.
+  return clamp((chosen / 3) * 40);
 }
 
 /** CV: ATS score is the completion once analyzed; 0 before. */
@@ -52,12 +54,14 @@ function projectsPct(p: CareerProfile): number {
   return clamp(base + covered * 40);
 }
 
-/** Networking: outreach volume toward a ~15-message target + warm paths. */
+/** Networking: outreach volume toward a ~15-message target, companies reached, and the
+ *  conversations that actually happened (the step that turns outreach into referrals). */
 function networkingPct(p: CareerProfile): number {
   const NET_TARGET = 15;
-  const volume = Math.min(1, p.outreachSent / NET_TARGET) * 80;
+  const volume = Math.min(1, p.outreachSent / NET_TARGET) * 60;
   const warm = Math.min(1, p.contactedCompanies.length / 3) * 20;
-  return clamp(volume + warm);
+  const chats = Math.min(1, p.coffeeChatsDone / 2) * 20;
+  return clamp(volume + warm + chats);
 }
 
 /** Interview readiness: LeetCode coverage blended with reflections logged. */

@@ -12,7 +12,7 @@ import type { CareerProfile } from '../profile';
 function makeProfile(overrides: Partial<CareerProfile> = {}): CareerProfile {
   return {
     targetRole: null, targetIndustry: null, companySize: null, workSetting: null,
-    directionStatement: null, directionSet: false,
+    directionStatement: null, directionSet: false, targetStack: [], coffeeChatsDone: 0,
     currentSkills: [], missingSkills: [], targetKeywords: [],
     cvAnalyzed: false, cvHasContent: false, atsScore: null, atsHistory: [], atsDelta: null,
     projectsGenerated: false,

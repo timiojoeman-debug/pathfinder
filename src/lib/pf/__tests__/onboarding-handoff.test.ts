@@ -70,15 +70,19 @@ describe('onboarding → Career-OS handoff', () => {
     expect(s.dirSize).toBe('Startups 0–50');
   });
 
-  it('makes the dashboard report a real direction instead of "not set"', () => {
+  it('carries the target into Direction without marking it done', () => {
     completeOnboarding();
     const profile = deriveProfile(profileInput());
-    expect(profile.directionSet).toBe(true);
+    // The chips are pre-filled, so Direction has started, but nothing counts as a
+    // direction until the student composes the statement.
     expect(profile.targetRole).toBe('Full-Stack SWE');
-    expect(profile.directionStatement).toBeTruthy();
-
+    expect(profile.directionSet).toBe(false);
     const direction = computeProgress(profile).phases.find((p) => p.phase === 'direction');
     expect(direction!.pct).toBeGreaterThan(0);
+    expect(direction!.pct).toBeLessThan(50);
+
+    usePfStore.getState().generateDirection();
+    expect(deriveProfile(profileInput()).directionSet).toBe(true);
   });
 
   it('logs the baseline so the timeline and AI memory start non-empty', () => {

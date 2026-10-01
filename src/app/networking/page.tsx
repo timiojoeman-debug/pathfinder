@@ -285,8 +285,10 @@ export default function NetworkingPage() {
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: "1px solid var(--line2)", paddingTop: 14 }}>
               <button
-                onClick={() => s.generateOutreach(contact.company)}
-                style={{ cursor: "pointer", height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+                onClick={() => s.generateOutreach({ name: contact.name, company: contact.company, message: (aiMsg ? aiMsg.paras : templateParas).join(" ") })}
+                disabled={!contact.name.trim()}
+                title={contact.name.trim() ? undefined : "Add who you're writing to first"}
+                style={{ cursor: contact.name.trim() ? "pointer" : "default", height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: contact.name.trim() ? "var(--accent)" : "var(--panel3)", color: contact.name.trim() ? "#F7F1E4" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
               >
                 Mark as sent &amp; log it →
               </button>
