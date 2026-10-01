@@ -12,7 +12,7 @@ const ROUTE_X = (z) => 3.2 * Math.sin(z * 0.13) + 1.6 * Math.sin(z * 0.31 + 1.1)
 const SUMMIT_Z = 52, SUMMIT_X = ROUTE_X(SUMMIT_Z), SUMMIT_H = 25, SUMMIT_R = 12;
 /* one stop per click: the trailhead, then the six stages; the last is the summit */
 const STOPS_Z = [0, 8, 16, 24, 33, 42, SUMMIT_Z];
-const X0 = -42, X1 = 42, Z0 = -16, Z1 = SUMMIT_Z + 22, STEP = 1;
+const X0 = -42, X1 = 42, Z0 = -16, Z1 = SUMMIT_Z + 22;
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -71,14 +71,24 @@ function create(cv, root, opts = {}) {
   let W = 0, H = 0, raf = 0, last = 0;
   let hole = null;   // the stop text's box, kept clear of lines
 
-  // world grid, computed once
-  const NX = Math.round((X1 - X0) / STEP) + 1, NZ = Math.round((Z1 - Z0) / STEP) + 1;
-  const GX = new Float32Array(NX * NZ), GY = new Float32Array(NX * NZ), GZ = new Float32Array(NX * NZ);
-  for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
-    const k = j * NX + i, x = X0 + i * STEP, z = Z0 + j * STEP;
-    GX[k] = x; GZ[k] = z; GY[k] = heightAt(x, z);
+  /* Phones get a lighter route: half the grid lines each way (a quarter of the cells, still a
+     mesh at that size), a 1.5x canvas instead of 2x, and no redraw while nothing moves. */
+  const isPhone = () => W > 0 && W <= 720;
+
+  // the world grid. Built off the critical path (idle time, or the first time the route is
+  // started), not on page load, so it doesn't freeze the page as it opens.
+  let NX = 0, NZ = 0, gridStep = 0, GX, GY, GZ, SX, SY, SD;
+  function buildGrid(step) {
+    NX = Math.round((X1 - X0) / step) + 1; NZ = Math.round((Z1 - Z0) / step) + 1;
+    GX = new Float32Array(NX * NZ); GY = new Float32Array(NX * NZ); GZ = new Float32Array(NX * NZ);
+    for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
+      const k = j * NX + i, x = X0 + i * step, z = Z0 + j * step;
+      GX[k] = x; GZ[k] = z; GY[k] = heightAt(x, z);
+    }
+    SX = new Float32Array(NX * NZ); SY = new Float32Array(NX * NZ); SD = new Float32Array(NX * NZ);
+    gridStep = step; cacheKey = '';
   }
-  const SX = new Float32Array(NX * NZ), SY = new Float32Array(NX * NZ), SD = new Float32Array(NX * NZ);
+  const wantStep = () => (isPhone() ? 2 : 1);
 
   let view = null;   // { C, f, r, u, F, cy }
   function setView(pos, tgt, roll = 0) {
@@ -103,7 +113,13 @@ function create(cv, root, opts = {}) {
 
   const terrainCv = document.createElement('canvas');
   const tctx = terrainCv.getContext('2d');
-  let cacheKey = '';
+  let cacheKey = '', tScale = 1, tDpr = 1;
+  function sizeTerrain() {
+    const k = tDpr * tScale;
+    terrainCv.width = Math.max(1, Math.floor(W * k)); terrainCv.height = Math.max(1, Math.floor(H * k));
+    tctx.setTransform(k, 0, 0, k, 0, 0);
+    cacheKey = '';
+  }
 
   function paintTerrain(arr) {
     const ink = tok('--fg') || '#382c20', paper = tok('--bg') || '#ebe2d1';
@@ -111,7 +127,7 @@ function create(cv, root, opts = {}) {
     for (let k = 0; k < NX * NZ; k++) project(GX[k], GY[k], GZ[k], grid, k);
     tctx.clearRect(0, 0, W, H);
     tctx.lineJoin = 'round';
-    const FAR = lerp(80, 150, arr), FOG_STEPS = 8;
+    const FAR = lerp(80, 150, arr), FOG_STEPS = isPhone() ? 4 : 8;
     // far to near: each band fills paper (hiding what's behind), then is outlined in ink
     // bands run across the axis the camera looks along, painted from the far side
     const { f } = view, alongZ = Math.abs(f[2]) >= Math.abs(f[0]);
@@ -218,6 +234,11 @@ function create(cv, root, opts = {}) {
     const pos = [0, 1, 2].map((i) => lerp(c.pos[i], OVERVIEW.pos[i], e));
     const tgt = [0, 1, 2].map((i) => lerp(c.tgt[i], OVERVIEW.tgt[i], e));
     setView(pos, tgt, roll * (1 - e));
+    if (!gridStep) return;   // not built yet: nothing to draw
+    // on a phone the mesh is painted at a lower resolution while the camera moves (it reads as
+    // motion blur) and sharp again once it lands
+    const scale = tween && isPhone() ? 0.55 : 1;
+    if (scale !== tScale) { tScale = scale; sizeTerrain(); }
     const key = [camZ, arr, swoop, roll, shot.back, shot.up, shot.side, shot.yaw, shot.pitch].map((v) => v.toFixed(3)).join('|') + W + 'x' + H;
     if (key !== cacheKey) { paintTerrain(e); cacheKey = key; }
     ctx.clearRect(0, 0, W, H);
@@ -268,8 +289,7 @@ function create(cv, root, opts = {}) {
   function frame(t) {
     raf = 0;
     if (!running) return;
-    raf = requestAnimationFrame(frame);
-    if (t - last < 33) return;
+    if (t - last < 33) { raf = requestAnimationFrame(frame); return; }
     last = t;
     if (tween) {
       const k = clamp01((t - tween.start) / tween.dur), e = k * k * k * (k * (k * 6 - 15) + 10);
@@ -280,24 +300,31 @@ function create(cv, root, opts = {}) {
       if (k >= 1) { const i = tween.i; tween = null; swoop = 0; roll = 0; opts.onArrive?.(i); }
     }
     draw((t - t0) / 1000);
+    // desktop keeps the light running up the line; a phone stops once the camera settles
+    if (tween || !isPhone()) raf = requestAnimationFrame(frame);
   }
   function kick() { if (running && !raf) raf = requestAnimationFrame(frame); }
-  function start() { if (reduce()) { draw(0); return; } running = true; kick(); }
+  function start() {
+    if (!gridStep) buildGrid(wantStep());
+    if (reduce()) { draw(0); return; }
+    running = true; kick();
+  }
   function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
 
   function resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = cv.clientWidth || 900; H = cv.clientHeight || 500;
+    const dpr = Math.min(window.devicePixelRatio || 1, isPhone() ? 1.5 : 2);
+    if (gridStep && gridStep !== wantStep()) buildGrid(wantStep());   // crossed the phone breakpoint
     cv.width = Math.max(1, Math.floor(W * dpr)); cv.height = Math.max(1, Math.floor(H * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    terrainCv.width = cv.width; terrainCv.height = cv.height;
-    tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    tDpr = dpr; sizeTerrain();
     const cr = cv.getBoundingClientRect(), pr = opts.panel && opts.panel.getBoundingClientRect();
     hole = pr ? { x: pr.left - cr.left, y: pr.top - cr.top, w: pr.width, h: pr.height } : null;
     cacheKey = '';
     draw((performance.now() - t0) / 1000);
   }
   resize();
+  (window.requestIdleCallback || ((f) => setTimeout(f, 300)))(() => { if (!gridStep) { buildGrid(wantStep()); draw((performance.now() - t0) / 1000); } });
   return { goTo, start, stop, resize, markerAt, get index() { return index; }, count: STOPS_Z.length };
 }
 
