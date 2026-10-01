@@ -224,6 +224,13 @@ function create(cv, root, opts = {}) {
     ctx.drawImage(terrainCv, 0, 0, W, H);
     paintOverlay(camZ, e, el);
     eraseHole(ctx);
+    // the section ends in paper, not a cut: the mesh and the line dissolve over the last stretch
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    const fade = ctx.createLinearGradient(0, H * 0.74, 0, H);
+    fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(0.55, 'rgba(0,0,0,.7)'); fade.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = fade; ctx.fillRect(0, H * 0.74, W, H * 0.26);
+    ctx.restore();
   }
   /* where a stage's diamond sits on screen right now, so the stop text can dart to and from it */
   function markerAt(i) {

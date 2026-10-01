@@ -15,7 +15,7 @@
 import Link from "next/link";
 import { type CSSProperties } from "react";
 import { setTheme, useThemeMode } from "@/lib/theme";
-import { Reveal } from "@/components/pf/ui";
+import { BrandMark, Contours, Reveal } from "@/components/pf/ui";
 import { PilotForm } from "@/components/pf/pilot-form";
 
 const mono = "var(--font-mono), 'JetBrains Mono', monospace";
@@ -175,20 +175,19 @@ export default function UniversitiesPage() {
      viewport-heights with most of it empty, so the sections read as further
      apart than they are related. */
   const sectionPad = "clamp(48px,6vw,78px) clamp(20px,5vw,56px)";
-  const h2: CSSProperties = { fontSize: "clamp(30px,4.4vw,48px)", fontWeight: 800, letterSpacing: "-.035em", margin: "14px 0 14px", textWrap: "balance" as CSSProperties["textWrap"] };
+  // Display headings in the landing's serif (see .pf-display in pf-theme.css)
+  const h2: CSSProperties = { fontFamily: "var(--font-serif), Georgia, serif", fontSize: "clamp(36px,5.2vw,58px)", fontWeight: 400, letterSpacing: "-.01em", lineHeight: 1.02, margin: "14px 0 14px", textWrap: "balance" as CSSProperties["textWrap"] };
   const lead: CSSProperties = { fontSize: 17, color: "var(--muted)", lineHeight: 1.6, maxWidth: "38rem" };
 
   const primaryBtn: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 9, height: 52, padding: "0 26px", borderRadius: 13, background: "var(--fg)", color: "var(--bg)", fontSize: 15.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 10px 26px rgba(56,44,32,.16),var(--rim)" };
 
   return (
     <div className="pf pf-landing" style={{ position: "relative", width: "100%", background: "var(--bg)", overflow: "hidden", color: "var(--fg)", paddingTop: HEADER_H }}>
+      <Contours />
       {/* ── Nav ── */}
       <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", height: HEADER_H, padding: "0 clamp(20px,4vw,56px)", borderBottom: "1px solid var(--line)", background: "color-mix(in srgb,var(--bg) 80%,transparent)", backdropFilter: "blur(12px)" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "var(--fg)" }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--rim)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
-          </div>
-          <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.02em" }}>PathFinder</span>
+          <BrandMark size={24} />
           <span className="pf-hide-mobile" style={{ fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accent)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", borderRadius: 6, padding: "3px 7px", marginLeft: 4 }}>For universities</span>
         </Link>
         <nav className="pf-hide-mobile" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 500, color: "var(--muted)" }}>
@@ -226,7 +225,7 @@ export default function UniversitiesPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(430px,1fr))", gap: "clamp(32px,4vw,56px)", alignItems: "center" }}>
           <div>
             <span style={{ ...kicker, display: "inline-block", marginBottom: 18 }}>For universities &amp; career services</span>
-            <h1 style={{ fontSize: "clamp(36px,4.6vw,58px)", lineHeight: 1.04, letterSpacing: "-.04em", fontWeight: 800, margin: "0 0 22px", maxWidth: "16ch" }}>
+            <h1 className="pf-display" style={{ fontSize: "clamp(44px,5.6vw,72px)", margin: "0 0 22px", maxWidth: "16ch" }}>
               Give every student a coach — not just a <span style={serifItalic}>job board.</span>
             </h1>
             <p style={{ ...lead, margin: "0 0 30px", fontSize: "clamp(16px,1.5vw,18.5px)" }}>
@@ -320,7 +319,7 @@ export default function UniversitiesPage() {
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 20, alignItems: "center", border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", padding: "clamp(26px,4vw,40px)", boxShadow: "var(--rim)" }}>
             <div>
               <span style={kicker}>Pricing</span>
-              <h2 style={{ ...h2, fontSize: "clamp(26px,3.4vw,38px)", margin: "12px 0 12px" }}>An institutional licence — <span style={serifItalic}>never</span> a student cost.</h2>
+              <h2 style={{ ...h2, fontSize: "clamp(30px,4vw,46px)", margin: "12px 0 12px" }}>An institutional licence — <span style={serifItalic}>never</span> a student cost.</h2>
               <p style={{ ...lead, fontSize: 15.5 }}>
                 Priced per student or as a site licence, so the cost sits with the institution, not the people you’re trying to help. Pilots are scoped per cohort and the pilot fee credits toward the licence.
               </p>
@@ -341,7 +340,7 @@ export default function UniversitiesPage() {
       <section style={{ padding: sectionPad, maxWidth: 820, margin: "0 auto" }}>
         <div style={{ marginBottom: 34 }}>
           <span style={kicker}>Questions</span>
-          <h2 style={{ ...h2, fontSize: "clamp(26px,3.6vw,40px)" }}>The honest answers.</h2>
+          <h2 style={{ ...h2, fontSize: "clamp(30px,4.2vw,48px)" }}>The honest answers.</h2>
         </div>
         <div style={{ display: "grid", gap: 12 }}>
           {FAQS.map((f) => (
@@ -355,7 +354,7 @@ export default function UniversitiesPage() {
 
       {/* ── Final CTA ── */}
       <section style={{ padding: `${sectionPad.split(" ")[0]} clamp(20px,5vw,56px) clamp(80px,10vw,120px)`, maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
-        <h2 style={{ fontSize: "clamp(30px,5vw,52px)", fontWeight: 800, letterSpacing: "-.035em", margin: "0 0 16px", textWrap: "balance" as CSSProperties["textWrap"] }}>
+        <h2 className="pf-display" style={{ fontSize: "clamp(38px,6vw,64px)", margin: "0 0 16px" }}>
           Bring readiness coaching to <span style={serifItalic}>every</span> student.
         </h2>
         <p style={{ ...lead, margin: "0 auto 30px", textAlign: "center" }}>
@@ -373,10 +372,7 @@ export default function UniversitiesPage() {
       {/* ── Footer ── */}
       <footer style={{ borderTop: "1px solid var(--line)", padding: "28px clamp(20px,5vw,56px)", display: "flex", flexWrap: "wrap", gap: "12px 24px", alignItems: "center", justifyContent: "space-between", fontSize: 13, color: "var(--muted)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
-          </div>
-          <span style={{ fontWeight: 600, color: "var(--fg)" }}>PathFinder</span>
+          <BrandMark size={20} />
           <span style={{ color: "var(--faint)" }}>· for universities</span>
         </div>
         <nav style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
