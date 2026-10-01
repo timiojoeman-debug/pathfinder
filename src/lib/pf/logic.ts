@@ -445,7 +445,8 @@ export function formatReminder(v: string): string {
 
 export function followUpMessage(to: string): string {
   const first = to.trim() ? to.trim().split(" ")[0] : "there";
-  return "Hi " + first + " — quick follow-up on my last note. Since then I shipped the improvement you suggested (repo link below). Still keen on that 15 minutes if your week allows.";
+  // The proof of action is a bracket to fill, not a claim made on the student's behalf.
+  return "Hi " + first + ", a quick follow-up on my last note. [Since then I've: name the one real thing you did, with a link.] Still keen on that 15 minutes if your week allows.";
 }
 
 /* ── Outreach (Phase 04) ───────────────────────────────────────────────

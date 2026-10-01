@@ -47,7 +47,7 @@ describe("ProfileResearch", () => {
     fireEvent.click(screen.getByRole("button", { name: /find the angles/i }));
 
     await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ recipientName: "Dana", about: "Backend engineer." })));
-    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("Dana")));
+    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("Dana"), { kind: "profile-research" }));
   });
 
   it("renders the summary, common ground and questions when a result is present", () => {

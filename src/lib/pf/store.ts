@@ -39,8 +39,27 @@ import { deriveProfile, type CareerProfile, type ProfileInput } from "./profile"
 import { computeProgress, type ProgressReport } from "./progress";
 import { recommend, type Recommendation } from "./recommendations";
 import type { AiInteraction } from "./orchestrator";
+import type { Naturalness } from "@/components/pf/networking/naturalness-note";
 
 export interface ChatMsg { who: "you" | "ai"; text: string }
+
+/** The person the student is currently working on, shared by Research, Outreach
+ *  and the Contact workspace so nobody types the same name twice. */
+export interface NetContact { name: string; company: string; about: string; experience: string }
+/** What `/api/networking/analyze-profile` found in what the student pasted. */
+export interface NetResearch { summary?: string; connectionPoints?: string[]; outreachAngles?: string[]; conversationStarters?: string[] }
+/** The last generated outreach, kept only for the contact + persona it was written for. */
+export interface NetDraft {
+  key: string;
+  paras: string[];
+  followUp: string | null;
+  naturalness: Naturalness | null;
+  questions: string[];
+  topics: string[];
+}
+/** Which contact + persona a draft belongs to. */
+export const netDraftKey = (persona: string, c: { name: string; company: string }) =>
+  [persona, c.name.trim().toLowerCase(), c.company.trim().toLowerCase()].join("|");
 /** A turn in the cross-page mentor conversation. */
 export interface AsstMsg { role: "user" | "assistant"; content: string }
 
@@ -117,6 +136,9 @@ interface PfState {
   netSent: number;
   netGenerated: boolean;
   netFollow: boolean;
+  netContact: NetContact;
+  netResearch: NetResearch | null;
+  netDraft: NetDraft | null;
 
   /* interview */
   ivTab: string;
@@ -171,6 +193,8 @@ interface PfState {
 
   /** Log a sent message. Returns false (and logs nothing) without a real recipient and message. */
   generateOutreach: (contact: { name: string; company?: string; message: string }) => boolean;
+  /** Logs a coffee chat the student actually held. Needs a named contact. */
+  completeCoffeeChat: (chat: { contact: string; company?: string }) => boolean;
 
   /** Mark a problem solved, or un-mark it if it already was. */
   toggleProblem: (slug: string) => void;
@@ -265,6 +289,9 @@ export const usePfStore = create<PfState>()(
       netSent: 0,
       netGenerated: false,
       netFollow: false,
+      netContact: { name: "", company: "", about: "", experience: "" },
+      netResearch: null,
+      netDraft: null,
 
       ivTab: "leetcode",
       ivSolved: {},
@@ -449,6 +476,16 @@ export const usePfStore = create<PfState>()(
         const co = company?.trim();
         set({ netGenerated: true, netSent: s.netSent + 1 });
         get().emit("RecruiterContacted", "networking", `Outreach sent to ${who}${co ? ` at ${co}` : ""} (${s.netPersona})`, co ? { company: co, contact: who, persona: s.netPersona } : { contact: who, persona: s.netPersona });
+        return true;
+      },
+
+      // Feeds `profile.coffeeChatsDone` and so networking progress: a chat with nobody
+      // is not evidence of anything.
+      completeCoffeeChat: ({ contact, company }) => {
+        const who = contact.trim();
+        if (!who) return false;
+        const co = company?.trim();
+        get().emit("CoffeeChatCompleted", "networking", `Coffee chat with ${who}${co ? ` at ${co}` : ""}`, co ? { contact: who, company: co } : { contact: who });
         return true;
       },
 
@@ -646,6 +683,9 @@ export const usePfStore = create<PfState>()(
         netPersona: s.netPersona,
         netSent: s.netSent,
         netGenerated: s.netGenerated,
+        netContact: s.netContact,
+        netResearch: s.netResearch,
+        netDraft: s.netDraft,
         ivTab: s.ivTab,
         ivSolved: s.ivSolved,
         ivProblems: s.ivProblems,

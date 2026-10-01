@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { usePfStore } from "../store";
+import { getProfile, netDraftKey, usePfStore } from "../store";
 import { readinessFrom } from "../logic";
 import { LEETCODE_PROBLEMS } from "../leetcode";
 
@@ -163,6 +163,37 @@ describe("pf store — jobs + networking + interview", () => {
     expect(s().netGenerated).toBe(true);
     expect(s().netSent).toBe(1);
     expect(lastEvent().type).toBe("RecruiterContacted");
+  });
+
+  it("completeCoffeeChat refuses a chat with nobody named", () => {
+    expect(s().completeCoffeeChat({ contact: "   ", company: "Monzo" })).toBe(false);
+    expect(s().events).toHaveLength(0);
+    expect(getProfile().coffeeChatsDone).toBe(0);
+  });
+
+  it("completeCoffeeChat logs a CoffeeChatCompleted with contact + company, feeding coffeeChatsDone", () => {
+    expect(s().completeCoffeeChat({ contact: " Sam Lee ", company: " Monzo " })).toBe(true);
+    expect(lastEvent()).toMatchObject({ type: "CoffeeChatCompleted", phase: "networking", meta: { contact: "Sam Lee", company: "Monzo" } });
+    expect(s().completeCoffeeChat({ contact: "Ana" })).toBe(true);
+    expect(lastEvent().meta).toEqual({ contact: "Ana" });
+    expect(getProfile().coffeeChatsDone).toBe(2);
+  });
+
+  it("persists the working contact, research and last draft, and nothing else new", () => {
+    const contact = { name: "Sam Lee", company: "Monzo", about: "Backend at Monzo", experience: "" };
+    const draft = { key: netDraftKey("Recruiter", contact), paras: ["Hi Sam"], followUp: null, naturalness: null, questions: ["Q?"], topics: [] };
+    s().set({ netContact: contact, netResearch: { summary: "Backend engineer" }, netDraft: draft });
+    const saved = JSON.parse(localStorage.getItem("pathfinder-redesign-v1") ?? "{}").state;
+    expect(saved.netContact).toEqual(contact);
+    expect(saved.netResearch).toEqual({ summary: "Backend engineer" });
+    expect(saved.netDraft).toEqual(draft);
+  });
+
+  it("netDraftKey ties a draft to its contact and persona, ignoring case and whitespace", () => {
+    const a = netDraftKey("Recruiter", { name: "Sam Lee", company: "Monzo" });
+    expect(netDraftKey("Recruiter", { name: " sam lee ", company: "MONZO" })).toBe(a);
+    expect(netDraftKey("Hiring manager", { name: "Sam Lee", company: "Monzo" })).not.toBe(a);
+    expect(netDraftKey("Recruiter", { name: "Ana", company: "Monzo" })).not.toBe(a);
   });
 
   it("saveFeedback needs a company and rating, then records and resets", () => {
