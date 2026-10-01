@@ -21,11 +21,16 @@ import { BrandMark, Contours } from "./ui";
 
 /* ── Nav model ─────────────────────────────────────────────────────── */
 
-type Badge = { kind: "new" } | { kind: "fix" } | { kind: "done" } | { kind: "dot" } | null;
+/* No "new" kind. It existed only as a literal on /start, so the tag announced
+   itself as new forever regardless of whether the user had been there — a
+   permanent badge is decoration wearing a notification's clothes. Every kind
+   left is derived: "dot" marks the phase you are actually on, "done" a phase
+   past 80%, "fix" a real problem to address. */
+type Badge = { kind: "fix" } | { kind: "done" } | { kind: "dot" } | null;
 
 const NAV_OVERVIEW: { href: string; label: string; icon: ReactNode; badge: Badge }[] = [
   {
-    href: "/start", label: "Get started", badge: { kind: "new" },
+    href: "/start", label: "Get started", badge: null,
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M5 21V4l7 3 7-3v13l-7 3-7-3" /></svg>,
   },
   {
@@ -73,9 +78,6 @@ function phaseBadge(phase: PfPhase | undefined, current: PfPhase, pct: number): 
 
 function NavBadge({ badge }: { badge: Badge }) {
   if (!badge) return null;
-  if (badge.kind === "new") {
-    return <span className="pf-mono" style={{ fontSize: 9, fontWeight: 700, color: "var(--accent)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", borderRadius: 5, padding: "1px 6px" }}>NEW</span>;
-  }
   if (badge.kind === "fix") {
     return <span className="pf-mono" style={{ fontSize: 9, fontWeight: 700, color: "var(--warn)", border: "1px solid color-mix(in srgb,var(--warn) 30%,transparent)", borderRadius: 5, padding: "1px 6px" }}>FIX</span>;
   }
@@ -135,10 +137,16 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
         transition: "width .3s var(--ease)",
       }}
     >
-      {/* The aside's background stretches the full height of the page (align-self
-          stretch); this inner column is pinned to the viewport so the rail's
-          content stays in view without the rail ending mid-page. */}
-      <div style={{ position: "sticky", top: 0, height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Fixed, not sticky. The aside keeps its width so the flex row still
+          reserves the space, and this column pins to the viewport so the rail
+          follows you down the page. Sticky was the obvious choice and did not
+          work: .pf, body and html all carry overflow-x:hidden to stop phones
+          scrolling sideways, which makes each a scroll container, so the column
+          anchored to a box that never scrolls and rode the page away. Under the
+          mobile drawer .pf-sidebar carries a transform, which becomes the
+          containing block for this element — so it still slides with the
+          drawer rather than pinning to the viewport. */}
+      <div style={{ position: "fixed", top: 0, left: 0, width: collapsed ? 74 : 266, height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width .3s var(--ease)" }}>
       <Link href="/" title="Back to the site" style={{ display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "22px 0 18px" : "22px 22px 18px", justifyContent: collapsed ? "center" : undefined, textDecoration: "none", color: "var(--fg)" }}>
         <BrandMark size={26} wordmark={!collapsed} />
       </Link>

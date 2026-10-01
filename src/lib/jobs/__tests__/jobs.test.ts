@@ -67,6 +67,40 @@ describe('filterListings', () => {
     const listings = [job(), job({ url: 'https://x/2' })];
     expect(filterListings(listings, {})).toHaveLength(2);
   });
+
+  it('expands a 3-letter abbreviation to the words in the title (SWE → Software Engineer)', () => {
+    const listings = [
+      job({ title: 'Software Engineer Intern' }),
+      job({ title: 'Marketing Intern', url: 'https://x/2' }),
+    ];
+    const out = filterListings(listings, { roleType: 'SWE' });
+    expect(out).toHaveLength(1);
+    expect(out[0].title).toBe('Software Engineer Intern');
+  });
+
+  it('expands 2-letter abbreviations the tokenizer would otherwise drop (ML, PM)', () => {
+    const listings = [
+      job({ title: 'Machine Learning Intern' }),
+      job({ title: 'Product Manager Intern', url: 'https://x/2' }),
+      job({ title: 'Marketing Intern', url: 'https://x/3' }),
+    ];
+    expect(filterListings(listings, { roleType: 'ML' }).map((j) => j.title)).toEqual(['Machine Learning Intern']);
+    expect(filterListings(listings, { roleType: 'PM' }).map((j) => j.title)).toEqual(['Product Manager Intern']);
+  });
+
+  it('still matches a title that spells the abbreviation out literally', () => {
+    const out = filterListings([job({ title: 'SWE Intern' })], { roleType: 'swe' });
+    expect(out).toHaveLength(1);
+  });
+
+  it('does not let a 2-letter abbreviation match inside a longer word (PM ≠ develoPMent)', () => {
+    const listings = [
+      job({ title: 'Automation Development & Tooling Engineer Intern' }),
+      job({ title: 'Product Manager Intern', url: 'https://x/2' }),
+    ];
+    const out = filterListings(listings, { roleType: 'PM' });
+    expect(out.map((j) => j.title)).toEqual(['Product Manager Intern']);
+  });
 });
 
 describe('sortByFit', () => {

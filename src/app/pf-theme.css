@@ -7,7 +7,21 @@
 .pf {
   --bg: #EBE2D1;
   --bg2: #E3D8C3;
-  --panel: #F4EEE0;
+  /* Translucent, to match how the dark theme builds panels — the landing sits
+     over a fixed terrain canvas, and an opaque panel blanks it out. The tint
+     and alpha are chosen so that over the flat page background this composites
+     to the #F4EEE0 it replaces: panels away from the canvas look exactly as
+     they did, and only the ones with terrain behind them go to glass.
+
+     The alpha is a floor, not a taste call. The canvas is fixed and the cards
+     scroll over it, so the ground behind a given card changes the whole way
+     down. Sampled across that travel, the darkest ground under --muted body
+     copy gives 3.44:1 at .55, 4.39:1 at .78 and 4.58:1 at .82 — so .82 is the
+     AA break-even and this sits one step above it for margin, since a pixel
+     grid can miss the true worst pixel. Dark mode gets away with 4% because
+     its terrain is dark on dark; light-mode terrain is a mid-tone over pale
+     paper, which is where the contrast goes. */
+  --panel: rgba(245, 240, 226, .86);
   --panelSolid: #F7F1E4;
   --panel2: #EEE6D5;
   --panel3: #E7DCC8;

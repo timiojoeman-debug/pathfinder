@@ -8,6 +8,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     globals: true,
+    // Only this checkout's own tests. Agent worktrees live under .claude/ (ESLint ignores
+    // them too); without this, a local run also executes every other branch's suite.
+    exclude: ['**/node_modules/**', '.claude/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'text', 'html', 'lcov'],
