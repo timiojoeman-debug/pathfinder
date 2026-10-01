@@ -174,6 +174,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
   const moveCard = usePfStore((s) => s.moveCard);
   const removeCard = usePfStore((s) => s.removeCard);
   const setRemind = usePfStore((s) => s.setRemind);
+  const setCardDate = usePfStore((s) => s.setCardDate);
   const setDiag = usePfStore((s) => s.setDiag);
 
   let colIdx = -1;
@@ -280,6 +281,26 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
             {c.remind ? `shows as “⏰ ${formatReminder(c.remind)}” on the card` : "shows as a chip on the card"}
           </span>
         </div>
+
+        <Kicker style={{ fontSize: 9.5, margin: "0 0 8px" }}>Scheme dates</Kicker>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+          {(["opens", "deadline"] as const).map((f) => (
+            <label key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--muted)" }}>
+              {f === "opens" ? "Opens" : "Deadline"}
+              <input
+                type="date"
+                value={c[f] ?? ""}
+                onChange={(e) => setCardDate(cardKey, f, e.target.value)}
+                className="pf-input"
+                style={{ height: 38, padding: "0 12px", borderRadius: 10, fontSize: 13, background: "var(--panel)" }}
+              />
+            </label>
+          ))}
+        </div>
+        <p style={{ fontSize: 11.5, color: "var(--faint)", lineHeight: 1.55, margin: "0 0 22px" }}>
+          From the company&apos;s own careers page. PathFinder works back from these: outreach about six weeks out,
+          the referral ask one to two weeks before the deadline.
+        </p>
 
         <div style={{ display: "flex", gap: 10 }}>
           {colIdx < 3 && (

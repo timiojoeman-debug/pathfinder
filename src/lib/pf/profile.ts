@@ -9,7 +9,7 @@
 
 import { KEYWORD_VOCAB, type BoardColumn } from "./data";
 import { LEETCODE_CATEGORIES, LEET_ON_TRACK } from "./leetcode";
-import { analyzeCvText, directionStatement, targetKeywords, trackerDerived } from "./logic";
+import { analyzeCvText, directionStatement, targetKeywords, trackerDerived, type SchemeWindow } from "./logic";
 import type { PfEvent, PfPhase } from "./events";
 import type { ChatMsg, InterviewFeedback, SavedJob } from "./store";
 import type { OnbState } from "./logic";
@@ -77,6 +77,8 @@ export interface CareerProfile {
   interviewsLanded: number;
   offers: number;
   interviewRate: number; // 0–1
+  /** Saved schemes the student has put dates on; recommend() works back from them. */
+  schemeWindows: SchemeWindow[];
 
   /* Networking */
   outreachSent: number;
@@ -217,6 +219,9 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
     interviewsLanded: derived.interviews,
     offers: derived.offers,
     interviewRate,
+    schemeWindows: (s.board.find((col) => col.id === "saved")?.cards ?? [])
+      .filter((c) => c.opens || c.deadline)
+      .map(({ company, role, opens, deadline }) => ({ company, role, opens, deadline })),
 
     outreachSent: s.netSent,
     contactedCompanies,

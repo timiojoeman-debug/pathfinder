@@ -16,7 +16,7 @@ function makeProfile(overrides: Partial<CareerProfile> = {}): CareerProfile {
     currentSkills: [], missingSkills: [], targetKeywords: [],
     cvAnalyzed: false, cvHasContent: false, atsScore: null, atsHistory: [], atsDelta: null,
     projectsGenerated: false,
-    targetCompanies: [], applicationsSubmitted: 0, interviewsLanded: 0, offers: 0, interviewRate: 0,
+    targetCompanies: [], applicationsSubmitted: 0, interviewsLanded: 0, offers: 0, interviewRate: 0, schemeWindows: [],
     outreachSent: 0, contactedCompanies: [],
     leetSolved: 0, weakPatterns: [], interviewsLogged: 0,
     strengths: [], weaknesses: [], currentPhase: 'direction',

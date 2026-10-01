@@ -6,6 +6,7 @@
  */
 
 import Link from "next/link";
+import { BrandMark, Contours } from "@/components/pf/ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuthStore } from "@/lib/stores";
@@ -52,12 +53,10 @@ export default function LoginPage() {
 
   return (
     <div className="pf" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <Contours />
       <div className="pf-anim-up" style={{ width: "min(420px, 94vw)" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, justifyContent: "center", marginBottom: 26, textDecoration: "none", color: "var(--fg)" }}>
-          <div style={{ width: 30, height: 30, borderRadius: 9, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--rim)" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
-          </div>
-          <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-.02em" }}>PathFinder</span>
+          <BrandMark size={28} />
         </Link>
 
         <div className="pf-panel" style={{ padding: "26px 28px", background: "var(--panelSolid)" }}>

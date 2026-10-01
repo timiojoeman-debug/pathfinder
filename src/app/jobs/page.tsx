@@ -11,6 +11,7 @@ import { buildCoverLetter, fitTone, jobPassesFit, targetKeywords } from "@/lib/p
 import { usePfStore, type SavedJob } from "@/lib/pf/store";
 import { Chip, Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
+import { SchemeWindows } from "@/components/pf/scheme-windows";
 
 /** Work modes the search can genuinely narrow on. "On-site" is absent because
  *  adverts rarely say it, so searching the term would hide the roles it means
@@ -452,6 +453,8 @@ export default function JobsPage() {
       </PageHeader>
 
       <NextStep />
+
+      <SchemeWindows />
 
       <Reveal style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 260, display: "flex", alignItems: "center", gap: 10, height: 46, padding: "0 16px", border: "1px solid var(--lineStrong)", borderRadius: 12, background: "var(--panel)" }}>

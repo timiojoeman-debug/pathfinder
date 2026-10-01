@@ -16,6 +16,7 @@ import Link from "next/link";
 import { type CSSProperties } from "react";
 import { setTheme, useThemeMode } from "@/lib/theme";
 import { Reveal } from "@/components/pf/ui";
+import { PilotForm } from "@/components/pf/pilot-form";
 
 const mono = "var(--font-mono), 'JetBrains Mono', monospace";
 const serifItalic: CSSProperties = {
@@ -34,6 +35,18 @@ const kicker: CSSProperties = { fontFamily: mono, fontSize: 11, fontWeight: 500,
  * yet. Restore real CTAs once there is an inbox to receive them.
  */
 const PILOT_STATUS = "Pilot programme not open yet";
+
+/** Header height, and the padding that reserves room for it.
+ *
+ *  The bar is FIXED, not sticky. This page's root carries overflow:hidden,
+ *  which makes it the nearest scroll container and silently disables
+ *  position:sticky on everything inside it — no error, no warning, the bar
+ *  simply scrolls away. Measured before the fix: at scrollY 1400 the header's
+ *  top was -1400, so the nav, the theme toggle, the "For students" link and
+ *  the pilot-status chip were all gone for the entire page below the fold, on
+ *  the one surface aimed at people evaluating a purchase.
+ *  The landing page hit the same combination and resolved it the same way. */
+const HEADER_H = 68;
 
 const PROBLEMS = [
   {
@@ -114,9 +127,9 @@ export default function UniversitiesPage() {
   const primaryBtn: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 9, height: 52, padding: "0 26px", borderRadius: 13, background: "var(--fg)", color: "var(--bg)", fontSize: 15.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 10px 26px rgba(56,44,32,.16),var(--rim)" };
 
   return (
-    <div className="pf pf-landing" style={{ position: "relative", width: "100%", background: "var(--bg)", overflow: "hidden", color: "var(--fg)" }}>
+    <div className="pf pf-landing" style={{ position: "relative", width: "100%", background: "var(--bg)", overflow: "hidden", color: "var(--fg)", paddingTop: HEADER_H }}>
       {/* ── Nav ── */}
-      <header style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", height: 68, padding: "0 clamp(20px,4vw,56px)", borderBottom: "1px solid var(--line)", background: "color-mix(in srgb,var(--bg) 80%,transparent)", backdropFilter: "blur(12px)" }}>
+      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", height: HEADER_H, padding: "0 clamp(20px,4vw,56px)", borderBottom: "1px solid var(--line)", background: "color-mix(in srgb,var(--bg) 80%,transparent)", backdropFilter: "blur(12px)" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "var(--fg)" }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--rim)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
@@ -313,9 +326,13 @@ export default function UniversitiesPage() {
         <p style={{ ...lead, margin: "0 auto 30px", textAlign: "center" }}>
           PathFinder for universities is still being built. When pilots open we’ll scope a cohort with you and show your careers team the dashboard they’d get.
         </p>
-        <span style={{ display: "inline-flex", alignItems: "center", height: 56, padding: "0 32px", borderRadius: 13, border: "1px dashed var(--lineStrong)", color: "var(--muted)", fontSize: 16.5, fontWeight: 600 }}>
-          {PILOT_STATUS}
-        </span>
+        {/* The form, not a chip. This was a dead <span> reading "Pilot
+            programme not open yet" — accurate, and a full stop: the one
+            surface aimed at buyers could not capture a buyer. The status is
+            still stated plainly, in the header and inside the form, so
+            nothing here implies pilots are open. What changed is that saying
+            "we want one" is now possible. */}
+        <PilotForm />
       </section>
 
       {/* ── Footer ── */}

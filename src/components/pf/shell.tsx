@@ -17,6 +17,7 @@ import { CommandPalette } from "./palette";
 import { Drawers } from "./drawers";
 import { MentorAssistant } from "./assistant";
 import { ProfileSync } from "./profile-sync";
+import { BrandMark, Contours } from "./ui";
 
 /* ── Nav model ─────────────────────────────────────────────────────── */
 
@@ -139,10 +140,7 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
           content stays in view without the rail ending mid-page. */}
       <div style={{ position: "sticky", top: 0, height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Link href="/" title="Back to the site" style={{ display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "22px 0 18px" : "22px 22px 18px", justifyContent: collapsed ? "center" : undefined, textDecoration: "none", color: "var(--fg)" }}>
-        <div style={{ width: 30, height: 30, borderRadius: 9, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--rim)", flexShrink: 0 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2.4"><path d="M12 2L2 12l10 10 10-10L12 2z" /></svg>
-        </div>
-        {!collapsed && <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-.02em" }}>PathFinder</span>}
+        <BrandMark size={26} wordmark={!collapsed} />
       </Link>
 
       {!collapsed && (
@@ -341,6 +339,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   return (
     <div className="pf" style={{ display: "flex", minHeight: "100vh", width: "100%" }}>
+      <Contours />
       {isMobile && mobileOpen && <div className="pf-scrim-mobile" onClick={() => setMobileOpen(false)} />}
       <Sidebar collapsed={isMobile ? false : collapsed} mobileOpen={mobileOpen} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>

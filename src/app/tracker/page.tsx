@@ -140,6 +140,11 @@ export default function TrackerPage() {
                       ⏰ {formatReminder(c.remind)}
                     </span>
                   )}
+                  {c.deadline && (
+                    <span className="pf-mono" style={{ fontSize: 9.5, color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap" }}>
+                      closes {formatReminder(c.deadline)}
+                    </span>
+                  )}
                   <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10, color: "var(--faint)" }}>{c.when}</span>
                 </div>
               </div>

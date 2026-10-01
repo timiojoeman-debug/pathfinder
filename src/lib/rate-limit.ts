@@ -150,6 +150,10 @@ const SESSION_READ_ROUTES = new Set(["/api/auth/me", "/api/auth/logout"]);
 /** Classify a pathname into a limit bucket. */
 export function classifyRoute(pathname: string): keyof typeof LIMITS {
   if (SESSION_READ_ROUTES.has(pathname)) return "api";
+  /* An unauthenticated write belongs in the strict bucket even though it is
+     not a credential route: it is reachable without a session, so the general
+     120/min would let one IP post a row twice a second. */
+  if (pathname === "/api/pilot-interest") return "auth";
   if (pathname.startsWith("/api/auth/")) return "auth";
   if (
     pathname.startsWith("/api/cv/") ||

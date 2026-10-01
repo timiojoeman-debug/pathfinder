@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
 import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildCoffeeChatPrepPrompt } from '@/lib/prompts';
+import { parseContactType } from '@/lib/contact-type';
 
 export async function POST(req: Request) {
   try {
     const __p = await readLoose(req);
     if (!__p.ok) return __p.response;
-    const { contactName, contactRole, contactCompany, studentProfile, coffeeChatsDone } = __p.data;
+    const { contactName, contactRole, contactCompany, studentProfile, coffeeChatsDone, contactType } = __p.data;
     if (!contactName || !contactCompany) {
       return NextResponse.json({ error: 'Contact name and company are required' }, { status: 400 });
     }
@@ -17,7 +18,8 @@ export async function POST(req: Request) {
       contactRole || 'Unknown',
       contactCompany,
       studentProfile || 'Student seeking internship',
-      coffeeChatsDone ?? 0
+      coffeeChatsDone ?? 0,
+      parseContactType(contactType)
     );
     const result = await callAIValidated(
       {

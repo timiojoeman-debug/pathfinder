@@ -9,6 +9,7 @@ import {
   DEFAULT_TARGET_KEYWORDS,
   KEYWORD_VOCAB,
   VAGUE_TERMS,
+  type BoardCard,
   type BoardColumn,
   type OutreachPersona,
 } from "./data";
@@ -338,6 +339,67 @@ export function rejectionInsight(diags: Record<string, string>, diagCauses: Reco
 }
 
 /* ── Misc ──────────────────────────────────────────────────────────── */
+
+/* ── Scheme timing ─────────────────────────────────────────────────── */
+
+/** A tracked scheme's dates, as the student entered them. */
+export type SchemeWindow = Pick<BoardCard, "company" | "role" | "opens" | "deadline">;
+
+export interface TimingStep {
+  kind: "outreach" | "ask" | "apply";
+  date: string; // yyyy-mm-dd the step is due
+  due: boolean; // on or after `date`
+  title: string;
+  why: string;
+}
+
+const DAY_MS = 86_400_000;
+const shiftDate = (iso: string, days: number) => new Date(Date.parse(iso + "T00:00:00Z") + days * DAY_MS).toISOString().slice(0, 10);
+
+/** Today as yyyy-mm-dd in local time, the same form the date inputs store. */
+export function isoToday(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Works back from a scheme's real dates to the step that matters now.
+ * Referrals take weeks to earn, so conversations start about six weeks before
+ * the deadline, the referral ask comes one to two weeks before it, and the
+ * application goes in on opening day. Returns the latest step that is already
+ * due, else the next one coming; null when no dates are set or the scheme has closed.
+ */
+export function timingPlan(w: SchemeWindow, today: string): TimingStep | null {
+  const anchor = w.deadline || w.opens;
+  if (!anchor) return null;
+  if (w.deadline && today > w.deadline) return null;
+  const at = w.company;
+  const closes = w.deadline ? ` It closes ${formatReminder(w.deadline)}.` : "";
+  const steps: Omit<TimingStep, "due">[] = [
+    {
+      kind: "outreach", date: shiftDate(anchor, -42),
+      title: `Start talking to people at ${at}`,
+      why: `A referral takes weeks to earn, so the conversations start about six weeks out.${closes}`,
+    },
+    {
+      kind: "ask", date: shiftDate(anchor, -14),
+      title: `Ask for a referral at ${at}`,
+      why: `One to two weeks before the deadline, ask a peer you've spoken to. Only people on the team can refer you.${closes}`,
+    },
+    {
+      kind: "apply", date: w.opens || shiftDate(anchor, -14),
+      title: `Apply to ${at}`,
+      why: w.opens
+        ? `Applications opened ${formatReminder(w.opens)}, and early ones are read before the pile builds.${closes}`
+        : `Get it in well before the deadline, with your referral lined up first.${closes}`,
+    },
+  ];
+  // On the same day the ask comes before the application.
+  steps.sort((a, b) => a.date.localeCompare(b.date) || (a.kind === "apply" ? 1 : b.kind === "apply" ? -1 : 0));
+  // In the last three days only the application matters.
+  if (w.deadline && today >= shiftDate(w.deadline, -3)) return { ...steps.find((s) => s.kind === "apply")!, due: true };
+  const due = steps.filter((s) => s.date <= today);
+  return due.length ? { ...due[due.length - 1], due: true } : { ...steps[0], due: false };
+}
 
 export function formatReminder(v: string): string {
   try {

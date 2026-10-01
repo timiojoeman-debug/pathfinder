@@ -2,18 +2,19 @@ import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
 import { aiEnvelope, callAIValidated, envelopeMessage } from "@/lib/ai";
 import { buildFollowUpPrompt } from '@/lib/prompts';
+import { parseContactType } from '@/lib/contact-type';
 import { checkNaturalness } from '@/lib/ai/naturalness-check';
 
 export async function POST(req: Request) {
   try {
     const __p = await readLoose(req);
     if (!__p.ok) return __p.response;
-    const { contactName, chatNotes, cadenceStep } = __p.data;
+    const { contactName, chatNotes, cadenceStep, contactType } = __p.data;
     if (!contactName || !cadenceStep) {
       return NextResponse.json({ error: 'Contact name and cadence step required' }, { status: 400 });
     }
 
-    const systemPrompt = buildFollowUpPrompt(contactName, chatNotes || '', cadenceStep);
+    const systemPrompt = buildFollowUpPrompt(contactName, chatNotes || '', cadenceStep, parseContactType(contactType));
     const result = await callAIValidated(
       {
       systemPrompt,

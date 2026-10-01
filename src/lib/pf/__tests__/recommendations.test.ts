@@ -17,7 +17,7 @@ function mkProfile(overrides: Partial<CareerProfile> = {}): CareerProfile {
     directionStatement: null, directionSet: false,
     currentSkills: [], missingSkills: [], targetKeywords: [],
     cvAnalyzed: false, cvHasContent: false, atsScore: null, atsHistory: [], atsDelta: null, projectsGenerated: false,
-    targetCompanies: [], applicationsSubmitted: 0, interviewsLanded: 0, offers: 0, interviewRate: 0,
+    targetCompanies: [], applicationsSubmitted: 0, interviewsLanded: 0, offers: 0, interviewRate: 0, schemeWindows: [],
     outreachSent: 0, contactedCompanies: [],
     leetSolved: 0, weakPatterns: [], interviewsLogged: 0,
     strengths: [], weaknesses: [], currentPhase: "direction",
@@ -111,5 +111,14 @@ describe("recommend — fallback and ordering", () => {
 
   it("topRecommendation returns the single highest-priority action", () => {
     expect(topRecommendation(mkProfile(), mkProgress()).id).toBe("set-direction");
+  });
+});
+
+describe("recommend — scheme timing", () => {
+  it("lifts a due dated step above networking, and ignores one not yet due", () => {
+    const p = mkProfile({ directionSet: true, atsScore: 70, schemeWindows: [{ company: "Stripe", role: "SWE Intern", deadline: "2026-11-30" }] });
+    const recs = recommend(p, mkProgress(), "2026-11-18");
+    expect(recs[0]).toMatchObject({ id: "timing-stripe-apply", priority: 95 });
+    expect(recommend(p, mkProgress(), "2026-09-01").some((r) => r.id.startsWith("timing-"))).toBe(false);
   });
 });

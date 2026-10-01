@@ -13,20 +13,45 @@
   --panel3: #E7DCC8;
   --fg: #382C20;
   --muted: #6C5D4B;
-  --faint: #A08E77;
+  /* Measured at 2.46:1 against --bg, for text — well under the 4.5 AA floor,
+     across 136 uses in 35 files, nearly all of them `color:`. It was the
+     quietest step in the type hierarchy, but that step was built on text that
+     could not actually be read; 4.68:1 keeps it a step below --muted (4.94:1)
+     while being legible. The two SVG strokes that also use it only sharpen. */
+  --faint: #736046;
   --line: rgba(56, 44, 32, .14);
   --line2: rgba(56, 44, 32, .07);
   --lineStrong: rgba(56, 44, 32, .26);
   --accent: #B0673C;
-  --accentText: #8f4f2b;
+  /* Nudged from #8f4f2b. That cleared 4.5:1 on plain paper but landed at
+     4.32:1 on a chip whose --accentSoft background sits inside a row that also
+     carries --accentSoft, tinting it twice. */
+  --accentText: #854826;
   --accentSoft: rgba(176, 103, 60, .12);
   --strong: #6E7B3F;
   --warn: #B0862A;
+  /* Text variants of the two status tones, following the --accent/--accentText
+     pattern already in this file. As text at 13px --strong measures 3.97:1 and
+     --warn 2.89:1 on --panel, both under the 4.5 floor; as dots, bars and fills
+     they are fine, which is why the base tokens stay as they are. */
+  --strongText: #55602F;
+  --warnText: #7E611C;
   --risk: #B5392B;
   --active: #3E6C86;
   --ease: cubic-bezier(.16, 1, .3, 1);
+  /* Spring easings. linear() samples a real damped-spring curve, so hovers
+     settle with overshoot instead of decelerating politely — the difference
+     between a CSS transition and something that feels physical. Declared
+     after a cubic-bezier fallback everywhere it is used. */
+  --spring: linear(0, .009, .035 2.1%, .141, .281 6.7%, .723 12.9%, .938, 1.077, 1.15 20.7%, 1.166, 1.169, 1.157, 1.135 27.5%, 1.081 31.4%, 1.019 36.2%, .96 41%, .925, .909 47.7%, .909 50.7%, .925 54.6%, .968 61.3%, .996 66.2%, 1.014 74.7%, 1.005 89.5%, 1);
+  --springSoft: linear(0, .006, .026 3.4%, .105 8.4%, .219, .361 18%, .69 27.4%, .804, .893, .958, .999 44.5%, 1.017, 1.028, 1.03, 1.026, 1.017, 1.007 65.9%, 1.001 74.1%, .999 87.2%, 1);
+  --easeOut: cubic-bezier(.22, 1, .36, 1);
   --rim: inset 0 1px 0 rgba(255, 255, 255, .5);
   --scrim: rgba(30, 22, 12, .5);
+  /* Highlight swept across a primary button on hover. It has to contrast with
+     the button, and the button is painted --fg — near-black on paper, cream at
+     night — so this flips with the theme rather than always being white. */
+  --sheen: rgba(255, 255, 255, .32);
 }
 
 [data-theme="dark"] .pf {
@@ -38,7 +63,13 @@
   --panel3: rgba(240, 230, 210, .09);
   --fg: #ECE2CF;
   --muted: #B6A88F;
-  --faint: #7E6F58;
+  /* 3.51:1 before, under the floor. This is tuned against the panels rather
+     than against --bg: the report panel is --panel over --panelSolid, lighter
+     than the page, so text on it has *less* contrast than the same text on the
+     page — the seven labels that sit there measured 4.20:1 when this was tuned
+     to 5.05:1 on --bg. 4.63:1 on the panel now, and --muted still reads a clear
+     step above it at 5.93:1. */
+  --faint: #A2917A;
   --line: rgba(236, 226, 207, .13);
   --line2: rgba(236, 226, 207, .06);
   --lineStrong: rgba(236, 226, 207, .24);
@@ -47,22 +78,64 @@
   --accentSoft: rgba(210, 137, 76, .15);
   --strong: #A7BE73;
   --warn: #D6A94A;
+  /* Light tones on a dark ground already clear the floor comfortably, so these
+     are the base tokens unchanged — the alias exists so call sites can name the
+     text role without branching on theme. */
+  --strongText: #A7BE73;
+  --warnText: #D6A94A;
   --risk: #E0715F;
   --active: #7FB1CE;
   --rim: inset 0 1px 0 rgba(255, 255, 255, .06);
   --scrim: rgba(10, 7, 3, .6);
+  --sheen: rgba(34, 26, 18, .3);
 }
 
-/* ── Landing-only tokens (dot grid, grain, globe blending) ── */
+/* ── Landing-only tokens (dot grid, grain, globe and terrain blending) ──
+   --haze and --snow are read by the terrain canvas, not by any CSS rule. They
+   have to be plain hex: the canvas parses them itself to interpolate per ridge
+   (see hexRGB in page.tsx), and it has no CSS engine to resolve rgba() or
+   color-mix() for it. */
 .pf-landing {
   --dot: rgba(56, 44, 32, .22);
   --accentGlow: rgba(176, 103, 60, .22);
   --grainOpacity: .06;
+  /* The terrain's tonal range. Every ridge used to fill with flat --bg, which
+     is also the sky, so the ground had no tone at all and read purely as
+     contour lines. --terrainNear is the closest ridge and --haze is what
+     distance fades toward; the gap between them is what makes depth visible.
+     --haze sits a shade above --bg so the farthest ridges lift very slightly
+     off the sky rather than vanishing into it. */
+  /* Deep enough for the receding ridges to separate. Earlier attempts at this
+     depth measured a body paragraph at 4.45:1, under the 4.5 floor — but that
+     was before the terrain grew a ceiling below the hero copy and before every
+     row started carrying the centred column toward the sky. With those two in
+     place the tone is free to do its job. Re-measure if either is touched. */
+  --terrainNear: #CBB99A;
+  --haze: #F7F2E7;
+  --snow: #FBF7EE;
+  /* The two ends of the hillshade. A slope's tone comes from the angle between
+     its surface normal and the sun, lerped between these — which is the cue
+     that was missing entirely: without it every ridge filled with one flat
+     tone decided only by distance, so the range read as stacked paper cutouts
+     rather than as anything with volume. */
+  --terrainShadow: #9A8158;
+  /* Under the sky, not over it. At #FCF8ED the lit faces sat at 0.939
+     luminance against a page background of 0.767 — the ground was brighter
+     than the sky above it, which is why the light theme washed out while the
+     dark one, whose lit tone is well below its own background, read fine.
+     Diffuse light does not do that. 0.604 keeps the highlight well under the
+     horizon it is lit by. */
+  --terrainLit: #D9CBAB;
 }
 [data-theme="dark"] .pf-landing {
   --dot: rgba(236, 226, 207, .16);
   --accentGlow: rgba(210, 137, 76, .3);
   --grainOpacity: .05;
+  --terrainNear: #150F09;
+  --haze: #36291B;
+  --snow: #E8DCC6;
+  --terrainShadow: #060402;
+  --terrainLit: #6E5836;
 }
 
 /* ── Motion ── */
@@ -99,8 +172,25 @@
   .pf-anim-up, .pf-anim-grow, .pf-anim-pulse, .pf-anim-spin, .pf-anim-scan, .pf-anim-fade, .pf-anim-slidein { animation: none !important; }
 }
 
+/* ── Keyboard focus ──────────────────────────────────────────────────
+   Drawn with outline, not box-shadow. The global :focus-visible in
+   globals.css sets `outline: none` and paints the ring via box-shadow, but
+   several CTAs here set boxShadow inline — and an inline value outranks any
+   stylesheet rule, so their focus ring never rendered at all.
+
+   That global ring also resolves to `--accent-soft` (#5e6ad21a): the indigo
+   from the console theme at 10% alpha. The .pf scope defines --accentSoft
+   (camelCase) instead, so the hyphenated name falls through to a hue that is
+   both wrong for warm paper and invisible on it. */
+.pf :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
 /* ── Base ── */
 .pf {
+  isolation: isolate;
   background: var(--bg2);
   color: var(--fg);
   font-family: var(--font-sans), 'Manrope', sans-serif;
@@ -159,7 +249,7 @@
    attribute selector + !important is what lets us override the pages'
    inline grid-template-columns without touching every file.
    ═══════════════════════════════════════════════════════════════════ */
-.pf { overflow-x: hidden; }
+.pf { overflow-x: clip; }   /* clip, not hidden: hidden makes .pf a scroll container and breaks position:sticky inside it */
 
 @media (max-width: 768px) {
   /* Sidebar → off-canvas drawer */
@@ -197,3 +287,284 @@
 @media (max-width: 420px) {
   .pf main [style*="repeat(4"] { grid-template-columns: 1fr !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Landing motion & surface system
+   ───────────────────────────────────────────────────────────────────
+   Techniques lifted from anime.js (split-text stagger, spring easing),
+   Motion (gesture springs, scroll-linked progress) and KokonutUI
+   (pointer spotlight cards, sheen buttons, lit rims) — implemented on
+   CSS custom properties driven by one pointer listener and one scroll
+   listener, so none of it costs a runtime animation dependency.
+
+   Everything here is covered by the blanket prefers-reduced-motion rule
+   in globals.css: entrances resolve to their final keyframe, ambient
+   loops stop, and the pointer-driven transforms are never bound in JS
+   at all. See the note at the end of this file.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Split-text entrance ──────────────────────────────────────────
+   Each word rides up out of its own clipping box. The padding/negative-
+   margin pair is load-bearing: descenders (g, y, p) sit below the line
+   box and plain overflow:hidden shears them off. */
+.pf-split {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding: .14em .05em .18em;
+  margin: -.14em -.05em -.18em;
+}
+.pf-split > span {
+  display: inline-block;
+  will-change: transform, opacity;
+  animation: pfRise .95s var(--easeOut) both;
+  animation-delay: var(--d, 0s);
+}
+@keyframes pfRise {
+  from { opacity: 0; transform: translateY(112%) rotate(2.5deg); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Scroll-linked journey rail ───────────────────────────────────
+   The page is a route through seven stations; the header carries how far
+   along it you are. --pf-progress is written by one scroll handler. */
+.pf-rail {
+  position: absolute;
+  left: 0; bottom: -1px;
+  height: 2px;
+  width: 100%;
+  transform-origin: left;
+  transform: scaleX(var(--pf-progress, 0));
+  background: linear-gradient(90deg, var(--accent), var(--strong));
+  box-shadow: 0 0 12px var(--accentGlow);
+  pointer-events: none;
+}
+
+/* ── Nav: underline growing from the centre, plus the active section ── */
+.pf-nav-link { position: relative; }
+.pf-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 12px; right: 12px; bottom: 4px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform .38s var(--spring);
+}
+.pf-nav-link:hover::after,
+.pf-nav-link[data-active]::after { transform: scaleX(1); }
+.pf-nav-link[data-active] { color: var(--fg); }
+
+/* ── Buttons: magnetic pull plus a single sheen sweep ─────────────
+   --mx/--my come from the pointer handler; the scale is pure CSS so a
+   keyboard focus gets the same affordance a mouse does. */
+.pf-cta {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translate(var(--mx, 0px), var(--my, 0px)) scale(var(--cs, 1));
+  transition: transform .55s var(--spring), box-shadow .35s var(--ease);
+}
+.pf-cta:hover, .pf-cta:focus-visible { --cs: 1.035; }
+.pf-cta:active { --cs: .975; transition-duration: .12s; }
+.pf-cta::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: linear-gradient(102deg, transparent 32%, var(--sheen) 47%, transparent 62%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+.pf-cta:hover::after, .pf-cta:focus-visible::after { animation: pfSheen .9s var(--ease); }
+@keyframes pfSheen { from { transform: translateX(-130%); } to { transform: translateX(130%); } }
+
+/* Ghost link — the rule draws itself in rather than recolouring. */
+.pf-ghost { position: relative; text-decoration: none !important; }
+.pf-ghost::after {
+  content: "";
+  position: absolute;
+  left: 20px; right: 20px; bottom: 14px;
+  height: 1.5px;
+  background: currentColor;
+  transform: scaleX(var(--gx, .62));
+  transform-origin: left;
+  /* .55 rather than .3 at rest: this link sits on the terrain crest, and at
+     1.5px a 30%-opacity rule over contour lines is not visible at all — the
+     control read as plain text with no affordance. */
+  opacity: var(--go, .55);
+  transition: transform .5s var(--spring), opacity .3s var(--ease);
+}
+.pf-ghost:hover, .pf-ghost:focus-visible { --gx: 1; --go: 1; }
+
+/* ── Spotlight cards ──────────────────────────────────────────────
+   A radial wash tracks the pointer inside the card. Cheaper than a real
+   gradient border, which needs a mask and repaints the border box every
+   frame; this is one composited layer whose gradient position changes. */
+.pf-card {
+  position: relative;
+  transition: transform .6s var(--springSoft), border-color .35s var(--ease), box-shadow .45s var(--ease);
+}
+.pf-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 0%), var(--accentSoft), transparent 62%);
+  transition: opacity .4s var(--ease);
+}
+.pf-card > *:not([data-ghost-num]) { position: relative; z-index: 1; }
+/* The numeral is deliberately excluded: it is absolutely positioned, and a
+   blanket `position: relative` on the children would drop it back into flow. */
+.pf-card [data-ghost-num] { z-index: 0; }
+.pf-card:hover, .pf-card:focus-visible {
+  transform: translateY(-7px);
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent) !important;
+  box-shadow: 0 26px 52px rgba(56, 44, 32, .14), 0 0 0 1px var(--accentSoft), var(--rim) !important;
+}
+.pf-card:hover::before, .pf-card:focus-visible::before { opacity: 1; }
+
+/* The oversized serif numeral drifts and brightens with the card. */
+.pf-card [data-ghost-num] { transition: opacity .5s var(--ease), transform .6s var(--springSoft); }
+.pf-card:hover [data-ghost-num] { opacity: .13 !important; transform: translate(-6px, 4px) rotate(-3deg); }
+
+/* Icon tile springs up and warms to solid accent. */
+.pf-card [data-icon] { transition: transform .55s var(--spring), background .35s var(--ease), color .35s var(--ease), border-color .35s var(--ease); }
+/* !important throughout: the tile carries its resting background, colour and
+   border as inline styles (this page is inline-styled end to end), and an
+   inline declaration outranks any class rule regardless of specificity. */
+.pf-card:hover [data-icon] {
+  transform: translateY(-2px) scale(1.09) rotate(-4deg);
+  background: var(--accent) !important;
+  color: var(--panelSolid) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Title shifts toward the accent — the only colour change on the card, so
+   it still reads as one object moving rather than four. */
+.pf-card h3 { transition: color .3s var(--ease); }
+.pf-card:hover h3 { color: var(--accentText); }
+
+/* ── Live-report chrome ───────────────────────────────────────────
+   A scan line crossing the report header, so the panel reads as something
+   being computed rather than a screenshot of something that was. */
+.pf-scanline {
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 1px;
+  width: 34%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: pfScanX 4.6s var(--ease) infinite;
+  pointer-events: none;
+}
+@keyframes pfScanX {
+  0%   { transform: translateX(-110%); opacity: 0; }
+  12%  { opacity: 1; }
+  74%  { opacity: 1; }
+  100% { transform: translateX(400%); opacity: 0; }
+}
+
+/* Pipeline rows slide a hair and light their dot. */
+.pf-pipe { transition: background .25s var(--ease), transform .4s var(--spring); }
+.pf-pipe:hover { background: var(--panel2) !important; transform: translateX(4px); }
+.pf-pipe [data-dot] { transition: transform .4s var(--spring), box-shadow .3s var(--ease); }
+.pf-pipe:hover [data-dot] { transform: scale(1.5); box-shadow: 0 0 0 4px var(--accentSoft); }
+
+.pf-oppo { transition: background .25s var(--ease); }
+.pf-oppo:hover { background: var(--panel); }
+
+/* Checklist rows — the box fills on hover, a preview of ticking it off. */
+.pf-task [data-box] { transition: background .3s var(--ease), border-color .3s var(--ease), transform .45s var(--spring); }
+.pf-task:hover [data-box] { border-color: var(--accent) !important; background: var(--accentSoft) !important; transform: scale(1.12) rotate(-6deg); }
+
+/* ── Marquee: pauses under the pointer ────────────────────────────── */
+.pf-marquee { animation: pfMarquee 32s linear infinite; }
+.pf-marquee-wrap:hover .pf-marquee { animation-play-state: paused; }
+.pf-marquee > span { transition: color .3s var(--ease), transform .45s var(--spring); }
+.pf-marquee > span:hover { color: var(--accent); transform: translateY(-2px); }
+
+/* ── Reveal variants ──────────────────────────────────────────────
+   The base [data-reveal] rule earlier in this file handles fade-up. These
+   add direction and a per-item delay driven by --d, so a grid staggers
+   without six hand-written delay values. */
+.pf [data-reveal="left"]  { transform: translateX(-26px); }
+.pf [data-reveal="right"] { transform: translateX(26px); }
+.pf [data-reveal="scale"] { transform: scale(.965) translateY(16px); }
+.pf [data-reveal="left"][data-in],
+.pf [data-reveal="right"][data-in],
+.pf [data-reveal="scale"][data-in] { transform: none; }
+
+/* ── Gradient display type ────────────────────────────────────────
+   Two big headings only. The solid colour is declared first, so a browser
+   without background-clip:text renders readable text rather than nothing. */
+.pf-grad {
+  color: var(--fg);
+  background: linear-gradient(96deg, var(--fg) 18%, var(--accentText) 54%, var(--fg) 88%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: pfGradShift 9s ease-in-out infinite;
+}
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .pf-grad { -webkit-text-fill-color: currentColor; background: none; animation: none; }
+}
+@keyframes pfGradShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ── Ambient accents ──────────────────────────────────────────────── */
+@keyframes pfBreathe {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.2); }
+}
+.pf-breathe { animation: pfBreathe 3.4s ease-in-out infinite; }
+
+/* Focus ring — one definition for the whole landing, because most of its
+   interactive surfaces are <a> with no default outline against paper. */
+.pf-landing a:focus-visible,
+.pf-landing button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+/* Once the report panel stacks on a phone the left rail is a strip above the
+   body, not a 230px column beside it — so its divider has to move with it.
+   The stacking itself is already handled by the responsive tiers in
+   globals.css; this is only the seam that rule leaves behind. */
+@media (max-width: 860px) {
+  .pf-landing [data-tilt] [style*="230px 1fr"] > div:first-child {
+    border-right: none !important;
+    border-bottom: 1px dashed var(--lineStrong);
+  }
+}
+
+
+/* Reduced motion is handled globally: globals.css zeroes every animation and
+   transition duration under `prefers-reduced-motion: reduce`, which resolves
+   each entrance above to its final keyframe and stops every ambient loop. The
+   pointer-driven transforms never bind at all — useParallaxTilt returns early
+   on the same query. Nothing extra is needed here; do not re-add per-rule
+   overrides, they only drift out of step with that block. */
+
+/* ── Shared with the landing ──────────────────────────────────────────
+   The landing (src/app/landing.css) sets headlines in Instrument Serif, marks the
+   brand with a plain diamond and lays faint contour lines behind everything. These
+   carry the same three marks into the app so the two read as one product. */
+.pf-display {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -.01em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+.pf-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); font-family: var(--font-serif), Georgia, serif; font-weight: 400; line-height: 1; }
+/* Behind the content: the .pf root isolates, so -1 sits above its background and below everything in it. */
+.pf-contours { position: fixed; inset: -10%; z-index: -1; pointer-events: none; opacity: .07; color: var(--fg); }
+.pf-contours svg { width: 100%; height: 100%; }

@@ -11,6 +11,7 @@
 import type { CareerProfile } from "./profile";
 import type { ProgressReport } from "./progress";
 import type { PfPhase } from "./events";
+import { isoToday, timingPlan } from "./logic";
 
 export interface Recommendation {
   id: string;
@@ -23,8 +24,26 @@ export interface Recommendation {
   priority: number; // higher = more urgent
 }
 
-export function recommend(p: CareerProfile, progress: ProgressReport): Recommendation[] {
+export function recommend(p: CareerProfile, progress: ProgressReport, today = isoToday()): Recommendation[] {
   const recs: Recommendation[] = [];
+
+  // 0. A dated step on a scheme the student is chasing. Dates are real and they
+  // pass, so a due step outranks everything except having no direction at all.
+  for (const w of p.schemeWindows) {
+    const step = timingPlan(w, today);
+    if (!step?.due) continue;
+    const phase: PfPhase = step.kind === "apply" ? "tracker" : "networking";
+    recs.push({
+      id: `timing-${w.company.toLowerCase()}-${step.kind}`,
+      title: step.title,
+      why: step.why,
+      href: phase === "tracker" ? "/tracker" : "/networking",
+      phase,
+      impact: step.kind === "apply" ? "window open" : "on the clock",
+      impactTone: "var(--warn)",
+      priority: 95,
+    });
+  }
   const pct = (phase: PfPhase) => progress.phases.find((x) => x.phase === phase)?.pct ?? 0;
 
   // 1. Direction is the prerequisite for everything downstream.

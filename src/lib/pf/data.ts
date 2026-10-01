@@ -2,6 +2,24 @@
  * PathFinder redesign — static content extracted from the Claude Design
  * handoff (PathFinder App.dc.html). Single source of truth for seed data,
  * copy and reference tables used across the app pages.
+ *
+ * EVERY EMPLOYER HERE IS INVENTED. Northwind Travel, Fairway Sports, Edgeline,
+ * Kestrel Bank, Ledgerline and Lakemont Data do not exist, and neither do the
+ * deadlines, headcounts, visa terms or pay details attached to them.
+ *
+ * This file previously named Skyscanner, FanDuel, Vercel, Monzo, Stripe and
+ * Databricks and hung fabricated specifics off them — "Apply by 28 Jul",
+ * "Visa sponsorship", "3,000+ microservices in Go", "£1k learning budget" —
+ * rendered to students as their live pipeline. A labelled mockup may invent
+ * numbers about a hypothetical employer; it may not invent a closing date for
+ * a real one, because a student can act on that and miss a real deadline or
+ * chase one that was never open. Two rows also asserted third-party behaviour
+ * outright: a named recruiter making a referral, and a hiring manager viewing
+ * the student's LinkedIn on a given day.
+ *
+ * Keep employers here fictional. If real listings are wanted, they belong in
+ * /api/jobs/search, which returns live Adzuna data and is already forbidden
+ * from serving placeholders.
  */
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -18,6 +36,10 @@ export interface BoardCard {
   rejected?: boolean;
   appliedDate?: number;
   remind?: string; // yyyy-mm-dd
+  /** The scheme's opening and closing dates, entered by the student from the
+   *  company's own careers page. Never seeded: an invented deadline is worse than none. */
+  opens?: string; // yyyy-mm-dd
+  deadline?: string; // yyyy-mm-dd
 }
 
 export interface BoardColumn {
@@ -27,19 +49,6 @@ export interface BoardColumn {
   cards: BoardCard[];
 }
 
-export interface StaticJob {
-  company: string;
-  role: string;
-  meta: string;
-  fit: number;
-  dash: number;
-  tone: string;
-  tags: string[];
-  verdict: string;
-  action: string;
-  jdText?: string;
-}
-
 export interface JobDetail {
   chips: [string, string][];
   desc: string[];
@@ -47,43 +56,27 @@ export interface JobDetail {
   reqs: [string, boolean][];
 }
 
-/* ── Tracker board seed ────────────────────────────────────────────── */
+/* ── Tracker board ─────────────────────────────────────────────────── */
 
-export const BOARD_SEED: BoardColumn[] = [
-  {
-    id: "saved", title: "Saved", tone: "var(--faint)", cards: [
-      { key: "vercel", company: "Vercel", role: "Frontend Intern", tag: "fit 74", tone: "var(--strong)", when: "new", match: 74, note: "Strong fit. Tailor the CV to edge/Next.js keywords before applying." },
-      { key: "monzo", company: "Monzo", role: "Backend Intern", tag: "fit 66", tone: "var(--warn)", when: "new", match: 66, note: "Close the Go gap first — ship a small CLI in Go, then apply." },
-    ],
-  },
-  {
-    id: "applied", title: "Applied", tone: "var(--active)", cards: [
-      { key: "skyscanner", company: "Skyscanner", role: "SWE Intern", tag: "referral", tone: "var(--active)", when: "2d ago", match: 81, note: "Referred by Priya (recruiter). Follow up Friday if no reply." },
-      { key: "fanduel", company: "FanDuel", role: "Backend Intern", tag: "ATS ✓", tone: "var(--strong)", when: "5d ago", match: 73, note: "ATS-clean CV submitted. Hiring manager viewed your LinkedIn on Tuesday." },
-    ],
-  },
-  {
-    id: "interview", title: "Interview", tone: "var(--accent)", cards: [
-      { key: "bedrockai", company: "BedrockAI", role: "SWE Intern", tag: "tech · Thu", tone: "var(--accent)", when: "prep now", match: 77, note: "Technical Thursday 14:00 — arrays/strings plus a systems chat. Two mediums a day until then." },
-      { key: "traveltech", company: "TravelTech", role: "Full-Stack", tag: "final", tone: "var(--accent)", when: "in 1w", match: 71, note: "Final round with the CTO. Prepare two sharp questions about their roadmap." },
-    ],
-  },
-  {
-    id: "offer", title: "Offer", tone: "var(--strong)", cards: [
-      { key: "pulseboard", company: "Pulseboard", role: "SWE Intern", tag: "offer", tone: "var(--strong)", when: "decide by Fri", match: 80, note: "£2,400/mo, 12 weeks, hybrid. Decision deadline Friday — you can ask for a week to decide." },
-    ],
-  },
-  {
-    id: "rejected", title: "Rejected / Ghosted", tone: "var(--risk)", cards: [
-      { key: "optiver", company: "Optiver", role: "Trading Eng Intern", tag: "rejected", tone: "var(--risk)", when: "1w ago", match: 55, note: "Auto-rejection arrived 2 hours after applying.", rejected: true },
-      { key: "palantir", company: "Palantir", role: "FDSE Intern", tag: "ghosted", tone: "var(--faint)", when: "3w ago", match: 61, note: "No reply after 3 weeks and one follow-up.", rejected: true },
-    ],
-  },
+/** The five tracker columns. A new user starts with every one empty; cards
+ *  arrive only from roles the student actually saves.
+ *
+ *  This was BOARD_SEED — the same columns pre-filled with eight invented
+ *  applications — with EMPTY_BOARD derived from it by stripping the cards.
+ *  Only the shells were ever read, so those cards reached no screen while
+ *  still shipping in the bundle: fabricated pipeline entries against named
+ *  employers, including a rejection attributed to Optiver ("auto-rejection
+ *  arrived 2 hours after applying") and a ghosting attributed to Palantir.
+ *  Inventing how a real company treated an applicant is a claim the product
+ *  cannot stand behind, so the cards are gone and the columns are declared
+ *  directly. */
+export const EMPTY_BOARD: BoardColumn[] = [
+  { id: "saved", title: "Saved", tone: "var(--faint)", cards: [] },
+  { id: "applied", title: "Applied", tone: "var(--active)", cards: [] },
+  { id: "interview", title: "Interview", tone: "var(--accent)", cards: [] },
+  { id: "offer", title: "Offer", tone: "var(--strong)", cards: [] },
+  { id: "rejected", title: "Rejected / Ghosted", tone: "var(--risk)", cards: [] },
 ];
-
-/** The real starting board for a new user: the five columns, no cards.
- *  BOARD_SEED is demo content only (Storybook/design reference). */
-export const EMPTY_BOARD: BoardColumn[] = BOARD_SEED.map((col) => ({ ...col, cards: [] }));
 
 /* ── CV analysis reference tables ──────────────────────────────────── */
 
@@ -167,7 +160,7 @@ export const INTEL_FACTORS = [
 ];
 
 export const INTEL_MOVES = [
-  { n: "01", action: "Tailor & apply to Skyscanner", why: "Highest fit (86) with 6 alumni inside — best odds available today.", impact: "act now", color: "var(--strong)", href: "/jobs" },
+  { n: "01", action: "Tailor & apply to Northwind Travel", why: "Highest fit (86) with 6 alumni inside — best odds available today.", impact: "act now", color: "var(--strong)", href: "/jobs" },
   { n: "02", action: "Open a warm path to a target", why: "Zero referrals logged — referrals convert ~4× cold applications.", impact: "4× odds", color: "var(--accent)", href: "/networking" },
   { n: "03", action: "Raise ATS readiness on reach targets", why: "2 roles are filtered by ATS before a human reads your CV.", impact: "+14%", color: "var(--warn)", href: "/cv" },
 ];
@@ -180,57 +173,49 @@ export const INTEL_STATS = [
 ];
 
 export const OPPORTUNITY_MATRIX = [
-  { company: "Skyscanner", role: "SWE Intern", fit: 86, fitpct: "86%", tone: "var(--strong)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+8 / 30d", warmText: "● intro", warmColor: "var(--active)", move: "Tailor & apply" },
-  { company: "FanDuel", role: "Backend Intern", fit: 79, fitpct: "79%", tone: "var(--strong)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+3 / 30d", warmText: "—", warmColor: "var(--faint)", move: "Tailor & apply" },
-  { company: "Vercel", role: "Frontend Intern", fit: 74, fitpct: "74%", tone: "var(--strong)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+4 / 30d", warmText: "—", warmColor: "var(--faint)", move: "Tailor & apply" },
-  { company: "Monzo", role: "Backend Intern", fit: 66, fitpct: "66%", tone: "var(--warn)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+5 / 30d", warmText: "—", warmColor: "var(--faint)", move: "Tailor CV hard" },
-  { company: "Stripe", role: "SWE Intern", fit: 58, fitpct: "58%", tone: "var(--warn)", sigarrow: "→", sigcolor: "var(--muted)", trend: "steady", warmText: "—", warmColor: "var(--faint)", move: "Tailor CV hard" },
-  { company: "Databricks", role: "SWE Intern", fit: 34, fitpct: "34%", tone: "var(--risk)", sigarrow: "→", sigcolor: "var(--muted)", trend: "steady", warmText: "—", warmColor: "var(--faint)", move: "Build prereq" },
+  { company: "Northwind Travel", role: "SWE Intern", fit: 86, fitpct: "86%", tone: "var(--strong)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+8 / 30d", warmText: "● intro", warmColor: "var(--active)", move: "Tailor & apply" },
+  { company: "Fairway Sports", role: "Backend Intern", fit: 79, fitpct: "79%", tone: "var(--strong)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+3 / 30d", warmText: "—", warmColor: "var(--faint)", move: "Tailor & apply" },
+  { company: "Edgeline", role: "Frontend Intern", fit: 74, fitpct: "74%", tone: "var(--strong)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+4 / 30d", warmText: "—", warmColor: "var(--faint)", move: "Tailor & apply" },
+  { company: "Kestrel Bank", role: "Backend Intern", fit: 66, fitpct: "66%", tone: "var(--warn)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+5 / 30d", warmText: "—", warmColor: "var(--faint)", move: "Tailor CV hard" },
+  { company: "Ledgerline", role: "SWE Intern", fit: 58, fitpct: "58%", tone: "var(--warn)", sigarrow: "→", sigcolor: "var(--muted)", trend: "steady", warmText: "—", warmColor: "var(--faint)", move: "Tailor CV hard" },
+  { company: "Lakemont Data", role: "SWE Intern", fit: 34, fitpct: "34%", tone: "var(--risk)", sigarrow: "→", sigcolor: "var(--muted)", trend: "steady", warmText: "—", warmColor: "var(--faint)", move: "Build prereq" },
 ];
 
 /* ── Jobs ──────────────────────────────────────────────────────────── */
 
-export const STATIC_JOBS: StaticJob[] = [
-  { company: "Skyscanner", role: "Software Engineer Intern", meta: "Edinburgh · 900+ · Summer 2026", fit: 86, dash: 20, tone: "var(--strong)", tags: ["React", "TypeScript", "Alumni ×6"], verdict: "Strong match — apply now", action: "Tailor CV" },
-  { company: "FanDuel", role: "Backend Engineer Intern", meta: "Edinburgh · 500+ · 12 wks", fit: 79, dash: 30, tone: "var(--strong)", tags: ["Node", "Go", "Postgres"], verdict: "Strong match", action: "Tailor CV" },
-  { company: "Vercel", role: "Frontend Engineer Intern", meta: "Remote · 400+ · Summer", fit: 74, dash: 37, tone: "var(--strong)", tags: ["Next.js", "React", "Edge"], verdict: "Good match", action: "Tailor CV" },
-  { company: "Monzo", role: "Backend Engineer Intern", meta: "London · 3000+ · Summer", fit: 66, dash: 49, tone: "var(--warn)", tags: ["Go", "gRPC", "AWS"], verdict: "Reach — close Go gap", action: "Build prereq" },
-  { company: "Stripe", role: "Software Engineer Intern", meta: "London · 8000+ · Summer", fit: 58, dash: 60, tone: "var(--warn)", tags: ["Ruby", "Scale", "ATS-hard"], verdict: "Reach — tailor hard", action: "Tailor CV" },
-  { company: "Databricks", role: "Software Engineer Intern", meta: "Remote · 6000+ · Summer", fit: 34, dash: 95, tone: "var(--risk)", tags: ["Scala", "Spark", "ML"], verdict: "Long shot — build first", action: "Skill up" },
-];
 
 export const JOB_DETAILS: Record<string, JobDetail> = {
-  Skyscanner: {
+  "Northwind Travel": {
     chips: [["NEW this week", "var(--accent)"], ["Apply by 28 Jul", "var(--warn)"], ["Visa sponsorship", "var(--active)"], ["Yr 2–3", "var(--muted)"], ["Company careers · 3d ago", "var(--faint)"]],
     desc: ["Build features on the flights-search web app used by 100M+ travellers a month. You will ship production React and TypeScript inside a product squad, pairing with senior engineers from day one.", "Twelve weeks, paid, based in the Edinburgh office — with a real ownership area and an intern demo day at the end."],
     resp: ["Ship user-facing features in React/TypeScript on the flights web app", "Write and maintain tests (Jest, Playwright) for everything you ship", "Take part in code review, standups and sprint planning", "Present your ownership area at intern demo day"],
     reqs: [["React + TypeScript project experience", true], ["JavaScript fundamentals & the event loop", true], ["Testing experience (Jest or similar)", true], ["CI/CD familiarity", false]],
   },
-  FanDuel: {
+  "Fairway Sports": {
     chips: [["Apply by 15 Aug", "var(--warn)"], ["No sponsorship", "var(--muted)"], ["Yr 2–4", "var(--muted)"], ["Grad board · 1w ago", "var(--faint)"]],
     desc: ["Join the betting-platform backend group in Edinburgh, building the services that settle millions of wagers a day. Interns own a service improvement end-to-end.", "Twelve weeks, paid, with a dedicated mentor and a rotation through incident response."],
     resp: ["Build and ship an improvement to a production Node or Go service", "Instrument your service with metrics and alerts", "Shadow an on-call rotation with your mentor", "Write a design doc and defend it in review"],
     reqs: [["Node.js and REST API experience", true], ["SQL / PostgreSQL", true], ["Go (any exposure)", false], ["Distributed-systems basics", false]],
   },
-  Vercel: {
+  "Edgeline": {
     chips: [["NEW this week", "var(--accent)"], ["Rolling deadline", "var(--strong)"], ["Remote — UK eligible", "var(--active)"], ["Company careers · 2d ago", "var(--faint)"]],
     desc: ["Work on the framework-and-dashboard experience used by millions of developers. The intern project ships to production — previous interns built features still in the product today.", "Fully remote with a London meetup cadence; strong async writing culture."],
     resp: ["Ship a dashboard feature in Next.js + React end-to-end", "Contribute to an open-source repo maintained by the team", "Write public-facing docs for what you build", "Demo at the all-hands"],
     reqs: [["Next.js / React depth", true], ["TypeScript", true], ["Open-source contributions", false], ["Edge/CDN concepts", false]],
   },
-  Monzo: {
+  "Kestrel Bank": {
     chips: [["Apply by 01 Aug", "var(--warn)"], ["Visa sponsorship", "var(--active)"], ["Yr 2–3", "var(--muted)"], ["Grad board · 5d ago", "var(--faint)"]],
     desc: ["Backend engineering on the core banking platform — 3,000+ microservices in Go. Interns join a squad and ship to production in their first fortnight.", "Twelve weeks in London, paid, with a £1k learning budget."],
     resp: ["Ship changes to production Go microservices", "Work with gRPC service contracts and Cassandra", "Participate in squad rituals and weekly demos", "Complete the backend engineering bootcamp week 1"],
     reqs: [["Go", false], ["gRPC / service architecture", false], ["SQL and data modelling", true], ["Linux / CLI comfort", true]],
   },
-  Stripe: {
+  "Ledgerline": {
     chips: [["Closing soon — 22 Jul", "var(--risk)"], ["Visa sponsorship", "var(--active)"], ["Yr 2–4", "var(--muted)"], ["Company careers · 2w ago", "var(--faint)"]],
     desc: ["Work on the APIs that move money for millions of businesses. Intern projects are scoped to ship — payments infrastructure, developer tooling, or dashboard surfaces.", "Twelve weeks in London with a dedicated intern manager and a published intern-project blog."],
     resp: ["Ship a scoped project on a production API surface", "Write API design docs reviewed by senior engineers", "Build with Ruby and TypeScript in a large codebase", "Present your project at the end-of-summer review"],
     reqs: [["API design instincts", true], ["TypeScript", true], ["Ruby", false], ["Working at scale (large codebase)", false]],
   },
-  Databricks: {
+  "Lakemont Data": {
     chips: [["Opens Sep 2026", "var(--muted)"], ["Visa sponsorship", "var(--active)"], ["Penultimate yr", "var(--muted)"], ["Company careers", "var(--faint)"]],
     desc: ["Distributed-data infrastructure at serious scale — Spark, Delta Lake, and the lakehouse platform. One of the hardest internships to land; prerequisites matter.", "Remote-friendly with a Amsterdam/London hub option. Applications open in September for Summer 2027."],
     resp: ["Contribute to a distributed-systems component", "Benchmark and optimise a data-path hot spot", "Work in Scala/JVM internals with a mentor", "Write up findings as an internal tech note"],
@@ -335,7 +320,7 @@ export const STAR_STORY = [
 
 export const COMPANY_BRIEFING = [
   { label: "What they do", text: "Travel metasearch; heavy React front end, microservices moving to edge rendering." },
-  { label: "Likely questions", text: "JS event loop, a medium array/string problem, a \"why Skyscanner\" behavioural." },
+  { label: "Likely questions", text: "JS event loop, a medium array/string problem, a \"why Northwind Travel\" behavioural." },
   { label: "Your angle", text: "Lead with your deployed full-stack project; mention their edge-rendering post." },
 ];
 

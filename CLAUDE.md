@@ -172,7 +172,11 @@ The spine of the app. Nothing derived is stored twice:
 
 ### Frontend Pages (`src/app/`)
 
-- `page.tsx` — marketing landing; ASCII neural-globe hero on a 2D canvas (no WebGL)
+- `page.tsx` — marketing landing: a scroll-scrubbed Alpine walk, an ASCII summit outline, and a
+  click-driven wireframe route. Built as a static prototype in `cinematic/site/` (untracked) and ported
+  into `components/landing/` (`markup.ts`, `runtime.js`, `route.js`) plus `app/landing.css` and
+  `public/landing/`. Edit the prototype and regenerate with `python cinematic/tools/port.py`
+  rather than hand-editing the port.
 - `start/` — Stage 00 onboarding: target + baseline, then hands off to the Career-OS
 - `intel/` — command centre (readiness, next action, event log, opportunity pipeline)
 - `direction/`, `cv/`, `jobs/`, `networking/`, `interview/`, `tracker/` — the six phases
@@ -191,7 +195,7 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-26 test files / 238 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the LeetCode data and `toggleProblem` projection, the assistant slice's advisory boundary, the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search / rate-solution route handlers.
+90 test files / 594 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the LeetCode data and `toggleProblem` projection, the assistant slice's advisory boundary, the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search / rate-solution route handlers.
 
 `npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈21.4% lines / 14.9% branches against thresholds of 20 and 14), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 

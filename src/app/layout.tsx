@@ -34,7 +34,15 @@ const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
 });
 
+// Absolute base for social images (the landing's og:image). Without it Next resolves them
+// against localhost, and every shared link previews a broken image. Vercel sets the
+// production host; NEXT_PUBLIC_APP_URL overrides it.
+const SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "PathFinder — AI Career Mentor for Internships",
   description: "AI-powered internship navigation platform. From direction to offer — step by step.",
 };

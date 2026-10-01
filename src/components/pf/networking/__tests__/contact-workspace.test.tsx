@@ -90,3 +90,27 @@ describe("ContactWorkspace — referral", () => {
     await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("referral package")));
   });
 });
+
+describe("ContactWorkspace — who the contact is", () => {
+  it("offers the referral only for a peer, and tells the prep and follow-up routes who they are", async () => {
+    prepTask = aiTask({ run: vi.fn(async () => ({ data: {} })) as never });
+    followTask = aiTask({ run: vi.fn(async () => ({ data: {} })) as never });
+    render(<ContactWorkspace />);
+    expect(screen.getByRole("button", { name: /build referral package/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Recruiter" }));
+    expect(screen.queryByRole("button", { name: /build referral package/i })).toBeNull();
+    expect(screen.getByText(/only people on the team can refer you/i)).toBeTruthy();
+
+    fill(/contact name/i, "Dana");
+    fill(/^company$/i, "Stripe");
+    fireEvent.click(screen.getByRole("button", { name: /prep the chat/i }));
+    await waitFor(() => expect(prepTask.run).toHaveBeenCalledWith(expect.objectContaining({ contactType: "recruiter" })));
+    fill(/what did you actually talk about/i, "Their grad scheme.");
+    fireEvent.click(screen.getByRole("button", { name: /write the follow-up/i }));
+    await waitFor(() => expect(followTask.run).toHaveBeenCalledWith(expect.objectContaining({ contactType: "recruiter" })));
+
+    fireEvent.click(screen.getByRole("button", { name: "Peer" }));
+    expect(screen.getByRole("button", { name: /build referral package/i })).toBeTruthy();
+  });
+});
