@@ -65,24 +65,80 @@ export function dedupeListings(listings: JobListing[]): JobListing[] {
 }
 
 /**
+ * Common role abbreviations → the words that actually appear in job titles.
+ * The GitHub lists title roles in full ("Software Engineer Intern"), but
+ * students search in shorthand ("SWE"), which matched nothing. Each abbreviation
+ * expands to the title words it implies; the raw token is kept too, in case a
+ * posting spells the abbreviation out. Two-letter entries matter especially —
+ * the tokenizer drops sub-3-char tokens as noise, so without expansion "ML" or
+ * "PM" would vanish before matching.
+ */
+const ROLE_ABBREVIATIONS: Record<string, string[]> = {
+  swe: ["software", "engineer"],
+  sde: ["software", "engineer"],
+  se: ["software", "engineer"],
+  sre: ["site", "reliability", "engineer"],
+  ml: ["machine", "learning"],
+  ai: ["artificial", "intelligence"],
+  nlp: ["natural", "language"],
+  ds: ["data", "science", "scientist"],
+  da: ["data", "analyst", "analytics"],
+  de: ["data", "engineer"],
+  pm: ["product", "manager", "management"],
+  po: ["product", "owner"],
+  qa: ["quality", "assurance", "test"],
+  ux: ["ux", "designer", "design", "experience"],
+  ui: ["ui", "designer", "design", "interface"],
+  fe: ["frontend", "front-end"],
+  be: ["backend", "back-end"],
+  fs: ["fullstack", "full-stack"],
+  devops: ["devops", "platform", "infrastructure"],
+};
+
+/** Split a role query into title-matchable tokens, expanding known abbreviations. */
+function roleQueryTokens(roleType: string): string[] {
+  const raw = (roleType ?? "").trim().toLowerCase().split(/[^a-z0-9+#.]+/).filter(Boolean);
+  const tokens = new Set<string>();
+  for (const t of raw) {
+    if (t === "intern" || t === "internship") continue;
+    const expansion = ROLE_ABBREVIATIONS[t];
+    if (expansion) {
+      for (const word of expansion) tokens.add(word);
+      tokens.add(t); // keep the shorthand in case a title spells it out
+    } else if (t.length > 2) {
+      tokens.add(t); // sub-3-char tokens that aren't known abbreviations are noise
+    }
+  }
+  return [...tokens];
+}
+
+/**
+ * Does a title match a query token? Short (<=2 char) tokens match whole-word
+ * only: "pm" as a substring hits "develoPMent", which is never what the
+ * searcher meant. Longer tokens match as a substring so "engineer" catches
+ * "Software Engineering".
+ */
+function titleMatchesToken(title: string, token: string): boolean {
+  if (token.length <= 2) return new RegExp(`\\b${token}\\b`).test(title);
+  return title.includes(token);
+}
+
+/**
  * Client-side narrowing for sources that aren't pre-filtered by an API (e.g. the
- * GitHub lists). A role token matches if it appears in the title; a location
- * matches as a substring. Empty filters pass everything.
+ * GitHub lists). A role token matches if it appears in the title (abbreviations
+ * expanded to their title words); a location matches as a substring. Empty
+ * filters pass everything.
  */
 export function filterListings(
   listings: JobListing[],
   opts: { roleType?: string; location?: string },
 ): JobListing[] {
-  const roleTokens = (opts.roleType ?? "")
-    .trim()
-    .toLowerCase()
-    .split(/[^a-z0-9+#.]+/)
-    .filter((t) => t.length > 2 && t !== "intern" && t !== "internship");
+  const roleTokens = roleQueryTokens(opts.roleType ?? "");
   const loc = (opts.location ?? "").trim().toLowerCase();
 
   return listings.filter((j) => {
     const title = j.title.toLowerCase();
-    const roleOk = roleTokens.length === 0 || roleTokens.some((t) => title.includes(t));
+    const roleOk = roleTokens.length === 0 || roleTokens.some((t) => titleMatchesToken(title, t));
     const locOk = !loc || j.location.toLowerCase().includes(loc);
     return roleOk && locOk;
   });
