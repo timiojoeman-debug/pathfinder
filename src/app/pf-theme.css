@@ -190,6 +190,7 @@
 
 /* ── Base ── */
 .pf {
+  isolation: isolate;
   background: var(--bg2);
   color: var(--fg);
   font-family: var(--font-sans), 'Manrope', sans-serif;
@@ -248,7 +249,7 @@
    attribute selector + !important is what lets us override the pages'
    inline grid-template-columns without touching every file.
    ═══════════════════════════════════════════════════════════════════ */
-.pf { overflow-x: hidden; }
+.pf { overflow-x: clip; }   /* clip, not hidden: hidden makes .pf a scroll container and breaks position:sticky inside it */
 
 @media (max-width: 768px) {
   /* Sidebar → off-canvas drawer */
@@ -551,3 +552,19 @@
    pointer-driven transforms never bind at all — useParallaxTilt returns early
    on the same query. Nothing extra is needed here; do not re-add per-rule
    overrides, they only drift out of step with that block. */
+
+/* ── Shared with the landing ──────────────────────────────────────────
+   The landing (src/app/landing.css) sets headlines in Instrument Serif, marks the
+   brand with a plain diamond and lays faint contour lines behind everything. These
+   carry the same three marks into the app so the two read as one product. */
+.pf-display {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -.01em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+.pf-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); font-family: var(--font-serif), Georgia, serif; font-weight: 400; line-height: 1; }
+/* Behind the content: the .pf root isolates, so -1 sits above its background and below everything in it. */
+.pf-contours { position: fixed; inset: -10%; z-index: -1; pointer-events: none; opacity: .07; color: var(--fg); }
+.pf-contours svg { width: 100%; height: 100%; }

@@ -180,7 +180,7 @@ export function PageHeader({ label, title, children }: { label: string; title: s
       <span className="pf-mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--accent)" }}>
         {label}
       </span>
-      <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-.03em", margin: "10px 0 6px" }}>{title}</h1>
+      <h1 className="pf-display" style={{ fontSize: 44, margin: "10px 0 8px" }}>{title}</h1>
       {children}
     </Reveal>
   );
@@ -201,6 +201,7 @@ export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent
     <span
       onClick={onClick}
       role="button"
+      aria-pressed={on}
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
       style={{
@@ -248,6 +249,43 @@ export function Scanning({ title, sub, bar = false }: { title: string; sub?: str
           <div className="pf-anim-scan" style={{ height: "100%", background: "var(--accent)" }} />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/* ── Marks shared with the landing (src/app/landing.css) ───────────── */
+
+/** The PathFinder diamond and serif wordmark, as on the landing's nav. */
+export function BrandMark({ size = 26, wordmark = true }: { size?: number; wordmark?: boolean }) {
+  return (
+    <span className="pf-brand" style={{ fontSize: size }}>
+      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <path d="M12 2L2 12l10 10 10-10z" fill="var(--accent)" />
+      </svg>
+      {wordmark && "PathFinder"}
+    </span>
+  );
+}
+
+/* The landing's faint contour lines, from the same seed so the two match. Deterministic,
+   so it renders identically on the server and the client. */
+const CONTOUR_PATHS = (() => {
+  let s = 7;
+  const r = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  return Array.from({ length: 22 }, (_, i) => {
+    const y0 = 40 + i * 44, a1 = 10 + r() * 26, f1 = 0.002 + r() * 0.003, ph = r() * 6.28;
+    let d = "";
+    for (let x = -40; x <= 1640; x += 40) d += (x === -40 ? "M" : "L") + x + " " + (y0 + Math.sin(x * f1 + ph) * a1 + Math.sin(x * f1 * 2.7 + ph * 1.3) * a1 * 0.35).toFixed(1);
+    return { d, w: i % 5 === 0 ? 1.6 : 0.8 };
+  });
+})();
+
+export function Contours() {
+  return (
+    <div className="pf-contours" aria-hidden="true">
+      <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+        {CONTOUR_PATHS.map((p, i) => <path key={i} d={p.d} fill="none" stroke="currentColor" strokeWidth={p.w} />)}
+      </svg>
     </div>
   );
 }

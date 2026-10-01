@@ -1139,8 +1139,9 @@ body::after {
    Breakpoint is 860px: below it the sidebar becomes an off-canvas drawer,
    toggled by the header menu button via [data-mobile-open]. */
 
-/* Nothing may cause a horizontal scrollbar on a phone. */
-html, body { max-width: 100%; overflow-x: hidden; }
+/* Nothing may cause a horizontal scrollbar on a phone. `clip`, not `hidden`: hidden makes
+   body a scroll container that never scrolls, and every position:sticky inside it stops sticking. */
+html, body { max-width: 100%; overflow-x: clip; }
 
 @media (max-width: 860px) {
   /* Off-canvas drawer. Fixed (not sticky) so it overlays deliberately rather

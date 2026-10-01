@@ -67,7 +67,7 @@ export default function IntelPage() {
         <span style={{ fontFamily: mono, fontSize: 11, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--accent)" }}>
           Good {partOfDay}{firstName ? `, ${firstName}` : ""}{today ? ` · ${today}` : ""}
         </span>
-        <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-.03em", margin: "10px 0 0" }}>Here&apos;s what moves the needle today.</h1>
+        <h1 className="pf-display" style={{ fontSize: 44, margin: "10px 0 0" }}>Here&apos;s what moves the needle today.</h1>
       </Reveal>
 
       {/* The one recommended next step, computed from the whole profile */}

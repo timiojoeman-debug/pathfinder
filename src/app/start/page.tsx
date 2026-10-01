@@ -105,7 +105,7 @@ export default function StartPage() {
     <div style={{ maxWidth: 760 }}>
       <Reveal style={{ marginBottom: 26 }}>
         <span className="pf-mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--accent)" }}>Stage 00 · Onboarding</span>
-        <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-.03em", margin: "10px 0 6px" }}>Let&apos;s find your starting point.</h1>
+        <h1 className="pf-display" style={{ fontSize: 44, margin: "10px 0 8px" }}>Let&apos;s find your starting point.</h1>
         <p style={{ fontSize: 15, color: "var(--muted)", margin: "0 0 16px", maxWidth: "56ch" }}>
           Three minutes to set your direction and measure your baseline. Nothing here is graded — it just tells the AI where to point you first.
         </p>

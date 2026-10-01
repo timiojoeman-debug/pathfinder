@@ -14,6 +14,8 @@ const csp = [
   `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
+  // The landing streams its hero video into a blob URL so scroll-scrubbing never stalls on a range request.
+  "media-src 'self' blob:",
   "font-src 'self' data:",
   // Server routes proxy OpenAI/job APIs; the browser talks to same-origin + Supabase.
   "connect-src 'self' https://*.supabase.co",
