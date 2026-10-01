@@ -120,18 +120,57 @@ describe("pf store — direction chips + chat", () => {
     expect(s().dirStack).not.toContain("Go");
   });
 
-  it("sendChat appends a you+ai turn and advances the counter; empty draft is a no-op", () => {
-    usePfStore.setState({ chatDraft: "   " });
-    s().sendChat();
-    expect(s().chat).toHaveLength(0);
+  it("acceptChat needs a stated role and industry, and never assumes a size", () => {
+    usePfStore.setState({ dirMode: "explore", dirRole: "Frontend", dirIndustry: null });
+    s().acceptChat();
+    expect(s().dirMode).toBe("explore");
 
-    usePfStore.setState({ chatDraft: "I like building interfaces" });
-    s().sendChat();
-    expect(s().chat).toHaveLength(2);
-    expect(s().chat[0].who).toBe("you");
-    expect(s().chat[1].who).toBe("ai");
-    expect(s().chatN).toBe(1);
-    expect(s().chatDraft).toBe("");
+    usePfStore.setState({ dirIndustry: "Fintech", dirSize: null });
+    s().acceptChat();
+    expect(s().dirMode).toBe("wizard");
+    expect(s().dirSize).toBeNull();
+    expect(s().dirGenerated).toBe(false);
+    expect(s().events).toHaveLength(0);
+
+    usePfStore.setState({ dirMode: "explore", dirSize: "Scaleups" });
+    s().acceptChat();
+    expect(s().dirGenerated).toBe(true);
+    expect(lastEvent().type).toBe("CareerDirectionUpdated");
+  });
+
+  it("changing a chip drops the AI statement written for the old chips", () => {
+    usePfStore.setState({ dirGenerated: true, dirStatementAi: { statement: "x", specificity: "Clear", suggestions: [] } });
+    s().pickDirChip("dirIndustry", "Fintech");
+    expect(s().dirStatementAi).toBeNull();
+    usePfStore.setState({ dirStatementAi: { statement: "x", specificity: "Clear", suggestions: [] } });
+    s().toggleDirStack("Go");
+    expect(s().dirStatementAi).toBeNull();
+  });
+
+  it("toggleDirTargetRole caps the list at three and logs each change", () => {
+    s().toggleDirTargetRole("A");
+    s().toggleDirTargetRole("B");
+    s().toggleDirTargetRole("C");
+    expect(s().dirTargetRoles).toEqual(["A", "B", "C"]);
+    expect(lastEvent().type).toBe("CareerDirectionUpdated");
+    expect(lastEvent().meta).toEqual({ targetRoles: "A, B, C" });
+
+    const before = s().events.length;
+    s().toggleDirTargetRole("D");
+    expect(s().dirTargetRoles).toEqual(["A", "B", "C"]);
+    expect(s().events).toHaveLength(before);
+
+    s().toggleDirTargetRole("B");
+    expect(s().dirTargetRoles).toEqual(["A", "C"]);
+    s().toggleDirTargetRole("D");
+    expect(s().dirTargetRoles).toEqual(["A", "C", "D"]);
+  });
+
+  it("persists target roles and the AI statement", () => {
+    usePfStore.setState({ dirTargetRoles: ["A"], dirStatementAi: { statement: "x", specificity: "Clear", suggestions: [] } });
+    const saved = usePfStore.persist.getOptions().partialize!(s()) as Record<string, unknown>;
+    expect(saved.dirTargetRoles).toEqual(["A"]);
+    expect(saved.dirStatementAi).toEqual({ statement: "x", specificity: "Clear", suggestions: [] });
   });
 });
 

@@ -6,7 +6,7 @@
  * target roles and the HIRE framework.
  */
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import {
   DIR_INDUSTRY_OPTS,
   DIR_ROLE_OPTS,
@@ -17,34 +17,50 @@ import {
   TITLE_VARIANTS,
 } from "@/lib/pf/data";
 import {
-  chatReplyFor,
   directionReady,
   directionSpecificity,
   directionStatement,
   directionSuggestions,
   extractChatPatch,
-  roleFamiliesFor,
+  mapExplorePreferences,
+  targetRoleOptions,
+  type ExplorePreferences,
 } from "@/lib/pf/logic";
 import { getProfile, usePfStore, type ChatMsg } from "@/lib/pf/store";
 import { buildMentorContext } from "@/lib/pf/orchestrator";
+import { useAiTask, type AiEnvelope, type AiTask } from "@/lib/pf/use-ai";
 import { Chip, Kicker, PageHeader, Panel, Reveal } from "@/components/pf/ui";
+import { AiCaveat, AiError, AiTag, GenerateButton } from "@/components/pf/ai-panel";
 import { NextStep } from "@/components/pf/next-step";
 
-/** Map the explore API's free-text preferences onto the wizard's chip values. */
-function mapApiPreferences(p: { role?: string; industry?: string } | undefined) {
-  const patch: { dirRole?: string; dirIndustry?: string } = {};
-  const role = (p?.role || "").toLowerCase();
-  if (/front/.test(role)) patch.dirRole = "Frontend";
-  else if (/back/.test(role)) patch.dirRole = "Backend";
-  else if (/data|ml|machine/.test(role)) patch.dirRole = "Data / ML";
-  else if (/full|software|swe|product/.test(role)) patch.dirRole = "Full-Stack SWE";
-  const ind = (p?.industry || "").toLowerCase();
-  if (/fintech|finance/.test(ind)) patch.dirIndustry = "Fintech";
-  else if (/travel/.test(ind)) patch.dirIndustry = "Travel Tech";
-  else if (/health/.test(ind)) patch.dirIndustry = "Healthtech";
-  else if (/dev|tool/.test(ind)) patch.dirIndustry = "Dev Tools";
-  return patch;
+/** `/api/direction/explore` is an envelope: the reply and preferences sit under `data`. */
+interface ExploreData {
+  response?: string;
+  extractedPreferences?: ExplorePreferences;
+  readyForStatement?: boolean;
+  suggestedStatement?: string | null;
 }
+
+/** `/api/direction` answers at the root. `source: "local"` is its fallback when the model failed. */
+interface DirectionResult {
+  source?: "ai" | "local";
+  statement: string;
+  specificity: string;
+  suggestions?: string[];
+}
+
+/** `/api/direction/title-variants` answers at the root. */
+interface VariantsResult { variants?: { title?: string; note?: string }[] }
+
+const TIER_TONE: Record<string, string> = {
+  "Laser Focused": "var(--strong)",
+  Clear: "var(--strong)",
+  "Somewhat Defined": "var(--warn)",
+  "Too Vague": "var(--risk)",
+};
+
+type DirFields = { dirRole: string | null; dirStack: string[]; dirIndustry: string | null; dirSize: string | null; dirSetting: string | null };
+const dirKey = (d: DirFields) => [d.dirRole, d.dirStack.join(","), d.dirIndustry, d.dirSize, d.dirSetting].join("|");
 
 function ModeToggle() {
   const dirMode = usePfStore((s) => s.dirMode);
@@ -62,9 +78,9 @@ function ModeToggle() {
   );
 }
 
-function Wizard() {
+function Wizard({ onGenerate, generating }: { onGenerate: () => void; generating: boolean }) {
   const s = usePfStore();
-  const ready = directionReady(s);
+  const ready = directionReady(s) && !generating;
   return (
     <Panel style={{ padding: "26px 28px", marginBottom: 18 }}>
       <Kicker style={{ marginBottom: 16 }}>Build your direction statement</Kicker>
@@ -117,7 +133,7 @@ function Wizard() {
       </div>
 
       <button
-        onClick={s.generateDirection}
+        onClick={onGenerate}
         disabled={!ready}
         style={{ cursor: ready ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 14, fontWeight: 600 }}
       >
@@ -129,55 +145,63 @@ function Wizard() {
 
 function Explore() {
   const s = usePfStore();
-  const [thinking, setThinking] = useState(false);
-  const chatReady = s.chatN >= 3 || (s.chatN >= 2 && !!s.dirRole && !!s.dirIndustry);
-  const statement = directionStatement(s);
+  const task = useAiTask<AiEnvelope<ExploreData>>("/api/direction/explore");
+  const [noReply, setNoReply] = useState(false);
+  const [suggested, setSuggested] = useState<string | null>(null);
 
-  // Sends via the OpenAI-backed explore route; the design's local extraction
-  // and canned replies are the silent fallback when the API is unavailable.
+  // Only a real model reply goes into the chat. On any failure the message goes
+  // back into the input and the panel says why, rather than a scripted line
+  // standing in for the AI.
   const handleSend = async () => {
     const draft = s.chatDraft.trim();
-    if (!draft || thinking) return;
-    const localPatch = extractChatPatch(draft);
-    const history: ChatMsg[] = [...s.chat, { who: "you", text: draft }];
-    s.set({ ...localPatch, chat: history, chatDraft: "", dirGenerated: false });
-    setThinking(true);
-    try {
-      // AI memory: the mentor sees the full Career Profile, so it never starts
-      // from zero and can reference prior phases naturally.
-      const context = buildMentorContext(getProfile(), usePfStore.getState().aiLog);
-      const res = await fetch("/api/direction/explore", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [
-            { role: "system", content: context },
-            ...history.map((m) => ({ role: m.who === "you" ? "user" : "assistant", content: m.text })),
-          ],
-        }),
-      });
-      const json: unknown = res.ok ? await res.json() : null;
-      const data = (json as { data?: { response?: string; extractedPreferences?: { role?: string; industry?: string } } } | null)?.data;
-      const reply = data?.response && typeof data.response === "string" ? data.response : chatReplyFor(usePfStore.getState().chatN);
-      const apiPatch = mapApiPreferences(data?.extractedPreferences);
-      s.set({
-        ...apiPatch,
-        chat: [...history, { who: "ai", text: reply }],
-        chatN: usePfStore.getState().chatN + 1,
-      });
-      // Log the AI session so future prompts can reference it ("last time…").
-      if (data?.response) {
-        s.logAi({ phase: "direction", summary: `Explored direction: "${draft.slice(0, 60)}"`, ts: Date.now() });
-      }
-    } catch {
-      s.set({
-        chat: [...history, { who: "ai", text: chatReplyFor(usePfStore.getState().chatN) }],
-        chatN: usePfStore.getState().chatN + 1,
-      });
-    } finally {
-      setThinking(false);
+    if (!draft || task.loading) return;
+    const before = s.chat;
+    const history: ChatMsg[] = [...before, { who: "you", text: draft }];
+    // Keyword pick-up from the student's own words; the AI refines it below.
+    s.set({ ...extractChatPatch(draft), chat: history, chatDraft: "", dirGenerated: false, dirStatementAi: null });
+    setNoReply(false);
+    // AI memory: the mentor sees the full Career Profile, so it never starts
+    // from zero and can reference prior phases naturally.
+    const context = buildMentorContext(getProfile(), usePfStore.getState().aiLog);
+    const result = await task.run({
+      messages: [
+        { role: "system", content: context },
+        ...history.map((m) => ({ role: m.who === "you" ? "user" : "assistant", content: m.text })),
+      ],
+    });
+    const data = result?.data;
+    const reply = typeof data?.response === "string" ? data.response.trim() : "";
+    const cur = usePfStore.getState();
+    if (!reply) {
+      if (result) setNoReply(true);
+      cur.set({ chat: before, chatDraft: draft });
+      return;
     }
+    const patch = mapExplorePreferences(data?.extractedPreferences);
+    const dirStack = patch.dirStack ? [...new Set([...cur.dirStack, ...patch.dirStack])] : cur.dirStack;
+    cur.set({
+      ...patch,
+      dirStack,
+      chat: [...cur.chat, { who: "ai", text: reply }],
+      chatN: cur.chatN + 1,
+      dirGenerated: false,
+      dirStatementAi: null,
+    });
+    const next = data?.suggestedStatement;
+    setSuggested(data?.readyForStatement && typeof next === "string" && next.trim() ? next.trim() : null);
+    // Log the AI session so future prompts can reference it ("last time…").
+    cur.logAi({ phase: "direction", summary: `Explored direction: "${draft.slice(0, 60)}"`, ts: Date.now() });
+    cur.emit("AiConsulted", "direction", "Talked through career direction with the AI");
   };
+
+  const missing = [!s.dirRole && "a role", !s.dirIndustry && "an industry"].filter((x): x is string => !!x);
+  const known = [
+    s.dirRole && `role: ${s.dirRole}`,
+    s.dirIndustry && `industry: ${s.dirIndustry}`,
+    s.dirSize && `size: ${s.dirSize}`,
+    s.dirStack.length > 0 && `stack: ${s.dirStack.join(", ")}`,
+  ].filter((x): x is string => !!x);
+
   return (
     <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
       <Kicker style={{ marginBottom: 14 }}>Not sure yet? Talk it out — the AI extracts your preferences as you go</Kicker>
@@ -197,27 +221,52 @@ function Explore() {
         </div>
       ))}
 
-      {chatReady && (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)", background: "color-mix(in srgb,var(--strong) 8%,transparent)", borderRadius: 12, padding: "13px 16px", marginBottom: 14 }}>
-          <span style={{ fontSize: 13, flex: 1 }}>
-            <span style={{ fontWeight: 700 }}>Direction drafted from this chat.</span> {statement}
-          </span>
-          <button
-            onClick={s.acceptChat}
-            style={{ cursor: "pointer", height: 36, padding: "0 16px", borderRadius: 9, border: "none", background: "var(--strong)", color: "#fff", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }}
-          >
-            Accept →
-          </button>
-        </div>
-      )}
-
-      {thinking && (
+      {task.loading && (
         <div style={{ display: "flex", gap: 11, marginBottom: 12, alignItems: "center" }}>
           <span className="pf-mono" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, background: "var(--panel3)", color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>ai</span>
           <span className="pf-anim-pulse" style={{ fontSize: 13.5, color: "var(--faint)" }}>thinking…</span>
         </div>
       )}
-      <div style={{ display: "flex", gap: 9 }}>
+
+      {s.chat.length > 0 && (
+        <div style={{ border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)", background: "color-mix(in srgb,var(--strong) 8%,transparent)", borderRadius: 12, padding: "13px 16px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 13, flex: 1, lineHeight: 1.55 }}>
+              <span style={{ fontWeight: 700 }}>Picked up from this chat:</span> {known.length ? known.join(" · ") : "nothing yet."}
+              <br />
+              <span style={{ color: "var(--muted)" }}>
+                {missing.length
+                  ? `Still missing ${missing.join(" and ")}. Say it in the chat or pick it in the Wizard.`
+                  : !s.dirSize
+                    ? "No company size yet. You'll pick one in the Wizard after accepting."
+                    : "Accept to carry this into the Wizard."}
+              </span>
+            </span>
+            <button
+              onClick={s.acceptChat}
+              disabled={missing.length > 0}
+              title={missing.length ? `Needs ${missing.join(" and ")} first` : undefined}
+              style={{ cursor: missing.length ? "default" : "pointer", height: 36, padding: "0 16px", borderRadius: 9, border: "none", background: missing.length ? "var(--panel3)" : "var(--strong)", color: missing.length ? "var(--faint)" : "#fff", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }}
+            >
+              Accept →
+            </button>
+          </div>
+          {suggested && (
+            <div style={{ marginTop: 12 }}>
+              <AiTag>AI suggested statement</AiTag>
+              <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: "8px 0 0" }}>{suggested}</p>
+              <AiCaveat>A suggestion from the conversation, not a verdict. Accepting carries over only the choices listed above.</AiCaveat>
+            </div>
+          )}
+        </div>
+      )}
+
+      <AiError
+        message={task.error ?? (noReply ? "The AI answered without a reply. Your message is back in the box, so try sending it again." : null)}
+        needsAuth={task.needsAuth}
+      />
+
+      <div style={{ display: "flex", gap: 9, marginTop: 12 }}>
         <input
           value={s.chatDraft}
           onChange={(e) => s.set({ chatDraft: e.target.value })}
@@ -226,84 +275,198 @@ function Explore() {
           className="pf-input"
           style={{ flex: 1, height: 44, padding: "0 16px" }}
         />
-        <button
-          onClick={() => void handleSend()}
-          style={{ cursor: "pointer", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13.5, fontWeight: 600 }}
-        >
+        <GenerateButton onClick={() => void handleSend()} loading={task.loading} disabled={!s.chatDraft.trim()} loadingLabel="Sending…">
           Send
-        </button>
+        </GenerateButton>
       </div>
     </Panel>
   );
 }
 
-function GeneratedStatement() {
+function VariantChip({ title }: { title: string }) {
+  const copied = usePfStore((s) => s.copiedVariant === title);
+  const copyVariant = usePfStore((s) => s.copyVariant);
+  return (
+    <span
+      onClick={() => copyVariant(title)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); copyVariant(title); } }}
+      className="pf-hover-border"
+      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, padding: "8px 13px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--panelSolid)" }}
+    >
+      {title}
+      <span className="pf-mono" style={{ fontSize: 9.5, color: "var(--accent)" }}>{copied ? "copied ✓" : "copy"}</span>
+    </span>
+  );
+}
+
+function GeneratedStatement({ task, onSharpen }: { task: AiTask<DirectionResult>; onSharpen: () => void }) {
   const s = usePfStore();
-  const statement = directionStatement(s);
-  const spec = directionSpecificity(s);
-  const suggestions = directionSuggestions(s);
-  const [aiVariants, setAiVariants] = useState<string[]>([]);
+  const ai = s.dirStatementAi;
+  const statement = ai?.statement ?? directionStatement(s);
+  const spec = ai ? { label: ai.specificity, tone: TIER_TONE[ai.specificity] ?? "var(--muted)" } : directionSpecificity(s);
+  const suggestions = ai?.suggestions.length ? ai.suggestions : directionSuggestions(s);
+  const degraded = !ai && !task.loading && task.data?.source === "local";
 
-  // Live title variants from the AI route; static design list as fallback.
-  useEffect(() => {
+  // Title variants are fetched on request only: a call on mount spent quota on
+  // every visit and returned 401 to every logged-out student. The result is
+  // keyed on role, stack and industry, so it goes stale the moment any changes.
+  const variantsTask = useAiTask<VariantsResult>("/api/direction/title-variants");
+  const [aiVariants, setAiVariants] = useState<{ key: string; titles: string[] } | null>(null);
+  const variantKey = [s.dirRole, s.dirStack.join(","), s.dirIndustry].join("|");
+  const freshVariants = aiVariants && aiVariants.key === variantKey ? aiVariants.titles : null;
+  const fetchVariants = async () => {
     if (!s.dirRole) return;
-    const controller = new AbortController();
-    fetch("/api/direction/title-variants", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: s.dirRole, techStack: s.dirStack, industry: s.dirIndustry ?? "Technology" }),
-      signal: controller.signal,
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json: unknown) => {
-        const raw = (json as { variants?: { title?: string }[] } | null)?.variants;
-        const titles = Array.isArray(raw) ? raw.map((v) => v.title).filter((t): t is string => !!t).slice(0, 4) : [];
-        if (titles.length >= 2) setAiVariants(titles);
-      })
-      .catch(() => { /* static variants render */ });
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.dirRole]);
+    const key = variantKey;
+    setAiVariants(null);
+    const result = await variantsTask.run({ role: s.dirRole, techStack: s.dirStack, ...(s.dirIndustry ? { industry: s.dirIndustry } : {}) });
+    const titles = [...new Set((result?.variants ?? []).map((v) => (typeof v.title === "string" ? v.title.trim() : "")).filter(Boolean))];
+    if (!titles.length) return;
+    setAiVariants({ key, titles });
+    s.emit("AiConsulted", "direction", `Found title variants for ${s.dirRole}`);
+  };
+  const starter = TITLE_VARIANTS[s.dirRole ?? ""] ?? [];
 
-  const variants = aiVariants.length >= 2 ? aiVariants : TITLE_VARIANTS[s.dirRole ?? "Full-Stack SWE"] ?? TITLE_VARIANTS["Full-Stack SWE"];
   return (
     <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 24%,transparent)", borderRadius: 18, background: "linear-gradient(150deg,var(--accentSoft),transparent)", padding: "28px 30px", marginBottom: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accentText)" }}>Your direction statement</span>
         <span className="pf-mono" style={{ fontSize: 10, fontWeight: 700, color: spec.tone, border: `1px solid color-mix(in srgb, ${spec.tone} 30%, transparent)`, borderRadius: 6, padding: "2px 8px" }}>{spec.label}</span>
+        {ai ? <AiTag>AI draft</AiTag> : <AiTag tone="var(--muted)">Drafted locally</AiTag>}
       </div>
-      <p style={{ fontSize: 24, lineHeight: 1.35, fontWeight: 500, letterSpacing: "-.02em", margin: "0 0 18px", maxWidth: "38ch" }}>{statement}</p>
-      <Kicker style={{ fontSize: 9.5, marginBottom: 8 }}>How to sharpen it further</Kicker>
+      <p style={{ fontSize: 24, lineHeight: 1.35, fontWeight: 500, letterSpacing: "-.02em", margin: "0 0 12px", maxWidth: "38ch" }}>{statement}</p>
+      {ai ? (
+        <AiCaveat>An AI draft built from your choices. Put it in your own words before you use it.</AiCaveat>
+      ) : (
+        <div style={{ marginBottom: 6 }}>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, marginBottom: 10 }}>
+            {task.loading
+              ? "Asking the AI to sharpen this…"
+              : degraded
+                ? "The AI was unavailable, so this statement was drafted locally from your choices."
+                : "Drafted locally from your choices."}
+          </div>
+          {!task.loading && (
+            <GenerateButton onClick={onSharpen} loading={false} variant="ghost">
+              {task.error || degraded ? "Try the AI again" : "Sharpen with AI"}
+            </GenerateButton>
+          )}
+          <AiError message={task.error} needsAuth={task.needsAuth} />
+        </div>
+      )}
+      <Kicker style={{ fontSize: 9.5, margin: "16px 0 8px" }}>How to sharpen it further</Kicker>
       {suggestions.map((t) => (
         <div key={t} style={{ display: "flex", gap: 9, padding: "6px 0" }}>
           <span style={{ color: "var(--accent)" }}>·</span>
           <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)" }}>{t}</span>
         </div>
       ))}
+
       <Kicker style={{ fontSize: 9.5, margin: "16px 0 10px" }}>Search with these titles — the same role hides under different names</Kicker>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {variants.map((v) => (
-          <span
-            key={v}
-            onClick={() => s.copyVariant(v)}
-            className="pf-hover-border"
-            style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, padding: "8px 13px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--panelSolid)" }}
-          >
-            {v}
-            <span className="pf-mono" style={{ fontSize: 9.5, color: "var(--accent)" }}>{s.copiedVariant === v ? "copied ✓" : "copy"}</span>
-          </span>
-        ))}
+      {starter.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Starter list: common titles for {s.dirRole}, not generated for you.</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {starter.map((v) => <VariantChip key={v} title={v} />)}
+          </div>
+        </>
+      )}
+      <div style={{ marginTop: 14 }}>
+        {freshVariants ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <AiTag>AI title variants</AiTag>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>for {s.dirRole}{s.dirIndustry ? ` in ${s.dirIndustry}` : ""}</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {freshVariants.map((v) => <VariantChip key={v} title={v} />)}
+            </div>
+            <AiCaveat>AI suggestions. Check each title on a real job board before you rely on it.</AiCaveat>
+          </>
+        ) : (
+          <GenerateButton onClick={() => void fetchVariants()} loading={variantsTask.loading} disabled={!s.dirRole} variant="ghost" loadingLabel="Finding titles…">
+            {aiVariants ? "Find titles for your updated choices" : "Find more titles with AI"}
+          </GenerateButton>
+        )}
+        <AiError message={variantsTask.error} needsAuth={variantsTask.needsAuth} />
       </div>
     </Reveal>
   );
 }
 
+function TargetRoles() {
+  const dirRole = usePfStore((s) => s.dirRole);
+  const picked = usePfStore((s) => s.dirTargetRoles);
+  const toggle = usePfStore((s) => s.toggleDirTargetRole);
+  const options = targetRoleOptions(dirRole);
+  const full = picked.length >= 3;
+  return (
+    <Panel style={{ overflow: "hidden" }}>
+      <div style={{ padding: "20px 24px 12px" }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Target roles</h2>
+        <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+          Tick up to three titles to search under ({picked.length}/3){full ? ". Untick one to swap it." : "."}
+        </span>
+      </div>
+      {options.map((r) => {
+        const on = picked.includes(r.title);
+        const blocked = !on && full;
+        return (
+          <label key={r.title} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 24px", borderTop: "1px solid var(--line2)", cursor: blocked ? "default" : "pointer", opacity: blocked ? 0.55 : 1 }}>
+            <input type="checkbox" checked={on} disabled={blocked} onChange={() => toggle(r.title)} style={{ width: 16, height: 16, accentColor: "var(--accent)", flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{r.title}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>{r.note}</div>
+            </div>
+            <span className="pf-mono" style={{ fontSize: 10, fontWeight: 600, color: r.tone, border: `1px solid color-mix(in srgb, ${r.tone} 30%, transparent)`, borderRadius: 6, padding: "3px 9px", flexShrink: 0 }}>{r.relation}</span>
+          </label>
+        );
+      })}
+    </Panel>
+  );
+}
+
 export default function DirectionPage() {
   const dirMode = usePfStore((s) => s.dirMode);
-  const dirGenerating = usePfStore((s) => s.dirGenerating);
   const dirGenerated = usePfStore((s) => s.dirGenerated);
   const dirRole = usePfStore((s) => s.dirRole);
-  const roleFamilies = roleFamiliesFor(dirRole);
+  const onbRole = usePfStore((s) => s.onb.role);
+  const statementTask = useAiTask<DirectionResult>("/api/direction");
+  const { reset: resetStatement, run: runStatement } = statementTask;
+
+  // The AI statement only counts if the chips it was written from are still the
+  // chips on screen; a slow reply to an older selection is dropped.
+  const sharpen = async () => {
+    const st = usePfStore.getState();
+    if (!st.dirGenerated) return;
+    const key = dirKey(st);
+    resetStatement();
+    const result = await runStatement({
+      roleType: st.dirRole ?? "",
+      industry: st.dirIndustry ?? "",
+      companySize: st.dirSize ?? "",
+      workMode: st.dirSetting ?? "",
+      techStack: st.dirStack,
+      location: "",
+    });
+    const now = usePfStore.getState();
+    if (!result || result.source !== "ai" || !result.statement?.trim() || !now.dirGenerated || dirKey(now) !== key) return;
+    now.set({
+      dirStatementAi: {
+        statement: result.statement.trim(),
+        specificity: result.specificity,
+        suggestions: Array.isArray(result.suggestions) ? result.suggestions.filter((x) => typeof x === "string") : [],
+      },
+    });
+    now.emit("AiConsulted", "direction", "Drafted the direction statement with AI");
+  };
+
+  // The store records the statement (and its event) at once; the AI version follows.
+  const generate = () => {
+    usePfStore.getState().generateDirection();
+    void sharpen();
+  };
 
   return (
     <div>
@@ -317,38 +480,22 @@ export default function DirectionPage() {
 
       <NextStep />
 
-      <ModeToggle />
-
-      {dirMode === "wizard" && <Wizard />}
-      {dirMode === "explore" && <Explore />}
-
-      {dirGenerating && (
-        <div className="pf-panel" style={{ padding: 34, textAlign: "center", marginBottom: 18 }}>
-          <div className="pf-anim-spin" style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid var(--panel3)", borderTopColor: "var(--accent)", margin: "0 auto 14px" }} />
-          <div style={{ fontSize: 13.5, fontWeight: 600 }}>Composing your statement…</div>
-        </div>
+      {!dirRole && (onbRole === "Product" || onbRole === "Design") && (
+        <Reveal style={{ border: "1px solid var(--line)", borderRadius: 12, background: "var(--panel2)", padding: "12px 16px", marginBottom: 18, fontSize: 13, lineHeight: 1.55 }}>
+          You said <strong>{onbRole}</strong> in onboarding. This wizard currently covers engineering roles only, so pick the closest one below or talk it through in Explore.
+        </Reveal>
       )}
 
-      {dirGenerated && !dirGenerating && <GeneratedStatement />}
+      <ModeToggle />
+
+      {dirMode === "wizard" && <Wizard onGenerate={generate} generating={statementTask.loading} />}
+      {dirMode === "explore" && <Explore />}
+
+      {dirGenerated && <GeneratedStatement task={statementTask} onSharpen={() => void sharpen()} />}
 
       {dirGenerated && (
       <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 18 }}>
-        <Panel style={{ overflow: "hidden" }}>
-          <div style={{ padding: "20px 24px 12px" }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Target roles</h2>
-            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Three titles to search under, from your chosen direction</span>
-          </div>
-          {roleFamilies.map((r, i) => (
-            <div key={r.title} style={{ display: "flex", alignItems: "center", gap: 14, padding: "15px 24px", borderTop: "1px solid var(--line2)" }}>
-              <span className="pf-mono" style={{ fontSize: 15, fontWeight: 700, color: "var(--faint)", width: 26, flexShrink: 0 }}>{String(i + 1).padStart(2, "0")}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{r.title}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>{r.note}</div>
-              </div>
-              <span className="pf-mono" style={{ fontSize: 10, fontWeight: 600, color: r.tone, border: `1px solid color-mix(in srgb, ${r.tone} 30%, transparent)`, borderRadius: 6, padding: "3px 9px", flexShrink: 0 }}>{r.relation}</span>
-            </div>
-          ))}
-        </Panel>
+        <TargetRoles />
 
         <Panel style={{ padding: "20px 24px" }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>The HIRE framework</h2>

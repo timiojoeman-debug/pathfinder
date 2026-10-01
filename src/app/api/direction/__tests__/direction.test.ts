@@ -62,6 +62,7 @@ describe("POST /api/direction", () => {
     const json = await res.json();
     expect(json.statement).toContain("fintech");
     expect(json.specificity).toBe("Clear");
+    expect(json.source).toBe("ai");
     expect(json.suggestions).toContain("Name one or two target companies.");
   });
 
@@ -74,6 +75,8 @@ describe("POST /api/direction", () => {
     expect(json.statement).toMatch(/^I'm targeting/);
     expect(json.statement).toContain("Backend Engineering");
     expect(typeof json.specificity).toBe("string");
+    // Labelled, so the client never presents the fallback as an AI answer.
+    expect(json.source).toBe("local");
   });
 
   it("accepts a tech stack passed as a string[] without crashing", async () => {
