@@ -222,7 +222,7 @@ export default function UniversitiesPage() {
           width and centred ragged type in a narrow measure reads as a poster,
           not as an argument someone is meant to follow. */}
       <section style={{ padding: "clamp(52px,7vw,88px) clamp(20px,5vw,56px) clamp(36px,5vw,60px)", maxWidth: 1240, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(430px,1fr))", gap: "clamp(32px,4vw,56px)", alignItems: "center" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(430px,100%),1fr))", gap: "clamp(32px,4vw,56px)", alignItems: "center" }}>
           <div>
             <span style={{ ...kicker, display: "inline-block", marginBottom: 18 }}>For universities &amp; career services</span>
             <h1 className="pf-display" style={{ fontSize: "clamp(44px,5.6vw,72px)", margin: "0 0 22px", maxWidth: "16ch" }}>

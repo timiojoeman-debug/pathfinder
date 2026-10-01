@@ -46,11 +46,11 @@ export interface OnbState {
   cadence: number | null;
 }
 
+/** The self-assessed baseline from the Stage-00 sliders. An unanswered slider counts as 0:
+ *  this used to return a flat 74 until all four were set, a readiness nobody had claimed. */
 export function readinessFrom(onb: OnbState): number {
-  if (!(onb.cv && onb.projects && onb.outreach && onb.cadence)) return 74;
-  return Math.round(
-    82 * 0.1 + onb.cv * 0.3 + ((onb.projects + onb.outreach) / 2) * 0.35 + onb.cadence * 0.25,
-  );
+  const cv = onb.cv ?? 0, projects = onb.projects ?? 0, outreach = onb.outreach ?? 0, cadence = onb.cadence ?? 0;
+  return Math.round(82 * 0.1 + cv * 0.3 + ((projects + outreach) / 2) * 0.35 + cadence * 0.25);
 }
 
 /* ── Direction ─────────────────────────────────────────────────────── */

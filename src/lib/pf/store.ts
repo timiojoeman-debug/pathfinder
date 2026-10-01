@@ -395,7 +395,8 @@ export const usePfStore = create<PfState>()(
       saveJfJob: () => {
         const s = get();
         if (!(s.jfTitle.trim() && s.jfCompany.trim())) return;
-        const fit = roleFit(s.jfJD, s.onbDone ? readinessFrom(s.onb) : 74, s.cvText, targetKeywords(s.dirStack));
+        // the student's own baseline once onboarded, else their evidence-derived readiness, never a flat 74
+        const fit = roleFit(s.jfJD, s.onbDone ? readinessFrom(s.onb) : getProgress().overall, s.cvText, targetKeywords(s.dirStack));
         const jdLower = s.jfJD.toLowerCase();
         const found = ["React", "TypeScript", "JavaScript", "Next.js", "Node", "Express", "Python", "Go", "Java", "C++", "SQL", "PostgreSQL", "MongoDB", "AWS", "Docker", "Kubernetes", "GraphQL", "REST", "CI/CD", "Testing", "Git", "Linux"]
           .filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0)
