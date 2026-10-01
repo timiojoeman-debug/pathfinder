@@ -62,14 +62,12 @@ export default function StartPage() {
   const step1Ready = !!(onb.role && onb.industry && onb.stage);
   const step2Ready = !!(onb.cv && onb.projects && onb.outreach && onb.cadence);
 
-  const readiness = readinessFrom({ ...onb, cv: onb.cv ?? 0, projects: onb.projects ?? 0, outreach: onb.outreach ?? 0, cadence: onb.cadence ?? 0 });
-  // The formula treats zeros literally in step 3 — the design computes from raw values.
   const cvV = onb.cv ?? 0;
   const projV = onb.projects ?? 0;
   const outV = onb.outreach ?? 0;
   const cadV = onb.cadence ?? 0;
-  const rawReadiness = Math.round(82 * 0.1 + cvV * 0.3 + ((projV + outV) / 2) * 0.35 + cadV * 0.25);
-  const shownReadiness = step2Ready ? readiness : rawReadiness;
+  // readinessFrom counts an unanswered slider as 0, so it is correct mid-way through as well as at the end
+  const shownReadiness = readinessFrom(onb);
   const band = bandFor(shownReadiness);
   const readinessTone = toneFor(shownReadiness);
   const readinessDash = Math.round(402 * (1 - shownReadiness / 100));

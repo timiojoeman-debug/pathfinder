@@ -187,7 +187,7 @@ main{position:relative}
 .weights .bar i{position:absolute;inset:0;background:var(--muted);transform-origin:left;transform:scaleX(0);transition:transform 1.2s var(--ease-out)}
 .weights .heavy .bar i{background:var(--accent)}
 .weights .bar i{transition:transform .25s linear}
-.weights small{font-size:.62rem;letter-spacing:.12em;color:var(--accent-text);margin-left:6px}
+.weights small{font-size:max(.62rem,11px);letter-spacing:.12em;color:var(--accent-text);margin-left:6px}
 .weights li{grid-template-columns:13rem 1fr}
 .gauge .g-num{font:400 46px/1 var(--serif);fill:var(--ink)}
 .gauge .g-lab{font:500 8.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;fill:var(--muted)}

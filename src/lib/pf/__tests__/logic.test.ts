@@ -49,8 +49,10 @@ describe('score → tone thresholds', () => {
 describe('readinessFrom', () => {
   const complete: OnbState = { step: 3, role: 'SWE', industry: 'Fintech', stage: 'Big Tech', cv: 80, projects: 70, outreach: 60, cadence: 80 };
 
-  it('returns the 74 baseline until all self-assessments are answered', () => {
-    expect(readinessFrom({ ...complete, cadence: null })).toBe(74);
+  it('counts an unanswered self-assessment as 0, never an invented baseline', () => {
+    // 8.2 + 24 + 22.75 + 0 = 54.95 → 55 (it used to return a flat 74 here)
+    expect(readinessFrom({ ...complete, cadence: null })).toBe(55);
+    expect(readinessFrom({ ...complete, cv: null, projects: null, outreach: null, cadence: null })).toBe(8);
   });
   it('computes a weighted score once complete', () => {
     // 82*.1 + 80*.3 + ((70+60)/2)*.35 + 80*.25 = 8.2 + 24 + 22.75 + 20 = 74.95 → 75

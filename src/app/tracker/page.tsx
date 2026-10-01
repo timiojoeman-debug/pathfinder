@@ -9,15 +9,16 @@
 import Link from "next/link";
 import type { DragEvent } from "react";
 import { REJECTION_DIAGNOSIS } from "@/lib/pf/data";
-import { bandFor, formatReminder, readinessFrom, rejectionInsight, trackerDerived } from "@/lib/pf/logic";
-import { usePfStore } from "@/lib/pf/store";
+import { bandFor, formatReminder, rejectionInsight, trackerDerived } from "@/lib/pf/logic";
+import { usePfStore, useProgress } from "@/lib/pf/store";
 import { PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 
 export default function TrackerPage() {
   const s = usePfStore();
   const d = trackerDerived(s.board, s.netSent);
-  const readiness = s.onbDone ? readinessFrom(s.onb) : 74;
+  // The evidence-derived readiness, the same number /intel and the sidebar show
+  const readiness = useProgress().overall;
   const bandRange = bandFor(readiness).range;
   const insight = rejectionInsight(s.diags, REJECTION_DIAGNOSIS);
 

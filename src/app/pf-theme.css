@@ -259,6 +259,14 @@
 .pf { overflow-x: clip; }   /* clip, not hidden: hidden makes .pf a scroll container and breaks position:sticky inside it */
 
 @media (max-width: 768px) {
+  /* Nothing below 11px on a phone. The mono kickers and chips are set inline at
+     9–10.5px across ~120 call sites, which reads fine on a desktop and is too
+     small at arm's length; the attribute selector lifts them all here rather
+     than per component. */
+  .pf [style*="font-size:9px"], .pf [style*="font-size: 9px"], .pf [style*="font-size:9.5px"], .pf [style*="font-size: 9.5px"],
+  .pf [style*="font-size:10px"], .pf [style*="font-size: 10px"], .pf [style*="font-size:10.5px"], .pf [style*="font-size: 10.5px"],
+  .pf .pf-kicker { font-size: 11px !important; }   /* React writes inline styles without the space; the DOM API with it */
+
   /* Sidebar → off-canvas drawer */
   .pf-sidebar {
     position: fixed !important;
