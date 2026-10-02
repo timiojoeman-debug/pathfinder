@@ -316,7 +316,7 @@ export default function UniversitiesPage() {
       {/* ── Pricing / model ── */}
       <section id="pricing" style={{ padding: `0 clamp(20px,5vw,56px) ${sectionPad.split(" ")[0]}`, maxWidth: 1140, margin: "0 auto" }}>
         <Reveal>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 20, alignItems: "center", border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", padding: "clamp(26px,4vw,40px)", boxShadow: "var(--rim)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,300px),1fr))", gap: 20, alignItems: "center", border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", padding: "clamp(26px,4vw,40px)", boxShadow: "var(--rim)" }}>
             <div>
               <span style={kicker}>Pricing</span>
               <h2 style={{ ...h2, fontSize: "clamp(30px,4vw,46px)", margin: "12px 0 12px" }}>An institutional licence — <span style={serifItalic}>never</span> a student cost.</h2>

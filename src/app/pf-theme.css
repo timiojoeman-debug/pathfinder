@@ -148,6 +148,13 @@
   border-radius: 10px;
 }
 
+/* ── Touch targets ──
+   44px is the accessible minimum on a touch screen. Scoped to coarse pointers
+   so desktop keeps its density; inline-flex so min-height applies to spans. */
+@media (pointer: coarse) {
+  .pf-tap { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
+}
+
 /* ── Base ── */
 .pf {
   isolation: isolate;

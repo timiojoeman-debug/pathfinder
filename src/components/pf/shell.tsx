@@ -259,7 +259,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
         <button
           onClick={onMenu}
           aria-label="Toggle navigation"
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 9, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", cursor: "pointer", flexShrink: 0 }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, borderRadius: 9, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", cursor: "pointer", flexShrink: 0 }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
         </button>

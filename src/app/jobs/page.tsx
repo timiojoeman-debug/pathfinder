@@ -565,11 +565,18 @@ export default function JobsPage() {
                 style={{ cursor: "pointer", border: "1px solid color-mix(in srgb,var(--accent) 24%,transparent)", borderRadius: 16, background: "var(--panel)", padding: "22px 24px", transition: "transform .3s var(--ease),border-color .3s var(--ease)" }}
               >
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 14 }}>
-                  <div style={{ minWidth: 0 }}>
+                  {/* The card's open action, as a real button so it is keyboard
+                      reachable. The card itself keeps its click for the mouse. */}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); saveLiveJob(j, true); }}
+                    aria-label={`Save and open ${j.role} at ${j.company}`}
+                    style={{ minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, color: "inherit", font: "inherit", cursor: "pointer" }}
+                  >
                     <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.01em" }}>{j.company}</div>
                     <div style={{ fontSize: 13, color: "var(--muted)" }}>{j.role}</div>
                     <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 5 }}>{j.meta}</div>
-                  </div>
+                  </button>
                   <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
                     <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>
                       <circle cx="28" cy="28" r="23" fill="none" stroke="var(--panel3)" strokeWidth="5" />
@@ -585,13 +592,15 @@ export default function JobsPage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--line2)", paddingTop: 12 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: j.tone }}>{j.verdict}</span>
-                  <span
+                  <button
+                    type="button"
                     onClick={(e) => { e.stopPropagation(); saveLiveJob(j, false); }}
-                    className="pf-mono"
-                    style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", cursor: "pointer" }}
+                    aria-label={`Save ${j.role} at ${j.company}`}
+                    className="pf-mono pf-tap"
+                    style={{ fontSize: 11, fontWeight: 600, color: "var(--accentText)", cursor: "pointer", background: "none", border: "none", padding: "4px 0" }}
                   >
                     + Save →
-                  </span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -629,6 +638,10 @@ export default function JobsPage() {
           <Reveal key={`${j.company}-${j.role}-${i}`} style={{}}>
             <div
               onClick={() => s.openJob(j.company, j.role)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${j.role} at ${j.company}`}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); s.openJob(j.company, j.role); } }}
               className="pf-hover-border"
               style={{ cursor: "pointer", border: "1px solid var(--line)", borderRadius: 16, background: "var(--panel)", padding: "22px 24px", transition: "transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s var(--ease)" }}
             >

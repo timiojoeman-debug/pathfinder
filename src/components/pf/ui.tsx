@@ -201,6 +201,7 @@ export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent
     <span
       onClick={onClick}
       role="button"
+      className="pf-tap"
       aria-pressed={on}
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
