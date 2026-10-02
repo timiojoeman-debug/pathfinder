@@ -11,7 +11,7 @@ import { KEYWORD_VOCAB, type BoardColumn } from "./data";
 import { LEETCODE_CATEGORIES, LEET_ON_TRACK } from "./leetcode";
 import { analyzeCvText, directionStatement, targetKeywords, trackerDerived, type SchemeWindow } from "./logic";
 import type { PfEvent, PfPhase } from "./events";
-import type { ChatMsg, InterviewFeedback, SavedJob } from "./store";
+import type { ChatMsg, InterviewFeedback, SavedJob, SavedStory } from "./store";
 import type { OnbState } from "./logic";
 import type { OutreachPersona } from "./data";
 
@@ -41,6 +41,7 @@ export interface ProfileInput {
   netGenerated: boolean;
   ivSolved: Record<string, number>;
   ivFeedback: InterviewFeedback[];
+  savedStories: SavedStory[];
   board: BoardColumn[];
   diags: Record<string, string>;
   events: PfEvent[];
@@ -52,6 +53,17 @@ export interface TargetCompany {
   /** Null when nothing scored this role. Never a placeholder number. */
   fit: number | null;
   stage: string; // pipeline column title, or "Prospect"
+}
+
+/** A live tracker card, as far as the follow-up and reminder nudges need it. */
+export interface TrackedCard {
+  key: string;
+  company: string;
+  role: string;
+  column: BoardColumn["id"];
+  remind?: string; // yyyy-mm-dd
+  appliedDate?: number;
+  followedUpAt?: number;
 }
 
 export interface CareerProfile {
@@ -86,6 +98,8 @@ export interface CareerProfile {
   interviewRate: number; // 0–1
   /** Saved schemes the student has put dates on; recommend() works back from them. */
   schemeWindows: SchemeWindow[];
+  /** Every card not marked rejected, for reminder and follow-up nudges. */
+  trackedCards: TrackedCard[];
 
   /* Networking */
   outreachSent: number;
@@ -97,6 +111,8 @@ export interface CareerProfile {
   leetSolved: number;
   weakPatterns: string[];
   interviewsLogged: number;
+  /** STAR stories the student saved with all four beats written. */
+  storiesPrepared: number;
 
   /* Narrative */
   strengths: string[];
@@ -250,6 +266,9 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
     schemeWindows: (s.board.find((col) => col.id === "saved")?.cards ?? [])
       .filter((c) => c.opens || c.deadline)
       .map(({ company, role, opens, deadline }) => ({ company, role, opens, deadline })),
+    trackedCards: s.board
+      .filter((col) => col.id !== "rejected")
+      .flatMap((col) => col.cards.map(({ key, company, role, remind, appliedDate, followedUpAt }) => ({ key, company, role, column: col.id, remind, appliedDate, followedUpAt }))),
 
     outreachSent: s.netSent,
     contactedCompanies,
@@ -258,6 +277,7 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
     leetSolved,
     weakPatterns,
     interviewsLogged: s.ivFeedback.length,
+    storiesPrepared: s.savedStories.length,
 
     strengths,
     weaknesses,

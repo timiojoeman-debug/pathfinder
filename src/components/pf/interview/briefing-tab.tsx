@@ -1,30 +1,25 @@
 "use client";
 
 /**
- * Company research briefing. The company comes from a saved opportunity where
- * one exists, and can be typed otherwise — a student interviewing somewhere
- * they never saved should not be locked out of prep.
+ * Company research briefing. The company comes from a saved opportunity or a
+ * tracker card where one exists, and can be typed otherwise — a student
+ * interviewing somewhere they never saved should not be locked out of prep.
+ * The tracker's "Prep" action hands a company over through `ivBriefingFor`.
+ * The last briefing per company is kept in the store, so it survives a reload.
  *
  * The prompt asks the model to flag its own uncertainty about a company's tech
  * stack, and that flag is surfaced rather than hidden: a confident-looking list
  * of technologies a company may not use is worse than no list at all.
  */
 
-import { useState } from "react";
-import { usePfStore, useProfile } from "@/lib/pf/store";
+import { useEffect, useMemo, useState } from "react";
+import { usePfStore, useProfile, type SavedBriefing } from "@/lib/pf/store";
+import { studentProfileLine } from "@/lib/pf/ai-context";
 import { useAiTask, type AiEnvelope } from "@/lib/pf/use-ai";
 import { Reveal } from "@/components/pf/ui";
 import { AiCaveat, AiError, AiList, AiSection, AiTag, GenerateButton } from "@/components/pf/ai-panel";
 
-interface BriefingData {
-  companyOverview?: string;
-  techStack?: string[];
-  techStackConfidence?: "high" | "medium" | "low";
-  values?: string[];
-  whyThisCompany?: string[];
-  questionsToAsk?: string[];
-  uncertainties?: string[];
-}
+type BriefingData = SavedBriefing["data"];
 
 const CONFIDENCE_TONE = {
   high: "var(--strong)",
@@ -42,35 +37,45 @@ const CONFIDENCE_NOTE = {
   low: "Low confidence. Verify on their engineering blog or careers page before you rely on any of this.",
 } as const;
 
-/** One line describing who is asking, so "why this company" lands on the
- *  student's real skills instead of generic flattery. */
-function studentProfileLine(
-  role: string | null,
-  skills: string[],
-  leetSolved: number,
-): string {
-  const bits = [
-    role ? `Targeting ${role} internships` : "University student targeting software internships",
-    skills.length ? `Skills: ${skills.slice(0, 8).join(", ")}` : null,
-    leetSolved > 0 ? `${leetSolved} technical problems solved` : null,
-  ].filter(Boolean);
-  return bits.join(". ") + ".";
-}
-
 export function BriefingTab() {
   const savedJobs = usePfStore((s) => s.savedJobs);
+  const board = usePfStore((s) => s.board);
+  const ivBriefings = usePfStore((s) => s.ivBriefings);
+  const briefingFor = usePfStore((s) => s.ivBriefingFor);
+  const saveBriefing = usePfStore((s) => s.saveBriefing);
+  const setStore = usePfStore((s) => s.set);
   const emit = usePfStore((s) => s.emit);
   const profile = useProfile();
 
-  const [company, setCompany] = useState("");
-  const [role, setRole] = useState("");
+  const [company, setCompany] = useState(briefingFor?.company ?? "");
+  const [role, setRole] = useState(briefingFor?.role ?? "");
 
-  const { data, loading, error, needsAuth, run } = useAiTask<AiEnvelope<BriefingData>>(
+  // The hand-over from the tracker is read once, into the fields above.
+  useEffect(() => {
+    if (briefingFor) setStore({ ivBriefingFor: null });
+  }, [briefingFor, setStore]);
+
+  const { loading, error, needsAuth, run } = useAiTask<AiEnvelope<BriefingData>>(
     "/api/interview/company-briefing",
   );
-  const brief = data?.data;
 
   const trimmedCompany = company.trim();
+  // Shown from the store, so the last briefing for this company is there after a reload.
+  const saved = ivBriefings[trimmedCompany.toLowerCase()] ?? null;
+  const brief = saved?.data;
+
+  /** Saved jobs and tracker cards, one chip per company and role. */
+  const picks = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { company: string; role: string }[] = [];
+    for (const x of [...board.flatMap((col) => (col.id === "rejected" ? [] : col.cards)), ...savedJobs]) {
+      const k = `${x.company.toLowerCase()}::${x.role.toLowerCase()}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ company: x.company, role: x.role });
+    }
+    return out;
+  }, [board, savedJobs]);
 
   const pickSaved = (c: string, r: string) => {
     setCompany(c);
@@ -83,9 +88,10 @@ export function BriefingTab() {
     const result = await run({
       companyName: trimmedCompany,
       roleName,
-      studentProfile: studentProfileLine(profile.targetRole, profile.currentSkills, profile.leetSolved),
+      studentProfile: studentProfileLine(profile),
     });
     if (result?.data?.companyOverview) {
+      saveBriefing({ company: trimmedCompany, role: roleName, data: result.data });
       emit("AiConsulted", "interview", `Researched ${trimmedCompany} for ${roleName}`);
     }
   };
@@ -98,14 +104,15 @@ export function BriefingTab() {
           What they do, what they value, and three angles for &quot;why this company?&quot; that connect to your actual work — plus questions worth asking back.
         </span>
 
-        {savedJobs.length > 0 && (
+        {picks.length > 0 && (
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 15 }}>
-            {savedJobs.map((j) => {
-              const on = trimmedCompany.toLowerCase() === j.company.toLowerCase();
+            {picks.map((j) => {
+              const on = trimmedCompany.toLowerCase() === j.company.toLowerCase() && role.trim().toLowerCase() === j.role.toLowerCase();
               return (
                 <button
                   key={j.company + j.role}
                   onClick={() => pickSaved(j.company, j.role)}
+                  title={j.role}
                   style={{
                     cursor: "pointer", height: 32, padding: "0 13px", borderRadius: 9,
                     border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
@@ -153,9 +160,12 @@ export function BriefingTab() {
         <AiError message={error} needsAuth={needsAuth} />
       </div>
 
-      {brief && (
+      {saved && brief && (
         <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginTop: 14 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>{trimmedCompany}</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{saved.company}</div>
+          <div className="pf-mono" style={{ fontSize: 10, color: "var(--faint)", margin: "2px 0 8px" }}>
+            {saved.role} · generated {new Date(saved.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+          </div>
           {brief.companyOverview && (
             <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.65, margin: 0 }}>{brief.companyOverview}</p>
           )}

@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     const __p = await readLoose(req);
     if (!__p.ok) return __p.response;
-    const { interviewType, questionsAsked, selfRatings, wentWell, wouldChange, previousInterviews } = __p.data;
+    const { interviewType, questionsAsked, selfRatings, wentWell, wouldChange, previousInterviews, company } = __p.data;
     if (!interviewType) {
       return NextResponse.json({ error: 'Interview type is required' }, { status: 400 });
     }
@@ -18,7 +18,8 @@ export async function POST(req: Request) {
       selfRatings || {},
       wentWell || '',
       wouldChange || '',
-      previousInterviews || ''
+      previousInterviews || '',
+      typeof company === 'string' ? company.trim() : ''
     );
     const result = await callAIValidated(
       {

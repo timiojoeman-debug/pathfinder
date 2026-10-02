@@ -2,9 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const emit = vi.fn();
-const store = { savedJobs: [] as { company: string; role: string }[] };
+const set = vi.fn();
+const saveBriefing = vi.fn();
+type Card = { company: string; role: string };
+const store = {
+  savedJobs: [] as Card[],
+  board: [] as { id: string; cards: Card[] }[],
+  ivBriefings: {} as Record<string, unknown>,
+  ivBriefingFor: null as Card | null,
+};
 vi.mock("@/lib/pf/store", () => ({
-  usePfStore: (sel: (s: { savedJobs: typeof store.savedJobs; emit: typeof emit }) => unknown) => sel({ savedJobs: store.savedJobs, emit }),
+  usePfStore: (sel: (s: unknown) => unknown) => sel({ ...store, emit, set, saveBriefing }),
   useProfile: () => ({ targetRole: "Backend Engineer", currentSkills: ["Go"], leetSolved: 12 }),
 }));
 vi.mock("@/lib/pf/use-ai", () => ({ useAiTask: vi.fn() }));
@@ -19,7 +27,12 @@ function aiTask(over: Partial<Task> = {}): Task {
 
 beforeEach(() => {
   emit.mockClear();
+  set.mockClear();
+  saveBriefing.mockClear();
   store.savedJobs = [];
+  store.board = [];
+  store.ivBriefings = {};
+  store.ivBriefingFor = null;
   vi.mocked(useAiTask).mockReturnValue(aiTask());
 });
 
@@ -38,6 +51,25 @@ describe("BriefingTab", () => {
     expect((screen.getByPlaceholderText(/company name/i) as HTMLInputElement).value).toBe("Skyscanner");
   });
 
+  it("lists tracker cards as well as saved jobs, one chip per role", () => {
+    store.savedJobs = [{ company: "Skyscanner", role: "SWE Intern" }];
+    store.board = [
+      { id: "interview", cards: [{ company: "Monzo", role: "Backend Intern" }, { company: "Skyscanner", role: "SWE Intern" }] },
+      { id: "rejected", cards: [{ company: "Revolut", role: "Intern" }] },
+    ];
+    render(<BriefingTab />);
+    expect(screen.getByRole("button", { name: "Monzo" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Skyscanner" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Revolut" })).toBeNull();
+  });
+
+  it("opens on the company the tracker's Prep action handed over, then clears the hand-over", () => {
+    store.ivBriefingFor = { company: "Monzo", role: "Backend Intern" };
+    render(<BriefingTab />);
+    expect((screen.getByPlaceholderText(/company name/i) as HTMLInputElement).value).toBe("Monzo");
+    expect(set).toHaveBeenCalledWith({ ivBriefingFor: null });
+  });
+
   it("runs with the company and student profile line, and logs the consult", async () => {
     const run = vi.fn(async () => ({ data: { companyOverview: "Monzo is a UK challenger bank." } }));
     vi.mocked(useAiTask).mockReturnValue(aiTask({ run: run as never }));
@@ -47,14 +79,17 @@ describe("BriefingTab", () => {
 
     await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Monzo", studentProfile: expect.stringContaining("Go") })));
     await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "interview", expect.stringContaining("Monzo")));
+    // Kept per company, so the briefing is still there after a reload.
+    expect(saveBriefing).toHaveBeenCalledWith(expect.objectContaining({ company: "Monzo", data: { companyOverview: "Monzo is a UK challenger bank." } }));
   });
 
-  it("renders the briefing with the tech-stack confidence note", () => {
-    vi.mocked(useAiTask).mockReturnValue(aiTask({ data: { data: {
+  it("renders the stored briefing for the chosen company with the tech-stack confidence note", () => {
+    store.ivBriefings = { monzo: { company: "Monzo", role: "Backend Intern", at: Date.now(), data: {
       companyOverview: "Monzo builds on Go microservices.",
       techStack: ["Go", "Cassandra"],
       techStackConfidence: "medium",
-    } } as never }));
+    } } };
+    store.ivBriefingFor = { company: "Monzo", role: "Backend Intern" };
     render(<BriefingTab />);
     expect(screen.getByText("Monzo builds on Go microservices.")).toBeTruthy();
     expect(screen.getByText(/Partly inferred/)).toBeTruthy();

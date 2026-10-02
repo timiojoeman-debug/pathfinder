@@ -11,7 +11,7 @@
 import type { CareerProfile } from "./profile";
 import type { ProgressReport } from "./progress";
 import type { PfPhase } from "./events";
-import { isoToday, timingPlan } from "./logic";
+import { formatReminder, isoToday, timingPlan } from "./logic";
 import { LEET_ON_TRACK } from "./leetcode";
 
 export interface Recommendation {
@@ -23,7 +23,12 @@ export interface Recommendation {
   impact: string;
   impactTone: string;
   priority: number; // higher = more urgent
+  /** A tracker card this action is about; following the link opens its drawer. */
+  cardKey?: string;
 }
+
+/** Days without movement after which an Applied card earns a follow-up nudge. */
+export const FOLLOW_UP_DAYS = 14;
 
 export function recommend(p: CareerProfile, progress: ProgressReport, today = isoToday()): Recommendation[] {
   const recs: Recommendation[] = [];
@@ -46,6 +51,47 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
     });
   }
   const pct = (phase: PfPhase) => progress.phases.find((x) => x.phase === phase)?.pct ?? 0;
+
+  // 0b. Reminders the student set on a card, once their date arrives. Without this
+  // a reminder was only a chip, and nothing ever reminded anyone. Every live column
+  // counts, Offer included: a reminder is a date the student chose (often an offer
+  // deadline), not something inferred.
+  const todayMs = new Date(`${today}T00:00:00`).getTime();
+  for (const c of p.trackedCards) {
+    if (c.remind && c.remind <= today) {
+      recs.push({
+        id: `remind-${c.key}`,
+        title: `Reminder: ${c.role} at ${c.company}`,
+        why: `You set this reminder for ${formatReminder(c.remind)}. Open the card, do the thing, then clear or move the date.`,
+        href: "/tracker",
+        phase: "tracker",
+        impact: c.remind < today ? "overdue" : "due today",
+        impactTone: "var(--warn)",
+        priority: 93,
+        cardKey: c.key,
+      });
+      continue;
+    }
+    // 0c. An application sitting in Applied for two weeks. One polite follow-up is
+    // the move; once the student marks it sent, the nudge rests for another two weeks.
+    if (c.column === "applied" && c.appliedDate) {
+      const days = Math.floor((todayMs - c.appliedDate) / 864e5);
+      const sinceFollowUp = c.followedUpAt ? Math.floor((todayMs - c.followedUpAt) / 864e5) : Infinity;
+      if (days >= FOLLOW_UP_DAYS && sinceFollowUp >= FOLLOW_UP_DAYS) {
+        recs.push({
+          id: `follow-up-${c.key}`,
+          title: `Follow up on ${c.role} at ${c.company}`,
+          why: `You applied ${days} days ago and the card hasn't moved. Send one short follow-up to the recruiter or a contact there, then put your energy into the next application.`,
+          href: "/tracker",
+          phase: "tracker",
+          impact: "follow up",
+          impactTone: "var(--active)",
+          priority: 82,
+          cardKey: c.key,
+        });
+      }
+    }
+  }
 
   // 1. Direction is the prerequisite for everything downstream.
   if (!p.directionSet) {

@@ -3,9 +3,9 @@
 /**
  * Likely interview questions, generated against the student's own CV and
  * target role rather than a canned list. The route (`/api/interview/questions`)
- * serves a validated fallback set when the model misbehaves, so this panel
- * always has something to show — but the button state tells the truth about
- * whether a call is in flight.
+ * serves a static fallback set when the model misbehaves, flagged
+ * `source: "fallback"`; the panel says so rather than presenting generic
+ * questions as ones generated for this student.
  */
 
 import { useMemo } from "react";
@@ -37,20 +37,23 @@ export function QuestionsTab() {
   const emit = usePfStore((s) => s.emit);
   const profile = useProfile();
 
-  const { data, loading, error, needsAuth, run } = useAiTask<{ questions?: GeneratedQuestion[] }>(
+  const { data, loading, error, needsAuth, run } = useAiTask<{ questions?: GeneratedQuestion[]; source?: "ai" | "fallback" }>(
     "/api/interview/questions",
   );
 
   const targetRole = profile.targetRole ? `${profile.targetRole} Intern` : null;
   const questions = useMemo(() => data?.questions ?? [], [data]);
+  const degraded = data?.source === "fallback";
 
-  const generate = async (more: boolean) => {
+  const generate = async (harder: boolean) => {
     const result = await run({
       cvSummary: cvText.slice(0, CV_CHARS),
       targetRole: targetRole ?? "Software Engineering Intern",
-      more,
+      more: harder,
+      ...(harder ? { difficulty: "harder" } : {}),
     });
-    if (result?.questions?.length) {
+    // A served fallback is not a consult: nothing was generated for this student.
+    if (result?.questions?.length && result.source !== "fallback") {
       emit(
         "AiConsulted",
         "interview",
@@ -76,7 +79,7 @@ export function QuestionsTab() {
           <GenerateButton onClick={() => generate(false)} loading={loading} loadingLabel="Thinking…">
             {questions.length ? "Regenerate" : "Generate questions"}
           </GenerateButton>
-          {questions.length > 0 && (
+          {questions.length > 0 && !degraded && (
             <GenerateButton onClick={() => generate(true)} loading={loading} variant="ghost" loadingLabel="Thinking…">
               Give me harder ones
             </GenerateButton>
@@ -84,6 +87,12 @@ export function QuestionsTab() {
         </div>
 
         <AiError message={error} needsAuth={needsAuth} />
+        {degraded && (
+          <div role="status" style={{ marginTop: 12, fontSize: 12.5, color: "var(--warn)", lineHeight: 1.6 }}>
+            The generator didn&apos;t answer, so these are four generic practice questions, not ones written
+            from your CV or role. Try again in a minute for a tailored set.
+          </div>
+        )}
       </div>
 
       {questions.map((q, i) => (
@@ -103,7 +112,7 @@ export function QuestionsTab() {
         </div>
       ))}
 
-      {questions.length > 0 && (
+      {questions.length > 0 && !degraded && (
         <AiCaveat>
           A first draft of what they are likely to ask — not the actual paper. Practise the shape of the answer, not the wording.
         </AiCaveat>

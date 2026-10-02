@@ -24,6 +24,7 @@ export type PfEventType =
   | "OfferReceived"
   | "RejectionDiagnosed"
   | "LeetCodeSolved"
+  | "StoryPrepared"
   | "AiConsulted";
 
 export interface PfEvent {

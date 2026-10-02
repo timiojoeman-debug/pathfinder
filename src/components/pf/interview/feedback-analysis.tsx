@@ -7,6 +7,12 @@
  * the habit worth building and it must keep working offline and logged-out;
  * the analysis is the optional layer on top.
  *
+ * It analyses one reflection: the one being written above (company, stars and
+ * notes come from that form, not a second copy of it), or, when that form is
+ * empty, the most recently saved one. Its company and star rating are sent as
+ * this interview's, so the thank-you note can name the company. Earlier
+ * reflections go only into the pattern context, never as this interview's ratings.
+ *
  * Previously logged reflections are passed as context, because the useful
  * output here is the pattern across interviews — one interview analysed alone
  * mostly restates what the student already wrote. The panel says how many
@@ -27,6 +33,9 @@ const CONTEXT_LIMIT = 6;
 
 const TYPES = ["Behavioural", "Technical", "System design", "Mixed / screen"] as const;
 
+/** What `saveFeedback` stores when the note was left blank. Not a reflection. */
+const EMPTY_NOTE = "No reflections logged.";
+
 interface FeedbackData {
   analysis?: string;
   patternDetection?: string[];
@@ -36,38 +45,48 @@ interface FeedbackData {
 
 export function FeedbackAnalysis() {
   const ivFeedback = usePfStore((s) => s.ivFeedback);
+  const fbCompany = usePfStore((s) => s.fbCompany);
+  const fbRating = usePfStore((s) => s.fbRating);
+  const fbNote = usePfStore((s) => s.fbNote);
   const emit = usePfStore((s) => s.emit);
 
   const [type, setType] = useState<string>(TYPES[0]);
   const [questions, setQuestions] = useState("");
-  const [wentWell, setWentWell] = useState("");
   const [wouldChange, setWouldChange] = useState("");
+
+  // The reflection being analysed: the draft above, else the latest saved one.
+  const draft = fbCompany.trim() ? { company: fbCompany.trim(), rating: fbRating, note: fbNote.trim(), date: null as string | null } : null;
+  const latest = ivFeedback[0];
+  const subject = draft ?? (latest ? { ...latest, note: latest.note === EMPTY_NOTE ? "" : latest.note } : null);
+  const earlier = draft ? ivFeedback : ivFeedback.slice(1);
+  const totalLogged = subject ? earlier.length + 1 : 0;
 
   const { data, loading, error, needsAuth, run } = useAiTask<AiEnvelope<FeedbackData>>(
     "/api/interview/feedback",
   );
   const result = data?.data;
 
-  const ready = questions.trim().length > 0 || wentWell.trim().length > 0;
+  const ready = !!subject && (questions.trim().length > 0 || subject.note.length > 0);
 
   const generate = async () => {
-    if (!ready) return;
-    const previous = ivFeedback
+    if (!ready || !subject) return;
+    const previous = earlier
       .slice(0, CONTEXT_LIMIT)
       .map((f) => `${f.company} (${f.rating}/5, ${f.date}): ${f.note}`)
       .join("\n");
 
     const res = await run({
       interviewType: type,
+      company: subject.company,
       questionsAsked: questions.trim(),
-      // Self-ratings come from the reflections already logged, not from a
-      // second set of sliders asking the same question again.
-      selfRatings: Object.fromEntries(ivFeedback.slice(0, CONTEXT_LIMIT).map((f) => [f.company, f.rating])),
-      wentWell: wentWell.trim(),
+      // This interview's own stars, from the reflection form. Not a second
+      // set of sliders asking the same question again.
+      selfRatings: subject.rating ? { overall: subject.rating } : {},
+      wentWell: subject.note,
       wouldChange: wouldChange.trim(),
       previousInterviews: previous,
     });
-    if (res?.data?.analysis) emit("AiConsulted", "interview", `Analysed a ${type.toLowerCase()} interview`);
+    if (res?.data?.analysis) emit("AiConsulted", "interview", `Analysed a ${type.toLowerCase()} interview · ${subject.company}`);
   };
 
   return (
@@ -77,6 +96,18 @@ export function FeedbackAnalysis() {
         Connects the questions you were asked to the gaps in your prep, and drafts the thank-you note
         while the conversation is still fresh.
       </span>
+
+      <div style={{ fontSize: 12.5, marginTop: 12, color: subject ? "var(--fg)" : "var(--faint)" }}>
+        {subject ? (
+          <>
+            Analysing <strong>{subject.company}</strong>
+            {subject.rating ? <span style={{ color: "var(--warn)" }}> {"★★★★★".slice(0, subject.rating)}</span> : null}
+            <span style={{ color: "var(--faint)" }}>{subject.date ? ` · saved ${subject.date}` : " · from the form above, not saved yet"}</span>
+          </>
+        ) : (
+          "Fill in the reflection above (company and how it went) and the analysis reads it from there."
+        )}
+      </div>
 
       <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 15 }}>
         {TYPES.map((t) => {
@@ -107,13 +138,6 @@ export function FeedbackAnalysis() {
         style={{ width: "100%", minHeight: 80, marginTop: 12, padding: "12px 15px", fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
       />
       <textarea
-        value={wentWell}
-        onChange={(e) => setWentWell(e.target.value)}
-        placeholder="What went well?"
-        className="pf-input"
-        style={{ width: "100%", minHeight: 60, marginTop: 10, padding: "12px 15px", fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
-      />
-      <textarea
         value={wouldChange}
         onChange={(e) => setWouldChange(e.target.value)}
         placeholder="What would you do differently?"
@@ -125,9 +149,9 @@ export function FeedbackAnalysis() {
         <GenerateButton onClick={generate} loading={loading} disabled={!ready} loadingLabel="Analysing…">
           {result ? "Re-analyse" : "Analyse this interview"}
         </GenerateButton>
-        {!ready && (
+        {!ready && subject && (
           <span style={{ fontSize: 11.5, color: "var(--faint)" }}>
-            Add the questions or what went well.
+            Add the questions they asked, or notes in the reflection above.
           </span>
         )}
       </div>
@@ -145,8 +169,8 @@ export function FeedbackAnalysis() {
           {result.patternDetection?.length ? (
             <AiSection
               title={
-                ivFeedback.length > 1
-                  ? `Patterns across ${ivFeedback.length} logged interviews`
+                totalLogged > 1
+                  ? `Patterns across ${totalLogged} interviews`
                   : "Possible patterns — only one interview logged"
               }
             >
@@ -171,10 +195,10 @@ export function FeedbackAnalysis() {
             </AiSection>
           )}
 
-          {ivFeedback.length < 3 && (
+          {totalLogged < 3 && (
             <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 13, lineHeight: 1.5, fontFamily: mono }}>
-              {ivFeedback.length === 0 ? "No" : ivFeedback.length} reflection
-              {ivFeedback.length === 1 ? "" : "s"} logged — patterns get real at three or more.
+              {totalLogged === 0 ? "No" : totalLogged} interview
+              {totalLogged === 1 ? "" : "s"} to compare: patterns get real at three or more.
             </div>
           )}
 

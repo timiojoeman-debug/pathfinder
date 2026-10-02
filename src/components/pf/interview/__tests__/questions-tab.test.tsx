@@ -45,11 +45,23 @@ describe("QuestionsTab", () => {
     expect(screen.getByRole("button", { name: /harder ones/i })).toBeTruthy();
   });
 
-  it("requests a harder set with more:true", async () => {
+  it("says the set degraded, and logs no consult, when the route served its fallback", async () => {
+    const fallback = { source: "fallback", questions: [{ type: "Behavioral", question: "Generic q", answerTemplate: "" }] };
+    const run = vi.fn(async () => fallback);
+    vi.mocked(useAiTask).mockReturnValue(aiTask({ data: fallback as never, run: run as never }));
+    render(<QuestionsTab />);
+    expect(screen.getByRole("status").textContent).toMatch(/generic practice questions/i);
+    expect(screen.queryByRole("button", { name: /harder ones/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /regenerate/i }));
+    await waitFor(() => expect(run).toHaveBeenCalled());
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  it("requests a harder set with more:true and difficulty:harder", async () => {
     const run = vi.fn(async () => ({ questions: [{ type: "Technical", question: "q", answerTemplate: "" }] }));
     vi.mocked(useAiTask).mockReturnValue(aiTask({ data: { questions: [{ type: "Technical", question: "q", answerTemplate: "" }] } as never, run: run as never }));
     render(<QuestionsTab />);
     fireEvent.click(screen.getByRole("button", { name: /harder ones/i }));
-    await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ more: true })));
+    await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ more: true, difficulty: "harder" })));
   });
 });

@@ -18,7 +18,7 @@ function makeProfile(overrides: Partial<CareerProfile> = {}): CareerProfile {
     projectsGenerated: false,
     targetCompanies: [], applicationsSubmitted: 0, interviewsLanded: 0, offers: 0, interviewRate: 0, schemeWindows: [],
     outreachSent: 0, contactedCompanies: [],
-    leetSolved: 0, weakPatterns: [], interviewsLogged: 0,
+    leetSolved: 0, weakPatterns: [], interviewsLogged: 0, storiesPrepared: 0, trackedCards: [],
     strengths: [], weaknesses: [], currentPhase: 'direction',
     events: [],
     ...overrides,

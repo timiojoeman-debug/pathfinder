@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
-vi.mock("@/lib/pf/store", () => ({ useRecommendations: vi.fn() }));
+const openApp = vi.fn();
+vi.mock("@/lib/pf/store", () => ({
+  useRecommendations: vi.fn(),
+  usePfStore: (sel: (s: { openApp: typeof openApp }) => unknown) => sel({ openApp }),
+}));
 vi.mock("next/navigation", () => ({ usePathname: vi.fn() }));
 
 import { NextStep } from "../next-step";
@@ -51,6 +55,23 @@ describe("NextStep", () => {
     render(<NextStep />);
     expect(screen.getByText(/right place/i)).toBeTruthy();
     expect(screen.queryByRole("link", { name: /do it/i })).toBeNull();
+  });
+
+  it("opens the card a tracker nudge is about, from the tracker page and from elsewhere", () => {
+    openApp.mockClear();
+    const nudge = { ...REC, id: "remind-monzo", href: "/tracker", cardKey: "monzo::backend intern" };
+    vi.mocked(useRecommendations).mockReturnValue([nudge]);
+    vi.mocked(usePathname).mockReturnValue("/tracker");
+    const { unmount } = render(<NextStep />);
+    fireEvent.click(screen.getByRole("button", { name: /open the card/i }));
+    expect(openApp).toHaveBeenCalledWith("monzo::backend intern");
+    unmount();
+
+    openApp.mockClear();
+    vi.mocked(usePathname).mockReturnValue("/intel");
+    render(<NextStep />);
+    fireEvent.click(screen.getByRole("link", { name: /do it/i }));
+    expect(openApp).toHaveBeenCalledWith("monzo::backend intern");
   });
 
   it("renders the compact variant as a single link to the recommendation", () => {
