@@ -499,3 +499,27 @@ describe("pf store — instant actions (no pretend delays)", () => {
     expect(s().onb.step).toBe(3);
   });
 });
+
+describe("pf store — university", () => {
+  beforeEach(reset);
+
+  it("trims and clips to 120 characters", () => {
+    s().setUniversity("  University of Edinburgh  ");
+    expect(s().university).toBe("University of Edinburgh");
+    s().setUniversity("x".repeat(200));
+    expect(s().university).toHaveLength(120);
+  });
+
+  it("is persisted", () => {
+    s().setUniversity("Durham");
+    const saved = usePfStore.persist.getOptions().partialize!(s()) as Record<string, unknown>;
+    expect(saved.university).toBe("Durham");
+  });
+
+  it("merge turns a non-string into an empty string and keeps a string", () => {
+    const merge = usePfStore.persist.getOptions().merge!;
+    expect((merge({ university: 42 }, PRISTINE) as { university: string }).university).toBe("");
+    expect((merge({}, PRISTINE) as { university: string }).university).toBe("");
+    expect((merge({ university: " Durham " }, PRISTINE) as { university: string }).university).toBe("Durham");
+  });
+});
