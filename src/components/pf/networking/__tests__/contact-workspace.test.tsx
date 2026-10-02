@@ -2,9 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const emit = vi.fn();
-vi.mock("@/lib/pf/store", () => ({
-  usePfStore: (sel: (s: { emit: typeof emit }) => unknown) => sel({ emit }),
-  useProfile: () => ({ events: [] }),
+const completeCoffeeChat = vi.fn((c: { contact: string }) => c.contact.trim().length > 0);
+let events: { type: string; ts: number; meta?: Record<string, string> }[] = [];
+vi.mock("@/lib/pf/store", async (importOriginal) => ({
+  // The real "already logged" rule, so the button and the store agree.
+  recentCoffeeChat: (await importOriginal<typeof import("@/lib/pf/store")>()).recentCoffeeChat,
+  usePfStore: (sel: (s: { emit: typeof emit; completeCoffeeChat: typeof completeCoffeeChat }) => unknown) =>
+    sel({ emit, completeCoffeeChat }),
+  useProfile: () => ({ events, coffeeChatsDone: events.length }),
 }));
 vi.mock("@/lib/pf/ai-context", () => ({
   networkingProfileLine: () => "A CS student targeting backend internships.",
@@ -33,6 +38,8 @@ let referralTask: Task;
 
 beforeEach(() => {
   emit.mockClear();
+  completeCoffeeChat.mockClear();
+  events = [];
   prepTask = aiTask();
   followTask = aiTask();
   referralTask = aiTask();
@@ -56,7 +63,7 @@ describe("ContactWorkspace — coffee chat prep", () => {
     expect(btn).not.toBeDisabled();
     fireEvent.click(btn);
     await waitFor(() => expect(prepTask.run).toHaveBeenCalledWith(expect.objectContaining({ contactName: "Dana", contactCompany: "Stripe" })));
-    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("Dana")));
+    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("Dana"), { kind: "coffee-chat-prep" }));
   });
 });
 
@@ -87,7 +94,7 @@ describe("ContactWorkspace — referral", () => {
     expect(btn).not.toBeDisabled();
     fireEvent.click(btn);
     await waitFor(() => expect(referralTask.run).toHaveBeenCalledWith(expect.objectContaining({ contactName: "Dana", roleName: "Backend Intern", cvStrengths: ["Shipped a Go service"] })));
-    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("referral package")));
+    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("referral package"), { kind: "referral-package" }));
   });
 });
 
@@ -112,5 +119,37 @@ describe("ContactWorkspace — who the contact is", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Peer" }));
     expect(screen.getByRole("button", { name: /build referral package/i })).toBeTruthy();
+  });
+});
+
+describe("ContactWorkspace — shared contact + chat done", () => {
+  it("prefills from the page's shared contact and reports edits back", () => {
+    const onContactChange = vi.fn();
+    render(<ContactWorkspace contact={{ name: "Dana", company: "Stripe" }} onContactChange={onContactChange} />);
+    expect(screen.getByPlaceholderText(/contact name/i)).toHaveValue("Dana");
+    expect(screen.getByPlaceholderText(/^company$/i)).toHaveValue("Stripe");
+    fill(/contact name/i, "Dana Kim");
+    expect(onContactChange).toHaveBeenCalledWith({ name: "Dana Kim" });
+  });
+
+  it("marks a chat done only with a named contact", () => {
+    render(<ContactWorkspace />);
+    expect(screen.getByRole("button", { name: /mark chat done/i })).toBeDisabled();
+    fill(/contact name/i, "Dana");
+    fill(/^company$/i, "Stripe");
+    fireEvent.click(screen.getByRole("button", { name: /mark chat done/i }));
+    expect(completeCoffeeChat).toHaveBeenCalledWith({ contact: "Dana", company: "Stripe" });
+  });
+
+  it("reads 'already logged' from the event log, so it survives navigation", () => {
+    events = [{ type: "CoffeeChatCompleted", ts: Date.now() - 60_000, meta: { contact: "Dana", company: "Stripe" } }];
+    render(<ContactWorkspace contact={{ name: "dana ", company: "STRIPE" }} />);
+    expect(screen.getByRole("button", { name: /chat with dana logged/i })).toBeDisabled();
+  });
+
+  it("allows a genuine later chat once the last one is over a day old", () => {
+    events = [{ type: "CoffeeChatCompleted", ts: Date.now() - 25 * 3600_000, meta: { contact: "Dana", company: "Stripe" } }];
+    render(<ContactWorkspace contact={{ name: "Dana", company: "Stripe" }} />);
+    expect(screen.getByRole("button", { name: /mark chat done/i })).not.toBeDisabled();
   });
 });

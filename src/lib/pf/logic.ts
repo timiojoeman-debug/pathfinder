@@ -522,7 +522,8 @@ export function formatReminder(v: string): string {
 
 export function followUpMessage(to: string): string {
   const first = to.trim() ? to.trim().split(" ")[0] : "there";
-  return "Hi " + first + " — quick follow-up on my last note. Since then I shipped the improvement you suggested (repo link below). Still keen on that 15 minutes if your week allows.";
+  // The proof of action is a bracket to fill, not a claim made on the student's behalf.
+  return "Hi " + first + ", a quick follow-up on my last note. [Since then I've: name the one real thing you did, with a link.] Still keen on that 15 minutes if your week allows.";
 }
 
 /* ── Outreach (Phase 04) ───────────────────────────────────────────────
@@ -556,7 +557,7 @@ export function buildOutreachTemplate(
     case "Recruiter":
       return [
         `${hi} I'm a CS student focused on ${role} work (${stack}). I saw the ${role} opening${at} and wanted to reach out directly.`,
-        "I recently shipped a deployed project I can point to, and I'd value 15 minutes to learn what a strong application looks like to your team — no ask beyond that.",
+        "[Name one real project you can point to, with a link.] I'd value 15 minutes to learn what a strong application looks like to your team — no ask beyond that.",
         "[Add one specific thing you noticed about the team or a recent post before sending.] Thanks either way. [Your name]",
       ];
     case "Hiring manager":

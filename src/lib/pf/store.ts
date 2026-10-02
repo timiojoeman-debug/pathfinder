@@ -41,8 +41,45 @@ import { computeProgress, type ProgressReport } from "./progress";
 import { recommend, type Recommendation } from "./recommendations";
 import type { AiInteraction } from "./orchestrator";
 import type { AtsEnvelope as TailorAts, MatchEnvelope as TailorMatch } from "@/components/pf/cv/tailor-panel";
+import type { Naturalness } from "@/components/pf/networking/naturalness-note";
 
 export interface ChatMsg { who: "you" | "ai"; text: string }
+
+/** The person the student is currently working on, shared by Research, Outreach
+ *  and the Contact workspace so nobody types the same name twice. */
+export interface NetContact { name: string; company: string; about: string; experience: string }
+/** What `/api/networking/analyze-profile` found in what the student pasted. */
+export interface NetResearch { summary?: string; connectionPoints?: string[]; outreachAngles?: string[]; conversationStarters?: string[] }
+/** Research is about one person: `key` is `netContactKey` of the contact it was run on. */
+export interface NetResearchFor { key: string; name: string; data: NetResearch }
+/** The last generated outreach, kept only for the contact + persona it was written for. */
+export interface NetDraft {
+  key: string;
+  paras: string[];
+  followUp: string | null;
+  naturalness: Naturalness | null;
+  questions: string[];
+  topics: string[];
+}
+/** Which person something belongs to, ignoring case and stray whitespace. */
+export const netContactKey = (c: { name: string; company?: string }) =>
+  [c.name.trim().toLowerCase(), (c.company ?? "").trim().toLowerCase()].join("|");
+/** Which contact + persona a draft belongs to. */
+export const netDraftKey = (persona: string, c: { name: string; company: string }) =>
+  [persona, netContactKey(c)].join("|");
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** A CoffeeChatCompleted for this contact (and company) in the last 24 hours. One
+ *  conversation counts once, but a genuine later chat with the same person still can. */
+export function recentCoffeeChat(events: PfEvent[], c: { contact: string; company?: string }, now = Date.now()): boolean {
+  const key = netContactKey({ name: c.contact, company: c.company });
+  return events.some(
+    (e) =>
+      e.type === "CoffeeChatCompleted" &&
+      now - e.ts < DAY_MS &&
+      netContactKey({ name: String(e.meta?.contact ?? ""), company: String(e.meta?.company ?? "") }) === key,
+  );
+}
 /** A turn in the cross-page mentor conversation. */
 export interface AsstMsg { role: "user" | "assistant"; content: string }
 
@@ -147,6 +184,9 @@ interface PfState {
   netSent: number;
   netGenerated: boolean;
   netFollow: boolean;
+  netContact: NetContact;
+  netResearch: NetResearchFor | null;
+  netDraft: NetDraft | null;
 
   /* interview */
   ivTab: string;
@@ -213,6 +253,8 @@ interface PfState {
 
   /** Log a sent message. Returns false (and logs nothing) without a real recipient and message. */
   generateOutreach: (contact: { name: string; company?: string; message: string }) => boolean;
+  /** Logs a coffee chat the student actually held. Needs a named contact. */
+  completeCoffeeChat: (chat: { contact: string; company?: string }) => boolean;
 
   /** Mark a problem solved, or un-mark it if it already was. */
   toggleProblem: (slug: string) => void;
@@ -314,6 +356,9 @@ export const usePfStore = create<PfState>()(
       netSent: 0,
       netGenerated: false,
       netFollow: false,
+      netContact: { name: "", company: "", about: "", experience: "" },
+      netResearch: null,
+      netDraft: null,
 
       ivTab: "leetcode",
       ivSolved: {},
@@ -543,6 +588,16 @@ export const usePfStore = create<PfState>()(
         return true;
       },
 
+      // Feeds `profile.coffeeChatsDone` and so networking progress: a chat with nobody
+      // is not evidence of anything.
+      completeCoffeeChat: ({ contact, company }) => {
+        const who = contact.trim();
+        if (!who || recentCoffeeChat(get().events, { contact, company })) return false;
+        const co = company?.trim();
+        get().emit("CoffeeChatCompleted", "networking", `Coffee chat with ${who}${co ? ` at ${co}` : ""}`, co ? { contact: who, company: co } : { contact: who });
+        return true;
+      },
+
       toggleProblem: (slug) => {
         const problem = LEETCODE_PROBLEMS.find((p) => p.slug === slug);
         if (!problem) return;
@@ -744,6 +799,9 @@ export const usePfStore = create<PfState>()(
         netPersona: s.netPersona,
         netSent: s.netSent,
         netGenerated: s.netGenerated,
+        netContact: s.netContact,
+        netResearch: s.netResearch,
+        netDraft: s.netDraft,
         ivTab: s.ivTab,
         ivSolved: s.ivSolved,
         ivProblems: s.ivProblems,
