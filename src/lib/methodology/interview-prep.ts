@@ -1,15 +1,21 @@
 /**
- * TechTalk Interview Prep (10 Interviews in 30 Days)
- * Philosophy, STAR, story categories, deep-dive topics, LeetCode approach
+ * Interview prep methodology: philosophy, STARL, story categories, deep-dive topics, LeetCode approach.
+ *
+ * Sources, stated honestly: this is general interview practice. The STARL structure (including
+ * Learnings, and "quantify where you can") comes from the TechTalk June 2026 Masterclass, Day 3.
+ * The philosophy line, story categories, project deep dives and the 6-step LeetCode approach are
+ * PathFinder's own and are not taken from TechTalk. The "10 Interviews in 30 Days" deck contains
+ * none of this material.
  */
 export const INTERVIEW_PREP = {
   philosophy: 'Technical skills get you to the interview. Behavioural skills get you the offer.',
 
   star: {
-    situation: { rule: '1-2 sentences of context — set the scene briefly', common_mistake: 'Too long — keep it under 20 seconds when spoken' },
+    situation: { rule: '1-2 sentences of context. Set the scene and keep it brief', common_mistake: 'Too long. Keep the situation brief and get to your part' },
     task: { rule: 'Your specific responsibility — what was YOUR role', common_mistake: 'Describing the team\'s task instead of your personal responsibility' },
     action: { rule: 'Specific actions YOU took — use "I", not "we"', common_mistake: 'Being vague — "I helped the team" instead of "I implemented the caching layer"' },
-    result: { rule: 'Quantified outcome — numbers are mandatory', common_mistake: 'No metrics — "it worked well" instead of "reduced load time by 40%"' },
+    result: { rule: 'The outcome. Quantify where you can: numbers make it even better', common_mistake: 'No evidence of impact, e.g. "it worked well" instead of "reduced load time by 40%"' },
+    learnings: { rule: 'What you would do differently, and what you took into later work', common_mistake: 'Stopping at the result, so the interviewer never sees you reflect and grow' },
   } as const,
 
   storyCategories: [
@@ -30,9 +36,8 @@ export const INTERVIEW_PREP = {
   ] as const,
 
   practiceTimings: {
-    short: { duration: '3 minutes', use: 'Quick round answer — situation + key action + result' },
-    medium: { duration: '5 minutes', use: 'Standard interview answer — full STAR with detail' },
-    extended: { duration: '10 minutes', use: 'Deep dive — full STAR with follow-up questions and technical detail' },
+    short: { duration: '3 minutes', use: 'Quick round answer: situation + key action + result' },
+    medium: { duration: '5 minutes', use: 'Standard interview answer: full STARL with detail' },
   } as const,
 
   leetcode: {

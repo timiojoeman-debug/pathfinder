@@ -37,7 +37,7 @@ const FALLBACK_QUESTIONS = {
       type: "Behavioral",
       question: "Tell me about a time you worked on a challenging project with a tight deadline.",
       answerTemplate:
-        "Use STAR: Situation and Task briefly, focus on Actions (break down work, communicate, manage scope), end with measurable Result.",
+        "Use STARL: Situation and Task briefly, focus on Actions (break down work, communicate, manage scope), give the Result (with a number where you can), then add what you learned.",
     },
     {
       type: "Technical",

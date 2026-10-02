@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { usePfStore } from "../store";
 import { deriveProfile } from "../profile";
 import { computeProgress } from "../progress";
-import { dominantRejectionTiming } from "../logic";
-import { DIAG_FIX } from "../data";
+import { dominantRejectionTiming, migrateDiags } from "../logic";
+import { DIAG_FIX, DIAG_TIMINGS, REJECTION_DIAGNOSIS } from "../data";
 
 /**
  * Store actions behind the Interview and Tracker honesty pass: saved STAR
@@ -30,6 +30,14 @@ describe("STAR stories", () => {
     expect(s().savedStories[0]).toMatchObject({ title: "Broken build", ...BEATS });
     expect(lastEvent().type).toBe("StoryPrepared");
     expect(deriveProfile({ ...s() }).storiesPrepared).toBe(1);
+  });
+
+  it("keeps an optional Learnings beat, and a four-beat story has none", () => {
+    s().saveStory({ title: "With learnings", ...BEATS, learnings: " Add CI sooner. " });
+    s().saveStory({ title: "Four beats", ...BEATS });
+    const [fourBeat, withL] = s().savedStories;
+    expect(withL.learnings).toBe("Add CI sooner.");
+    expect(fourBeat).not.toHaveProperty("learnings");
   });
 
   it("refuses a story with an empty beat", () => {
@@ -121,11 +129,29 @@ describe("tracker — follow-up sent", () => {
   });
 });
 
+describe("rejection diagnosis labels", () => {
+  it("migrates the old \"1–2 days\" label to \"2+ days\" when stored state loads", () => {
+    const merge = usePfStore.persist.getOptions().merge!;
+    const merged = merge({ diags: { a: "1–2 days", b: "Within hours", c: "Never" } }, s()) as ReturnType<typeof s>;
+    expect(merged.diags).toEqual({ a: "2+ days", b: "Within hours", c: "Never" });
+    expect(Object.values(merged.diags)).not.toContain("1–2 days");
+  });
+
+  it("migrateDiags leaves current labels alone", () => {
+    expect(migrateDiags({ a: "2+ days", b: "1–2 weeks" })).toEqual({ a: "2+ days", b: "1–2 weeks" });
+  });
+
+  it("every diagnosis points to asking for feedback and never to a rewrite on timing alone", () => {
+    for (const text of Object.values(REJECTION_DIAGNOSIS)) expect(text.toLowerCase()).toContain("feedback");
+    expect(Object.keys(REJECTION_DIAGNOSIS)).toEqual(DIAG_TIMINGS);
+  });
+});
+
 describe("rejection fix routing", () => {
   it("sends slow rejections and silence to networking, fast ones to the CV", () => {
     const route = (t: string) => DIAG_FIX[dominantRejectionTiming({ a: t, b: t })!.timing].href;
     expect(route("Within hours")).toBe("/cv");
-    expect(route("1–2 days")).toBe("/cv");
+    expect(route("2+ days")).toBe("/cv");
     expect(route("1–2 weeks")).toBe("/networking");
     expect(route("Never")).toBe("/networking");
     expect(dominantRejectionTiming({ a: "Never" })).toBeNull();

@@ -146,6 +146,10 @@ export function BriefingTab() {
           />
         </div>
 
+        <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, margin: "12px 0 0" }}>
+          Read the advert yourself first and note the must-haves; use the AI read to check what you missed.
+        </p>
+
         <div style={{ marginTop: 12 }}>
           <GenerateButton
             onClick={generate}

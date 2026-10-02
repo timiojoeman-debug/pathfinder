@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 const emit = vi.fn();
 const saveStory = vi.fn(() => true);
 const deleteStory = vi.fn();
-const store = { savedStories: [] as { id: string; title: string; situation: string; task: string; action: string; result: string; savedAt: number }[] };
+const store = { savedStories: [] as { id: string; title: string; situation: string; task: string; action: string; result: string; learnings?: string; savedAt: number }[] };
 vi.mock("@/lib/pf/store", () => ({
   usePfStore: (sel: (s: unknown) => unknown) => sel({ emit, saveStory, deleteStory, savedStories: store.savedStories }),
 }));
@@ -76,6 +76,33 @@ describe("StarTab", () => {
     fireEvent.change(screen.getByLabelText(/story title/i), { target: { value: "Broken build" } });
     fireEvent.click(save);
     expect(saveStory).toHaveBeenCalledWith({ title: "Broken build", situation: SIT, task: "Keep us shipping.", action: ACT, result: "Breakages hit zero." });
+  });
+
+  it("treats Learnings as optional, and sends it when written", () => {
+    render(<StarTab />);
+    fireEvent.change(screen.getByPlaceholderText(/set the scene/i), { target: { value: SIT } });
+    fireEvent.change(screen.getByPlaceholderText(/what did you do/i), { target: { value: ACT } });
+    fireEvent.change(screen.getByPlaceholderText(/specific responsibility/i), { target: { value: "Keep us shipping." } });
+    fireEvent.change(screen.getByPlaceholderText(/measurable outcome/i), { target: { value: "Breakages hit zero." } });
+    fireEvent.change(screen.getByPlaceholderText(/do differently/i), { target: { value: "Add CI sooner." } });
+    fireEvent.click(screen.getByRole("button", { name: /save my draft/i }));
+    expect(saveStory).toHaveBeenCalledWith(expect.objectContaining({ learnings: "Add CI sooner." }));
+  });
+
+  it("renders a story saved with four beats, and shows the learnings of one with five", () => {
+    store.savedStories = [
+      { id: "s1", title: "Old", situation: "sit", task: "t", action: "act", result: "res", savedAt: 1 },
+      { id: "s2", title: "New", situation: "sit2", task: "t", action: "act", result: "res", learnings: "Learned to ask early.", savedAt: 2 },
+    ];
+    render(<StarTab />);
+    expect(screen.getByText("Learned to ask early.")).toBeTruthy();
+    expect(screen.getAllByText("sit").length).toBeGreaterThan(0);
+  });
+
+  it("carries the not-your-answer caveat on the tightened story", () => {
+    vi.mocked(useAiTask).mockReturnValue(aiTask({ data: { data: { situation: "One sharp sentence." } } as never }));
+    render(<StarTab />);
+    expect(screen.getByText("A starting structure, not your answer. Rewrite it in your own words and practise it out loud.")).toBeTruthy();
   });
 
   it("lists saved stories against the target of five, and confirms before deleting", () => {

@@ -39,9 +39,9 @@ export const CV_KNOWLEDGE: DomainKnowledge = {
       statement:
         'A CV must pass two gates before any human seriously considers it — an AI/ATS keyword filter, then a 6–8 second recruiter scan.',
       rationale:
-        'Software surfaces only the top ~20–30% by keyword and relevance; the human then F-pattern-scans the top of page one. Anything that fails the first gate is auto-rejected in minutes; anything that survives gets seconds, not minutes.',
+        'Software surfaces only the top ~20–30% by keyword and relevance; the human then F-pattern-scans the top of page one. Automated screening (ATS ranking plus, at high-volume employers, AI filters) can drop a CV before or alongside a human read; at smaller firms a recruiter often reads every application with the ATS flagging must-haves. Either way, a CV that survives gets seconds, not minutes.',
       evidence: [
-        'AI/ATS filter surfaces only the top ~20–30%; failure → automated rejection in minutes–hours.',
+        'AI/ATS filter surfaces only the top ~20–30%; failure → the CV can be dropped before or alongside a human read.',
         'The recruiter scan is ~6–8 seconds, F-pattern over the top half of page one.',
       ],
       sourceIds: ['wiki-ats-optimization', 'doc-cv-blueprint'],
@@ -73,7 +73,7 @@ export const CV_KNOWLEDGE: DomainKnowledge = {
         'Shows the three gates a CV passes through, so you optimise for the one that actually rejects you.',
       appliesWhen: 'Diagnosing why a CV is getting no responses.',
       steps: [
-        { label: 'AI / ATS filter', detail: 'Parses keywords, tools, location, JD relevance; surfaces only the top ~20–30%. Fail → automated rejection in minutes–hours.' },
+        { label: 'AI / ATS filter', detail: 'Parses keywords, tools, location, JD relevance; surfaces only the top ~20–30%. Fail → the CV can be dropped before or alongside a human read; match the must-have keywords.' },
         { label: 'Recruiter scan', detail: '~6–8 seconds, F-pattern over the top half of page one. Quick yes/no.' },
         { label: 'The black hole', detail: 'Passed AI but not picked — silence. Often the role was filled internally; the higher-yield fix is a referral that skips the gate.' },
       ],
@@ -87,7 +87,7 @@ export const CV_KNOWLEDGE: DomainKnowledge = {
         'Orders a one-page CV so the highest-signal content lands where the ATS and the F-pattern scan look first.',
       appliesWhen: 'Structuring or restructuring a CV.',
       steps: [
-        { label: '1. Role Title', detail: 'Exact match to the posting, directly under your name — a mismatch here is an instant rejection.' },
+        { label: '1. Role Title', detail: 'Exact match to the posting, directly under your name — a mismatch here is the fastest way to be screened out.' },
         { label: '2. Impact Summary', detail: '2–4 lines: tech stack, key achievements, value proposition — the F-pattern hits this first.' },
         { label: '3. Core Skills', detail: 'Verbatim keywords from the posting, placed in the top third for the ATS.' },
         { label: '4. Experience', detail: '3–5 bullets/role, each action verb + task + quantified metric (≥2 metrics per role).' },

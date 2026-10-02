@@ -6,8 +6,22 @@ import { FOUR_PILLARS } from '../four-pillars';
 import { INTERVIEW_PREP } from '../interview-prep';
 
 describe('CV Blueprint', () => {
-  it('exports sectionOrder with 6 sections', () => {
-    expect(CV_BLUEPRINT.sectionOrder).toHaveLength(6);
+  it('exports sectionOrder with 7 sections and a 6-section student order', () => {
+    expect(CV_BLUEPRINT.sectionOrder).toHaveLength(7);
+    expect(CV_BLUEPRINT.studentSectionOrder.map((s) => s.name)).toEqual(['Impact Summary', 'Core Skills', 'Education', 'Projects', 'Experience', 'Certifications']);
+  });
+
+  it('tailors in 10 minutes across headline, summary, skills and key achievements', () => {
+    expect(CV_BLUEPRINT.tailoringProcess.targetMinutes).toBe(10);
+    const total = CV_BLUEPRINT.tailoringProcess.steps.reduce((n, s) => n + s.timeMinutes, 0);
+    expect(total).toBe(10);
+    expect(CV_BLUEPRINT.tailoringProcess.steps).toHaveLength(4);
+  });
+
+  it('keeps a distinct student order, with Projects before Experience', () => {
+    const names = CV_BLUEPRINT.studentSectionOrder.map((s) => s.name);
+    expect(names.indexOf('Projects')).toBeLessThan(names.indexOf('Experience'));
+    expect(names.indexOf('Education')).toBeLessThan(names.indexOf('Projects'));
   });
 
   it('has section order starting with Role Title', () => {
@@ -119,6 +133,13 @@ describe('Four Pillars', () => {
 describe('Interview Prep', () => {
   it('exports STAR methodology', () => {
     expect(INTERVIEW_PREP.star).toBeDefined();
+  });
+
+  it('uses STARL: an optional Learnings beat, no 20-second cap, no 10-minute format', () => {
+    expect(INTERVIEW_PREP.star.learnings.rule).toMatch(/differently/);
+    expect(INTERVIEW_PREP.star.result.rule).toMatch(/where you can/);
+    expect(INTERVIEW_PREP.star.situation.common_mistake).not.toMatch(/20 seconds/);
+    expect(INTERVIEW_PREP.practiceTimings).not.toHaveProperty('extended');
   });
 
   it('exports story categories', () => {

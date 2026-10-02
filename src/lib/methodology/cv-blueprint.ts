@@ -5,15 +5,15 @@
 export const CV_BLUEPRINT = {
   screeningStages: [
     {
-      stage: 'ATS auto-filter',
-      timing: 'Minutes',
+      stage: 'Automated screening (ATS ranking, AI filters)',
+      timing: 'Minutes to hours',
       rejectionSignal: 'within_hours',
-      detail: 'Automated keyword matching; instant rejection if critical keywords missing from headline, skills, or experience sections',
+      detail: 'Automated screening (ATS ranking plus, at high-volume employers, AI filters) can drop a CV before or alongside a human read. At smaller firms a recruiter often reads every application with the ATS flagging must-haves. Either way, match the must-have keywords in your headline, skills, and experience sections',
     },
     {
       stage: 'Recruiter 6-8 second F-pattern scan',
-      timing: '1-2 days',
-      rejectionSignal: 'within_1_2_days',
+      timing: '2+ days',
+      rejectionSignal: 'after_2_days',
       detail: 'Human scans top-left (name + title), middle-left (impact summary + skills), bottom-left (experience); quick yes/no decision',
     },
     {
@@ -24,12 +24,13 @@ export const CV_BLUEPRINT = {
     },
   ] as const,
 
+  /** Order for candidates with substantial relevant experience. Students and graduates use studentSectionOrder. */
   sectionOrder: [
     {
       position: 1,
       name: 'Role Title',
       rule: 'Exact match to posting, placed directly under name',
-      rationale: 'ATS and recruiters scan for role match first — a mismatch here is an instant rejection',
+      rationale: 'ATS and recruiters scan for role match first — a mismatch here is the fastest way to be screened out',
     },
     {
       position: 2,
@@ -51,9 +52,55 @@ export const CV_BLUEPRINT = {
     },
     {
       position: 5,
+      name: 'Projects',
+      rule: '2-3 projects that match the role: what it does, the stack, a live link, and one result',
+      rationale: 'Projects are proof of work, and they matter most where experience is thin',
+    },
+    {
+      position: 6,
       name: 'Education',
       rule: 'Degree, institution, dates, relevant coursework if applicable',
       rationale: 'For internships, education validates eligibility but should not dominate the CV',
+    },
+    {
+      position: 7,
+      name: 'Certifications',
+      rule: 'Only if relevant to the target role',
+      rationale: 'Irrelevant certifications waste prime CV space and dilute your narrative',
+    },
+  ] as const,
+
+  /** Order for students and graduates with thin relevant experience (TechTalk CV order). */
+  studentSectionOrder: [
+    {
+      position: 1,
+      name: 'Impact Summary',
+      rule: '2-4 lines: tech stack, key achievements, value proposition, under a headline that matches the target role',
+      rationale: 'The F-pattern scan hits this area first, so it has to sell you immediately',
+    },
+    {
+      position: 2,
+      name: 'Core Skills',
+      rule: 'Verbatim keywords from the job posting',
+      rationale: 'ATS systems scan the top third first, so skills placed here get matched early',
+    },
+    {
+      position: 3,
+      name: 'Education',
+      rule: 'Degree, institution, dates, relevant coursework',
+      rationale: 'With little experience yet, education is your strongest credential and belongs high on the page',
+    },
+    {
+      position: 4,
+      name: 'Projects',
+      rule: '2-3 projects that match the role: what it does, the stack, a live link, and one result',
+      rationale: 'Projects are your proof of work while experience is thin',
+    },
+    {
+      position: 5,
+      name: 'Experience',
+      rule: '3-5 bullets per role, each with action verb + task + quantified metric where you can',
+      rationale: 'Part-time, volunteering, and society roles still show transferable impact',
     },
     {
       position: 6,
@@ -86,21 +133,20 @@ export const CV_BLUEPRINT = {
   ] as const,
 
   tailoringProcess: {
-    name: '15-Minute Quick Tailoring Process',
-    targetMinutes: 15,
+    name: '10-Minute Quick Tailoring Process',
+    targetMinutes: 10,
     steps: [
-      { step: 1, action: 'Extract 3-5 critical keywords from the job description', timeMinutes: 3 },
-      { step: 2, action: 'Update headline to match the exact job title from the posting', timeMinutes: 1 },
-      { step: 3, action: 'Insert keywords naturally into impact summary and skills section', timeMinutes: 3 },
-      { step: 4, action: 'Swap 1-2 experience bullets for the most relevant results matching this role', timeMinutes: 5 },
-      { step: 5, action: 'Verify first-page layout: F-pattern scan, UK spelling, format check', timeMinutes: 3 },
+      { step: 1, action: 'Headline: match the job title from the posting', timeMinutes: 1 },
+      { step: 2, action: 'Summary: weave in the role\'s key terms and your most relevant strengths', timeMinutes: 3 },
+      { step: 3, action: 'Skills: lead with the 3-5 must-have keywords from the job description', timeMinutes: 3 },
+      { step: 4, action: 'Key achievements: surface the results that best match this role', timeMinutes: 3 },
     ] as const,
   },
 
   checks: [
     { check: 'GitHub link in header', why: 'Recruiters check GitHub for every technical candidate' },
     { check: 'Live demo URLs on projects', why: 'A deployed project proves you can ship, not just code' },
-    { check: 'Real job title (never "Aspiring")', why: '"Aspiring Developer" tells recruiters you are not one yet' },
+    { check: 'Real job title (prefer it to "Aspiring")', why: 'Prefer a real title such as "Computer Science Student | ..." or "Software Engineering Intern". Use "Aspiring X" only for a genuine career switch with no related experience' },
     { check: 'Metrics in every bullet (min 2 per role)', why: 'Numbers are the only universal proof of impact' },
     { check: 'UK spelling throughout', why: 'AI tools default to US — unchecked AI output signals laziness' },
     { check: 'Impact summary in top third (F-pattern)', why: 'Recruiters spend 6-8 seconds scanning; top-third content decides pass/fail' },
@@ -147,13 +193,13 @@ export const CV_BLUEPRINT = {
 
   rejectionTiming: {
     within_hours: {
-      diagnosis: 'ATS auto-filter rejection',
-      action: 'Review keyword alignment — critical keywords from the job description are missing from your headline, skills, or experience sections',
+      diagnosis: 'Likely automated screening',
+      action: 'Check the must-have keywords from the job description appear in your headline, skills, and experience before changing anything else, and ask for feedback where you can',
       methodology: 'CV Blueprint Screening Stage 1',
     },
-    within_1_2_days: {
-      diagnosis: 'Recruiter reviewed and passed',
-      action: 'Improve impact summary — your CV passed ATS but the recruiter did not see enough value in the 6-8 second scan',
+    after_2_days: {
+      diagnosis: 'Probably read by a person who passed',
+      action: 'Ask for feedback where you can. If none comes, check your impact summary and skills against the posting before rewriting anything, since timing alone does not tell you what to change',
       methodology: 'CV Blueprint F-Pattern Scan',
     },
     after_2_weeks: {
@@ -163,7 +209,7 @@ export const CV_BLUEPRINT = {
     },
     never_heard_back: {
       diagnosis: 'Application entered the black hole',
-      action: 'Follow up with the recruiter or hiring manager via LinkedIn. If no response after 2 follow-ups, move on',
+      action: 'Follow up with the recruiter or hiring manager via LinkedIn. Follow up once, then move on',
       methodology: 'Networking Strategy',
     },
   } as const,

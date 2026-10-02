@@ -439,7 +439,7 @@ export function callbackSummary(submitted: number, interviews: number): { value:
 /** The rejection timing behind at least half (and at least two) of the diagnosed rejections, if any. */
 export function dominantRejectionTiming(diags: Record<string, string>): { timing: string; share: number } | null {
   const vals = Object.values(diags);
-  for (const t of ["Within hours", "1–2 days", "1–2 weeks", "Never"]) {
+  for (const t of ["Within hours", "2+ days", "1–2 weeks", "Never"]) {
     const n = vals.filter((v) => v === t).length;
     if (vals.length >= 2 && n / vals.length >= 0.5 && n >= 2) return { timing: t, share: n / vals.length };
   }
@@ -450,7 +450,12 @@ export function dominantRejectionTiming(diags: Record<string, string>): { timing
 export function rejectionInsight(diags: Record<string, string>, diagCauses: Record<string, string>): string | null {
   const d = dominantRejectionTiming(diags);
   if (!d) return null;
-  return Math.round(d.share * 100) + "% of your diagnosed rejections came \"" + d.timing.toLowerCase() + "\". " + diagCauses[d.timing];
+  return Math.round(d.share * 100) + "% of your diagnosed rejections came \"" + d.timing.toLowerCase() + "\". Likely signal: " + diagCauses[d.timing];
+}
+
+/** The "1–2 days" rejection bucket was relabelled "2+ days" to match the TechTalk positioning band. */
+export function migrateDiags(diags: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(diags).map(([k, v]) => [k, v === "1–2 days" ? "2+ days" : v]));
 }
 
 /* ── Misc ──────────────────────────────────────────────────────────── */

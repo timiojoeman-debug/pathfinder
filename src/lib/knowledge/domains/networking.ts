@@ -41,7 +41,7 @@ export const NETWORKING_KNOWLEDGE: DomainKnowledge = {
       evidence: [
         '70–80% of roles are filled before a public posting appears.',
         'Referrals/internal hires cut time-to-fill from 3–4 months to ~2 weeks.',
-        'A single posting now draws 1,000+ applications (~10× the volume of 5–10 years ago).',
+        'A single posting now draws hundreds of applications (often 200–500), far more than a few years ago.',
       ],
       sourceIds: ['wiki-hidden-job-market', 'doc-hidden-market'],
       relatedConceptIds: ['c-hidden-job-market', 'c-referral-leverage'],
@@ -163,7 +163,7 @@ export const NETWORKING_KNOWLEDGE: DomainKnowledge = {
       ],
       antiPatterns: [
         'Only applying to roles after they are publicly posted.',
-        'Competing in the 1,000-applicant pile and calling it "doing everything right".',
+        'Competing in the several-hundred-applicant pile and calling it "doing everything right".',
       ],
       relatedConceptIds: ['c-referral-leverage', 'c-coffee-chat'],
       principleIds: ['p-hidden-market'],
@@ -243,7 +243,7 @@ export const NETWORKING_KNOWLEDGE: DomainKnowledge = {
       whenToUse: 'Ongoing, from the moment you start a search until you sign an offer.',
       steps: [
         { action: 'Send ~3 personalised connection requests per week.', why: 'Steady inflow beats sporadic bursts; relationships need lead time.', learn: 'c-hidden-job-market' },
-        { action: 'Run one coffee chat every 1–2 weeks.', why: 'A realistic, repeatable rate that builds a real network over a season.', learn: 'c-coffee-chat' },
+        { action: 'Run one coffee chat every 1–2 weeks. (30-day sprint option: ~10 recruiter + ~10 peer/hiring-manager messages and 2–3 coffee chats a week.)', why: 'A realistic, repeatable rate that builds a real network over a season.', learn: 'c-coffee-chat' },
         { action: 'Post or comment thoughtfully once a week.', why: 'Visibility makes you the person a recruiter or peer already half-knows.', learn: 'c-referral-leverage' },
         { action: 'Do a bi-weekly follow-up sweep of all active contacts.', why: 'Most people are busy, not uninterested — the follow-up is what keeps you alive in their mind.', learn: 'c-coffee-chat' },
       ],

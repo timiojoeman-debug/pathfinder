@@ -40,7 +40,7 @@ Role: ${params.roleName}
 
 CRITICAL RULES:
 - First assess what shared attributes ACTUALLY exist. Never fabricate.
-- Keep the message under 150 words.
+- If the message is a LinkedIn connection note, keep it under 300 characters. For a first message or email, keep it short: roughly 5-6 sentences.
 - Include a reminder: "${dosAndDonts.footer}"
 
 Respond ONLY with valid JSON:

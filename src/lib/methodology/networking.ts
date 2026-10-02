@@ -26,13 +26,13 @@ export const NETWORKING_STRATEGY = {
     hiringManagers: {
       searchTitles: ['chief', 'head of', 'engineering manager', 'tech lead', 'VP engineering', 'CTO'],
       capability: 'Direct decision-makers who know exactly what the team needs',
-      approach: 'Technical; demonstrate domain knowledge and genuine interest in their team\'s work',
+      approach: 'Technical; demonstrate domain knowledge and genuine interest in their team\'s work. Hiring managers decide on fit, so do not ask them for a referral: peers and alumni give referrals',
       tone: 'Technical and curious',
       tip: 'Check who posted the job listing — often the hiring manager themselves',
     },
     peers: {
       searchTitles: ['intern', 'junior developer', 'graduate engineer', 'associate'],
-      capability: 'Share authentic day-to-day experience; often refer candidates they connect with',
+      capability: 'Share authentic day-to-day experience; peers and alumni are who give referrals once they have connected with you',
       approach: 'Warm, casual; ask about their journey, emphasise shared experiences',
       tone: 'Warm and casual',
       tip: 'Check university alumni networks — shared education is the strongest warm connection',
@@ -75,6 +75,8 @@ export const NETWORKING_STRATEGY = {
     coffeeChats: '1 per week',
     postsOrComments: 1,
     followUps: 'Bi-weekly check on all active contacts',
+    /** A second, clearly labelled option from the 10-in-30 sprint. The baseline above stays the default. */
+    sprint: '30-day sprint: ~10 recruiter + ~10 peer/hiring-manager messages and 2–3 coffee chats a week',
   } as const,
 
   contactDiscovery: {
@@ -108,7 +110,8 @@ export const NETWORKING_STRATEGY = {
       'Don\'t use vague generic openers like "I\'d love to connect" or "I\'m reaching out because"',
       'Don\'t spam identical messages to multiple people at the same company',
       'Don\'t ask for a job in your first message — ask for advice or insight first',
-      'Don\'t write more than 150 words — respect their time',
+      'Keep a LinkedIn connection note under 300 characters (the platform limit)',
+      'Keep a first message or email short, roughly 5-6 sentences, to respect their time',
     ],
     footer: 'AI drafts the structure. You add the authenticity.',
   } as const,

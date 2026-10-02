@@ -165,6 +165,9 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
         className="pf-input"
         style={{ width: "100%", minHeight: 110, padding: "14px 15px", borderRadius: 12, borderStyle: "dashed", fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
       />
+      <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, margin: "10px 0 0" }}>
+        Read the advert yourself first and note the must-haves; use the AI read to check what you missed.
+      </p>
       <div style={{ display: "flex", gap: 10, marginTop: 13 }}>
         <button
           onClick={s.saveJfJob}

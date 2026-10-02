@@ -78,7 +78,7 @@ export async function embedDocumentChunks(): Promise<void> {
     title: 'CV Section Order',
     framework_name: 'CV Blueprint',
     topic: 'cv',
-    chunk_text: CV_BLUEPRINT.sectionOrder.map(s => `${s.position}. ${s.name}: ${s.rule}`).join('\n'),
+    chunk_text: `Students and graduates:\n${CV_BLUEPRINT.studentSectionOrder.map(s => `${s.position}. ${s.name}: ${s.rule}`).join('\n')}\n\nSubstantial relevant experience:\n${CV_BLUEPRINT.sectionOrder.map(s => `${s.position}. ${s.name}: ${s.rule}`).join('\n')}`,
   });
   chunks.push({
     title: 'CV Formatting Rules',
@@ -99,7 +99,7 @@ export async function embedDocumentChunks(): Promise<void> {
     chunk_text: CV_BLUEPRINT.atsChecklist.map(c => c.item).join('\n'),
   });
   chunks.push({
-    title: '15-Minute Tailoring Process',
+    title: '10-Minute Tailoring Process',
     framework_name: 'CV Blueprint',
     topic: 'tailoring',
     chunk_text: CV_BLUEPRINT.tailoringProcess.steps.map(s => `${s.step}. ${s.action}`).join('\n'),
@@ -164,7 +164,7 @@ export async function embedDocumentChunks(): Promise<void> {
     title: 'Interview Prep Philosophy',
     framework_name: 'Interview Prep',
     topic: 'interview',
-    chunk_text: `Philosophy: ${INTERVIEW_PREP.philosophy}\nSTAR: S=${INTERVIEW_PREP.star.situation}, T=${INTERVIEW_PREP.star.task}, A=${INTERVIEW_PREP.star.action}, R=${INTERVIEW_PREP.star.result}`,
+    chunk_text: `Philosophy: ${INTERVIEW_PREP.philosophy}\nSTARL: S=${INTERVIEW_PREP.star.situation.rule}, T=${INTERVIEW_PREP.star.task.rule}, A=${INTERVIEW_PREP.star.action.rule}, R=${INTERVIEW_PREP.star.result.rule}, L=${INTERVIEW_PREP.star.learnings.rule}`,
   });
   chunks.push({
     title: 'Project Deep Dive Topics',

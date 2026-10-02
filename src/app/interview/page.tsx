@@ -118,7 +118,7 @@ export default function InterviewPage() {
     <div>
       <PageHeader label="Phase 05 · Mastery" title="Interview Preparation">
         <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "56ch" }}>
-          Pattern-based technical prep plus {STORY_TARGET} prepared <span style={{ color: "var(--fg)", fontWeight: 600 }}>STAR</span> stories
+          Pattern-based technical prep plus {STORY_TARGET} prepared <span style={{ color: "var(--fg)", fontWeight: 600 }}>STARL</span> stories
           {" "}(<span className="pf-mono" style={{ color: "var(--fg)" }}>{stories} of {STORY_TARGET}</span> saved so far). Confidence is built, not summoned.
         </p>
       </PageHeader>
