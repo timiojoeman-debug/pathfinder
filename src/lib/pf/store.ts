@@ -150,7 +150,6 @@ interface PfState {
   /* onboarding */
   onb: OnbState;
   onbDone: boolean;
-  onbScanning: boolean;
 
   /* direction */
   dirMode: "wizard" | "explore";
@@ -159,7 +158,6 @@ interface PfState {
   dirIndustry: string | null;
   dirSize: string | null;
   dirSetting: string | null;
-  dirGenerating: boolean;
   dirGenerated: boolean;
   copiedVariant: string | null;
   dirStatementAi: DirStatementAi | null;
@@ -177,7 +175,6 @@ interface PfState {
 
   /* cv */
   cvText: string;
-  cvAnalyzing: boolean;
   cvAnalyzed: boolean;
   cvProjects: boolean;
   cvLinkedIn: boolean;
@@ -191,7 +188,6 @@ interface PfState {
   jfTitle: string;
   jfCompany: string;
   jfJD: string;
-  jfAnalyzing: boolean;
   jfResult: JfResult | null;
   jfLetter: boolean;
   jfCoverLetter: JfCoverLetter | null;
@@ -344,7 +340,6 @@ export const usePfStore = create<PfState>()(
 
       onb: { step: 1, role: null, industry: null, stage: null, cv: null, projects: null, outreach: null, cadence: null },
       onbDone: false,
-      onbScanning: false,
 
       dirMode: "wizard",
       dirRole: null,
@@ -352,7 +347,6 @@ export const usePfStore = create<PfState>()(
       dirIndustry: null,
       dirSize: null,
       dirSetting: null,
-      dirGenerating: false,
       dirGenerated: false,
       copiedVariant: null,
       dirStatementAi: null,
@@ -366,7 +360,6 @@ export const usePfStore = create<PfState>()(
       asstDraft: "",
 
       cvText: "",
-      cvAnalyzing: false,
       cvAnalyzed: false,
       cvProjects: false,
       cvLinkedIn: false,
@@ -378,7 +371,6 @@ export const usePfStore = create<PfState>()(
       jfTitle: "",
       jfCompany: "",
       jfJD: "",
-      jfAnalyzing: false,
       jfResult: null,
       jfLetter: false,
       jfCoverLetter: null,

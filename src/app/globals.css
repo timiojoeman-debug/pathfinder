@@ -796,115 +796,6 @@ body::after {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   PHASE HEADER — gives each of the six phases a distinct, premium identity
-   ═══════════════════════════════════════════════════════════════════════ */
-.phase-header { position: relative; }
-.phase-header::before {
-  /* soft ambient bloom anchored to the eyebrow chip */
-  content: "";
-  position: absolute;
-  top: -28px; left: -40px;
-  width: 280px; height: 180px;
-  background: radial-gradient(60% 60% at 18% 30%, var(--accent-soft), transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-.phase-header > * { position: relative; z-index: 1; }
-.phase-header-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 13px;
-  margin-bottom: 22px;
-}
-.phase-header-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px; height: 42px;
-  border-radius: 13px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid var(--accent-muted);
-  box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255,255,255,0.4);
-  transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur) var(--ease-out-expo);
-}
-.dark .phase-header-chip { box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255,255,255,0.05); }
-.phase-header:hover .phase-header-chip {
-  transform: translateY(-1px) rotate(-4deg) scale(1.04);
-  box-shadow: var(--shadow-accent);
-}
-.phase-header-chip svg { width: 19px; height: 19px; }
-.phase-header-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-.phase-header-num { color: var(--accent); }
-.phase-header-sep { color: var(--c-300); }
-.phase-header-theme { color: var(--c-400); }
-.phase-header-title {
-  font-size: clamp(30px, 4.4vw, 46px);
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.04;
-  color: var(--c-900);
-  max-width: 18ch;
-}
-.phase-header-sub {
-  margin-top: 16px;
-  font-size: clamp(15px, 1.5vw, 16.5px);
-  line-height: 1.62;
-  color: var(--c-400);
-  max-width: 62ch;
-}
-
-/* Instrument readout under the header — live derived signals */
-.phase-signals {
-  display: inline-flex;
-  flex-wrap: wrap;
-  margin-top: 24px;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  overflow: hidden;
-  background: var(--c-white);
-  box-shadow: var(--shadow-xs);
-}
-.phase-signal {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 11px 18px;
-  border-left: 1px solid var(--border);
-}
-.phase-signal:first-child { border-left: none; }
-.phase-signal-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--c-400);
-}
-.phase-signal-value {
-  font-family: var(--font-mono);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--c-900);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.phase-signal-value[data-tone="good"] { color: var(--signal-confidence); }
-.phase-signal-value[data-tone="warn"] { color: var(--signal-risk); }
-.phase-signal-value[data-tone="bad"] { color: var(--signal-gap); }
-.phase-signal-value[data-tone="accent"] { color: var(--accent); }
-
 /* Reusable premium helpers (opt-in via className) */
 .surface { background: var(--c-white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
 .elev-md { box-shadow: var(--shadow-md); }
@@ -1180,11 +1071,7 @@ html, body { max-width: 100%; overflow-x: clip; }
   .pf [style*="repeat(3,1fr)"],
   .pf [style*="repeat(3, 1fr)"],
   .pf [style*="repeat(2,1fr)"],
-  .pf [style*="repeat(2, 1fr)"],
-  .pf-landing [style*="repeat(3,1fr)"],
-  .pf-landing [style*="repeat(3, 1fr)"],
-  .pf-landing [style*="repeat(2,1fr)"],
-  .pf-landing [style*="repeat(2, 1fr)"] {
+  .pf [style*="repeat(2, 1fr)"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
@@ -1193,16 +1080,9 @@ html, body { max-width: 100%; overflow-x: clip; }
      1fr 1.05fr) was clipping its right-hand column off the screen. Listed
      explicitly because these are inline styles with bespoke track sizes. */
   .pf [style*="0.9fr"], .pf [style*="1.1fr"],
-  .pf [style*="1.05fr"], .pf [style*="230px 1fr"], .pf [style*="54px"],
-  .pf-landing [style*="0.9fr"], .pf-landing [style*="1.1fr"],
-  .pf-landing [style*="1.05fr"], .pf-landing [style*="230px 1fr"],
-  .pf-landing [style*="54px"] {
+  .pf [style*="1.05fr"], .pf [style*="230px 1fr"], .pf [style*="54px"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
-
-  /* The centre rail of the 3-track report split is a decorative divider that
-     only makes sense side-by-side. */
-  .pf-landing [style*="1.6fr 54px 1.2fr"] > *:nth-child(2) { display: none; }
 
   /* `1fr` is shorthand for `minmax(auto, 1fr)`, and `auto` will not shrink
      below the content's min-content width — so a card with a long unbreakable
@@ -1215,9 +1095,7 @@ html, body { max-width: 100%; overflow-x: clip; }
      the readiness figure "74" across two lines and broke the wordmark into
      "PathFin / der". Flex rows are handled by wrapping instead, below. */
   .pf [style*="display: grid"] > *,
-  .pf [style*="display:grid"] > *,
-  .pf-landing [style*="display: grid"] > *,
-  .pf-landing [style*="display:grid"] > * {
+  .pf [style*="display:grid"] > * {
     min-width: 0;
   }
 
@@ -1225,24 +1103,17 @@ html, body { max-width: 100%; overflow-x: clip; }
      children. This is what keeps the header (wordmark + badges + actions) and
      the readiness row (figure + verdict) readable in 390px. */
   .pf [style*="display: flex"]:not([style*="column"]),
-  .pf [style*="display:flex"]:not([style*="column"]),
-  .pf-landing [style*="display: flex"]:not([style*="column"]),
-  .pf-landing [style*="display:flex"]:not([style*="column"]) {
+  .pf [style*="display:flex"]:not([style*="column"]) {
     flex-wrap: wrap;
   }
 
   /* Never break inside a word that is short enough to fit: the wordmark, a
      readiness score, a percentage. Only genuinely long strings may break. */
   .pf h1, .pf h2, .pf h3, .pf button,
-  .pf-landing h1, .pf-landing h2, .pf-landing h3, .pf-landing button,
-  .pf [class*="mono"], .pf-landing [class*="mono"] {
+  .pf [class*="mono"] {
     overflow-wrap: normal;
     word-break: keep-all;
   }
-
-  /* Wide fixed-width panels (the landing "career position report") shrink
-     instead of forcing the page sideways. */
-  .pf-landing [style*="maxWidth"] { max-width: 100% !important; }
 }
 
 /* Phones proper: tighten type and spacing. */
@@ -1254,7 +1125,7 @@ html, body { max-width: 100%; overflow-x: clip; }
      min-content sizing, so every flex/grid item shrinks to the width of one
      character — it turned the nav into "P r o d u c t" stacked vertically.
      `break-word` breaks only a word that genuinely cannot fit. */
-  .pf, .pf-landing { overflow-wrap: break-word; }
+  .pf { overflow-wrap: break-word; }
 
   /* Tap targets: 44px is the accessible minimum. */
   .pf button, .pf a[role="button"] { min-height: 44px; }
@@ -1271,12 +1142,12 @@ html, body { max-width: 100%; overflow-x: clip; }
 
 @media (max-width: 860px) {
   /* Display headings get a tight, deliberate line box. */
-  .pf h1, .pf h2, .pf-landing h1, .pf-landing h2 {
+  .pf h1, .pf h2 {
     line-height: 1.12 !important;
     letter-spacing: -0.03em;
     text-wrap: balance;           /* avoid a lone short last line */
   }
-  .pf h3, .pf-landing h3 { line-height: 1.25 !important; }
+  .pf h3 { line-height: 1.25 !important; }
 
   /* Halve the vertical rhythm between sections. The inline styles use
      clamp(70px,9vw,120px)-style padding, which never shrinks far enough on a
@@ -1287,22 +1158,17 @@ html, body { max-width: 100%; overflow-x: clip; }
     padding-left: 18px !important;
     padding-right: 18px !important;
   }
-  /* The marquee is a full-bleed divider — it keeps its own compact padding. */
-  .pf-landing > section:has(> div[style*="pfMarquee"]) {
-    padding-top: 16px !important;
-    padding-bottom: 16px !important;
-  }
 }
 
 @media (max-width: 560px) {
-  /* In-app phase pages first. NOTE: the landing root carries BOTH .pf and
-     .pf-landing, so these two blocks have equal specificity and the landing
-     rules must come second to win — otherwise the marketing hero collapses to
-     the in-app heading size (measured: 27px, far too small for a hero). */
+  /* In-app phase pages first. NOTE: the /universities root carries BOTH .pf
+     and .pf-landing (the only surface that still does), so these two blocks
+     have equal specificity and the marketing rules must come second to win,
+     otherwise its hero collapses to the in-app heading size. */
   .pf h1 { font-size: clamp(24px, 7vw, 30px) !important; }
   .pf h2 { font-size: clamp(18px, 5vw, 22px) !important; }
 
-  /* Landing hero: still prominent, but capped so it cannot swallow screen one. */
+  /* Marketing hero: still prominent, but capped so it cannot swallow screen one. */
   .pf-landing h1 { font-size: clamp(30px, 8.5vw, 38px) !important; }
   .pf-landing h2 { font-size: clamp(25px, 7vw, 32px) !important; }
 
@@ -1313,11 +1179,6 @@ html, body { max-width: 100%; overflow-x: clip; }
     padding-top: 38px !important;
     padding-bottom: 38px !important;
   }
-
-  /* Cards were designed for a 3-up desktop grid; full-width on a phone they
-     only need enough padding to breathe. */
-  .pf-landing [style*="borderRadius: 18"],
-  .pf [style*="borderRadius: 18"] { padding: 20px !important; }
 }
 
 /* ── Two-column tier ────────────────────────────────────────────────
@@ -1329,9 +1190,7 @@ html, body { max-width: 100%; overflow-x: clip; }
    Placed last so it wins on order at equal specificity. */
 @media (min-width: 600px) and (max-width: 860px) {
   .pf [style*="repeat(3,1fr)"],
-  .pf [style*="repeat(3, 1fr)"],
-  .pf-landing [style*="repeat(3,1fr)"],
-  .pf-landing [style*="repeat(3, 1fr)"] {
+  .pf [style*="repeat(3, 1fr)"] {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
