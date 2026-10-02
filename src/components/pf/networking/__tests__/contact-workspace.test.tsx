@@ -3,10 +3,13 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const emit = vi.fn();
 const completeCoffeeChat = vi.fn((c: { contact: string }) => c.contact.trim().length > 0);
-vi.mock("@/lib/pf/store", () => ({
+let events: { type: string; ts: number; meta?: Record<string, string> }[] = [];
+vi.mock("@/lib/pf/store", async (importOriginal) => ({
+  // The real "already logged" rule, so the button and the store agree.
+  recentCoffeeChat: (await importOriginal<typeof import("@/lib/pf/store")>()).recentCoffeeChat,
   usePfStore: (sel: (s: { emit: typeof emit; completeCoffeeChat: typeof completeCoffeeChat }) => unknown) =>
     sel({ emit, completeCoffeeChat }),
-  useProfile: () => ({ events: [], coffeeChatsDone: 0 }),
+  useProfile: () => ({ events, coffeeChatsDone: events.length }),
 }));
 vi.mock("@/lib/pf/ai-context", () => ({
   networkingProfileLine: () => "A CS student targeting backend internships.",
@@ -36,6 +39,7 @@ let referralTask: Task;
 beforeEach(() => {
   emit.mockClear();
   completeCoffeeChat.mockClear();
+  events = [];
   prepTask = aiTask();
   followTask = aiTask();
   referralTask = aiTask();
@@ -128,15 +132,24 @@ describe("ContactWorkspace — shared contact + chat done", () => {
     expect(onContactChange).toHaveBeenCalledWith({ name: "Dana Kim" });
   });
 
-  it("marks a chat done only with a named contact, once per contact", () => {
+  it("marks a chat done only with a named contact", () => {
     render(<ContactWorkspace />);
     expect(screen.getByRole("button", { name: /mark chat done/i })).toBeDisabled();
     fill(/contact name/i, "Dana");
     fill(/^company$/i, "Stripe");
     fireEvent.click(screen.getByRole("button", { name: /mark chat done/i }));
     expect(completeCoffeeChat).toHaveBeenCalledWith({ contact: "Dana", company: "Stripe" });
-    // A double click cannot count one conversation twice.
+  });
+
+  it("reads 'already logged' from the event log, so it survives navigation", () => {
+    events = [{ type: "CoffeeChatCompleted", ts: Date.now() - 60_000, meta: { contact: "Dana", company: "Stripe" } }];
+    render(<ContactWorkspace contact={{ name: "dana ", company: "STRIPE" }} />);
     expect(screen.getByRole("button", { name: /chat with dana logged/i })).toBeDisabled();
-    expect(completeCoffeeChat).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows a genuine later chat once the last one is over a day old", () => {
+    events = [{ type: "CoffeeChatCompleted", ts: Date.now() - 25 * 3600_000, meta: { contact: "Dana", company: "Stripe" } }];
+    render(<ContactWorkspace contact={{ name: "Dana", company: "Stripe" }} />);
+    expect(screen.getByRole("button", { name: /mark chat done/i })).not.toBeDisabled();
   });
 });

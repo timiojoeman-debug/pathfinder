@@ -18,7 +18,7 @@
 
 import { useState } from "react";
 import { FOLLOW_UP_CADENCE } from "@/lib/pf/data";
-import { usePfStore, useProfile } from "@/lib/pf/store";
+import { recentCoffeeChat, usePfStore, useProfile } from "@/lib/pf/store";
 import { cvStrengthLines, networkingProfileLine } from "@/lib/pf/ai-context";
 import { useAiTask, type AiEnvelope } from "@/lib/pf/use-ai";
 import { Chip, Panel } from "@/components/pf/ui";
@@ -103,9 +103,6 @@ export function ContactWorkspace({ contact, onContactChange }: ContactWorkspaceP
   const setName = (v: string) => editContact({ name: v });
   const setCompany = (v: string) => editContact({ company: v });
   const [role, setRole] = useState("");
-  // Which contact the last "chat done" was logged for, so a double click
-  // cannot count one conversation twice.
-  const [loggedFor, setLoggedFor] = useState<string | null>(null);
   const [kind, setKind] = useState<ContactType>("peer");
   const [notes, setNotes] = useState("");
   const [step, setStep] = useState(1);
@@ -121,11 +118,12 @@ export function ContactWorkspace({ contact, onContactChange }: ContactWorkspaceP
   // Real count from the event log, so the prompt's "how experienced is this
   // student at coffee chats" signal is evidence, not a guess.
   const coffeeChatsDone = profile.coffeeChatsDone;
-  const chatKey = `${contactName.toLowerCase()}|${contactCompany.toLowerCase()}`;
-  const chatLogged = loggedFor === chatKey;
+  // From the event log, not local state, so it survives navigation: one chat
+  // counts once, and the store refuses a repeat within 24 hours too.
+  const chatLogged = !!contactName && recentCoffeeChat(profile.events, { contact: contactName, company: contactCompany });
 
   const markChatDone = () => {
-    if (completeCoffeeChat({ contact: contactName, company: contactCompany })) setLoggedFor(chatKey);
+    completeCoffeeChat({ contact: contactName, company: contactCompany });
   };
 
   const canPrep = contactName.length > 0 && contactCompany.length > 0;
