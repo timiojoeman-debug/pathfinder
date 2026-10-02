@@ -80,7 +80,7 @@ const shell = (heading: string, body: string, cta: { label: string; href: string
     <div style="font-weight:700;font-size:18px;margin-bottom:16px;">PathFinder</div>
     <h1 style="font-size:20px;margin:0 0 12px;">${heading}</h1>
     <p style="font-size:14px;line-height:1.6;color:#6C5D4B;">${body}</p>
-    <a href="${cta.href}" style="display:inline-block;margin:18px 0;padding:12px 22px;background:#B0673C;color:#F7F1E4;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">${cta.label}</a>
+    <a href="${cta.href}" style="display:inline-block;margin:18px 0;padding:12px 22px;background:#9C5730;color:#F7F1E4;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">${cta.label}</a>
     <p style="font-size:12px;color:#A08E77;line-height:1.6;">If the button doesn't work, paste this link into your browser:<br>${cta.href}</p>
   </div>`;
 

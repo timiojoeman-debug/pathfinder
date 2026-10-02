@@ -92,26 +92,34 @@ export function dedupeListings(listings: JobListing[]): JobListing[] {
  * (`expandRoleQuery`); it is also a title token, which only ever adds matches.
  */
 const ROLE_ABBREVIATIONS: Record<string, string[]> = {
-  swe: ["software engineer", "software", "engineer"],
-  sde: ["software engineer", "software", "engineer"],
-  se: ["software engineer", "software", "engineer"],
-  sre: ["site reliability engineer", "site", "reliability", "engineer"],
-  ml: ["machine learning", "machine", "learning"],
-  ai: ["ai", "artificial", "intelligence"],
-  nlp: ["nlp", "natural", "language"],
-  ds: ["data scientist", "data", "science", "scientist"],
-  da: ["data analyst", "data", "analyst", "analytics"],
-  de: ["data engineer", "data", "engineer"],
-  pm: ["product manager", "product", "manager", "management"],
-  po: ["product owner", "product", "owner"],
-  qa: ["qa", "quality", "assurance", "test"],
-  ux: ["ux", "designer", "design", "experience"],
-  ui: ["ui", "designer", "design", "interface"],
-  fe: ["frontend", "front-end"],
-  be: ["backend", "back-end"],
+  swe: ["software engineer", "software developer", "software development", "swe"],
+  sde: ["software engineer", "software developer", "software development", "sde"],
+  se: ["software engineer", "software developer", "software development"],
+  sre: ["site reliability engineer", "site reliability", "sre"],
+  ml: ["machine learning", "ml"],
+  ai: ["ai", "artificial intelligence"],
+  nlp: ["nlp", "natural language"],
+  ds: ["data scientist", "data science"],
+  da: ["data analyst", "data analytics", "data analysis"],
+  de: ["data engineer", "data engineering"],
+  pm: ["product manager", "product management", "pm"],
+  po: ["product owner", "po"],
+  qa: ["qa", "quality assurance", "test engineer", "testing"],
+  ux: ["ux", "user experience", "product design"],
+  ui: ["ui", "user interface", "product design"],
+  fe: ["frontend", "front-end", "front end"],
+  be: ["backend", "back-end", "back end"],
   fs: ["full stack", "fullstack", "full-stack"],
-  devops: ["devops", "platform", "infrastructure"],
+  devops: ["devops", "platform engineer", "infrastructure"],
 };
+
+/** Words that describe almost every posting. On their own they say nothing about the role,
+ *  so a title matching only these ("Chassis Validation Engineer Intern" for "SWE intern" via
+ *  "engineer") is not a match unless the query was nothing but generic words. */
+const GENERIC_ROLE_WORDS = new Set([
+  "engineer", "engineering", "developer", "development", "software", "analyst", "scientist",
+  "manager", "associate", "graduate", "student", "role", "roles", "job", "jobs", "summer",
+]);
 
 /**
  * A role query rewritten for a job board's full-text search: shorthand becomes
@@ -142,32 +150,39 @@ function hasWord(text: string, word: string): boolean {
   return new RegExp(`(^|[^a-z0-9])${esc}($|[^a-z0-9])`).test(text);
 }
 
-/** Split a role query into title-matchable tokens, expanding known abbreviations. */
-function roleQueryTokens(roleType: string): string[] {
+/** A role query as groups of alternatives: each query word becomes one group, and a known
+ *  abbreviation's group holds the phrases titles actually use ("SWE" -> "software engineer" or
+ *  "software developer"), never its generic single words. */
+function roleQueryGroups(roleType: string): { alts: string[]; generic: boolean }[] {
   const raw = (roleType ?? "").trim().toLowerCase().split(/[^a-z0-9+#.]+/).filter(Boolean);
-  const tokens = new Set<string>();
+  const groups: { alts: string[]; generic: boolean }[] = [];
   for (const t of raw) {
-    if (t === "intern" || t === "internship") continue;
+    if (t === "intern" || t === "internship" || t === "internships") continue;
     const expansion = ROLE_ABBREVIATIONS[t];
-    if (expansion) {
-      for (const word of expansion) tokens.add(word);
-      tokens.add(t); // keep the shorthand in case a title spells it out
-    } else if (t.length > 2) {
-      tokens.add(t); // sub-3-char tokens that aren't known abbreviations are noise
-    }
+    if (expansion) groups.push({ alts: expansion, generic: false });
+    else if (t.length > 2) groups.push({ alts: [t], generic: GENERIC_ROLE_WORDS.has(t) });
+    // sub-3-char words that aren't known abbreviations are noise
   }
-  return [...tokens];
+  return groups;
 }
 
 /**
- * Does a title match a query token? Short (<=2 char) tokens match whole-word
- * only: "pm" as a substring hits "develoPMent", which is never what the
- * searcher meant. Longer tokens match as a substring so "engineer" catches
- * "Software Engineering".
+ * Does a title match a query alternative? Short (<=2 char) alternatives match whole-word
+ * only: "pm" as a substring hits "develoPMent", which is never what the searcher meant.
+ * Longer ones match as a substring so "engineer" catches "Software Engineering".
  */
 function titleMatchesToken(title: string, token: string): boolean {
-  if (token.length <= 2) return new RegExp(`\\b${token}\\b`).test(title);
+  if (token.length <= 2) return hasWord(title, token);
   return title.includes(token);
+}
+
+/** A title matches a role query when it hits at least one specific group. Generic words only
+ *  decide the match when the query has nothing else ("engineer intern" means any engineer). */
+function titleMatchesRole(title: string, groups: { alts: string[]; generic: boolean }[]): boolean {
+  if (!groups.length) return true;
+  const hit = (g: { alts: string[] }) => g.alts.some((a) => titleMatchesToken(title, a));
+  const specific = groups.filter((g) => !g.generic);
+  return specific.length ? specific.some(hit) : groups.every(hit);
 }
 
 /**
@@ -184,7 +199,7 @@ export function filterListings(
   listings: JobListing[],
   opts: { roleType?: string; location?: string; industry?: string; workMode?: string },
 ): JobListing[] {
-  const roleTokens = roleQueryTokens(opts.roleType ?? "");
+  const roleGroups = roleQueryGroups(opts.roleType ?? "");
   const loc = (opts.location ?? "").trim().toLowerCase();
   const industryTokens = keywordTokens(opts.industry);
   const modeTokens = keywordTokens(opts.workMode);
@@ -192,7 +207,7 @@ export function filterListings(
   return listings.filter((j) => {
     const title = j.title.toLowerCase();
     const text = `${title} ${j.company} ${j.location} ${j.workMode}`.toLowerCase();
-    const roleOk = roleTokens.length === 0 || roleTokens.some((t) => titleMatchesToken(title, t));
+    const roleOk = titleMatchesRole(title, roleGroups);
     const locOk = !loc || j.location.toLowerCase().includes(loc);
     // Every word of a multi-word filter must appear: "health tech" means both, not either.
     const industryOk = industryTokens.every((t) => hasWord(text, t));
