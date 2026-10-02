@@ -523,3 +523,22 @@ describe("pf store — university", () => {
     expect((merge({ university: " Durham " }, PRISTINE) as { university: string }).university).toBe("Durham");
   });
 });
+
+describe("pf store — location", () => {
+  beforeEach(reset);
+
+  it("trims and clips to 120 characters", () => {
+    s().setLocation("  London, UK  ");
+    expect(s().location).toBe("London, UK");
+    s().setLocation("x".repeat(200));
+    expect(s().location).toHaveLength(120);
+  });
+
+  it("persists, and a non-string stored value becomes empty on rehydrate", async () => {
+    s().setLocation("Leeds");
+    expect(JSON.parse(localStorage.getItem("pathfinder-redesign-v1")!).state.location).toBe("Leeds");
+    localStorage.setItem("pathfinder-redesign-v1", JSON.stringify({ state: { location: 42 }, version: 0 }));
+    await usePfStore.persist.rehydrate();
+    expect(s().location).toBe("");
+  });
+});

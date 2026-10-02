@@ -91,4 +91,35 @@ describe("Jobs search: UK by default", () => {
     expect(await screen.findByText("London, UK · Monzo careers · posted 3 days ago")).toBeInTheDocument();
     expect(screen.getByText("Edinburgh · via vanshb03")).toBeInTheDocument();
   });
+
+  it("a stored UK location turns the UK default on even for a non-UK browser", async () => {
+    stubLanguage("en-US");
+    usePfStore.setState({ location: "Edinburgh, UK" });
+    const fn = stubSearch();
+    render(<JobsPage />);
+    expect(await screen.findByRole("button", { name: "Remove UK filter" })).toBeInTheDocument();
+    await search();
+    await waitFor(() => expect(fn).toHaveBeenCalled());
+    expect(lastBody(fn)).toMatchObject({ ukOnly: true });
+  });
+
+  it("a stored non-UK location skips the UK default and prefills the location filter", async () => {
+    stubLanguage("en-GB");
+    usePfStore.setState({ location: "Berlin, Germany" });
+    const fn = stubSearch();
+    render(<JobsPage />);
+    await waitFor(() => expect(screen.getByPlaceholderText(/Location/)).toHaveValue("Berlin, Germany"));
+    expect(screen.queryByRole("button", { name: "Remove UK filter" })).toBeNull();
+    await search();
+    await waitFor(() => expect(fn).toHaveBeenCalled());
+    expect(lastBody(fn)).toMatchObject({ location: "Berlin, Germany" });
+    expect(lastBody(fn).ukOnly).toBeUndefined();
+  });
+
+  it("with no stored location the browser locale still decides", async () => {
+    stubLanguage("en-GB");
+    usePfStore.setState({ location: "" });
+    render(<JobsPage />);
+    expect(await screen.findByRole("button", { name: "Remove UK filter" })).toBeInTheDocument();
+  });
 });

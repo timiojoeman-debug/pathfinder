@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import { buildCoverLetter, fitTone, jobPassesFit, MAX_JD_CHARS, postingKey, targetKeywords } from "@/lib/pf/logic";
 import { getProfile, usePfStore, type SavedJob } from "@/lib/pf/store";
-import { safeHttpUrl } from "@/lib/jobs/types";
+import { isUkLocation, safeHttpUrl } from "@/lib/jobs/types";
 import { ukByDefault } from "@/lib/jobs/display";
 import { useRoleFreshness } from "@/lib/pf/use-freshness";
 import { FreshnessNote, JobMeta } from "@/components/pf/job-meta";
@@ -395,12 +395,20 @@ export default function JobsPage() {
   const [liveJobs, setLiveJobs] = useState<SavedJob[]>([]);
   const [searchNote, setSearchNote] = useState<string | null>(null);
   const [minFit, setMinFit] = useState(0);
-  // UK by default for a British-English browser. There is no stored direction location to read,
-  // so the browser locale is the only signal; the pill makes the default visible and removable.
+  // UK by default. The direction's location wins when set: a UK place turns the filter on, any
+  // other place prefills the location box instead. With none stored, the browser locale decides.
+  // The pill makes the default visible and removable.
   const [ukOn, setUkOn] = useState(false);
+  const dirLocation = s.location.trim();
   useEffect(() => {
-    setUkOn(ukByDefault(navigator.languages?.[0] ?? navigator.language));
-  }, []);
+    if (dirLocation) {
+      const uk = isUkLocation(dirLocation);
+      setUkOn(uk);
+      if (!uk) setLocation(dirLocation);
+    } else {
+      setUkOn(ukByDefault(navigator.languages?.[0] ?? navigator.language));
+    }
+  }, [dirLocation]);
   const ukActive = ukOn && !location.trim();
 
   // The AI read of the pasted posting. Tagged with the posting it was run for,
