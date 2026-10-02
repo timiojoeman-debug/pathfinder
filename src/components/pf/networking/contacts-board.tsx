@@ -8,8 +8,8 @@
  * message counts as outreach (see the store).
  */
 
-import { useState, type FormEvent } from "react";
-import { CONTACT_STAGES, CONTACT_STAGE_LABEL, HOW_WE_MET, HOW_WE_MET_LABEL, type Contact, type ContactStage, type HowWeMet } from "@/lib/pf/contacts";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { CONTACT_STAGES, CONTACT_STAGE_LABEL, HOW_WE_MET, HOW_WE_MET_LABEL, isStaleContact, type Contact, type ContactStage, type HowWeMet } from "@/lib/pf/contacts";
 import { formatReminder, isoToday } from "@/lib/pf/logic";
 import { usePfStore, type AddContactResult } from "@/lib/pf/store";
 import { Panel } from "@/components/pf/ui";
@@ -113,6 +113,66 @@ function ContactCard({ c, today }: { c: Contact; today: string }) {
   );
 }
 
+function StillRelevant({ stale }: { stale: Contact[] }) {
+  const keepContact = usePfStore((s) => s.keepContact);
+  const removeContact = usePfStore((s) => s.removeContact);
+  // Deleting takes a second click on the same row; any other action cancels it.
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const root = useRef<HTMLElement | null>(null);
+  // Where focus goes once the row it was on has gone: the next row, else the one before, else a heading.
+  const focusNext = useRef<string | "heading" | null>(null);
+
+  useEffect(() => {
+    const want = focusNext.current;
+    if (!want) return;
+    focusNext.current = null;
+    const el = Array.from(root.current?.querySelectorAll<HTMLElement>("[data-keep]") ?? []).find((e) => e.dataset.keep === want);
+    (el ?? root.current?.querySelector<HTMLElement>("h3") ?? document.getElementById("pf-contacts-heading"))?.focus();
+  }, [stale]);
+
+  if (stale.length === 0) return null;
+
+  const leave = (id: string) => {
+    const i = stale.findIndex((c) => c.id === id);
+    focusNext.current = (stale[i + 1] ?? stale[i - 1])?.id ?? "heading";
+    setConfirming(null);
+  };
+
+  return (
+    <section ref={root} aria-label="Still relevant?" style={{ marginBottom: 14, border: "1px solid color-mix(in srgb,var(--warn) 30%,transparent)", borderRadius: 12, padding: "12px 14px" }}>
+      <h3 tabIndex={-1} style={{ fontSize: 13.5, fontWeight: 700, margin: "0 0 4px", outline: "none" }}>Still relevant?</h3>
+      <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.55, margin: "0 0 8px" }}>
+        You haven&apos;t touched {stale.length === 1 ? "this contact" : "these contacts"} in over 12 months. Keep only the people you still need; delete the rest.
+      </p>
+      {stale.map((c) => (
+        <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "6px 0", borderTop: "1px solid var(--line2)" }}>
+          <span style={{ flex: "1 1 200px", fontSize: 13, overflowWrap: "anywhere" }}>
+            <strong>{c.name}</strong>
+            <span style={{ color: "var(--muted)" }}>{c.company ? ` \u00b7 ${c.company}` : ""}</span>
+          </span>
+          <button data-keep={c.id} onClick={() => { leave(c.id); keepContact(c.id); }} aria-label={`Keep ${c.name}`} className="pf-touch" style={{ cursor: "pointer", height: 34, padding: "0 12px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--fg)", fontSize: 12.5, fontWeight: 600 }}>
+            Keep
+          </button>
+          {confirming === c.id ? (
+            <>
+              <button onClick={() => { leave(c.id); removeContact(c.id); }} aria-label={`Confirm delete ${c.name}`} className="pf-touch" style={{ cursor: "pointer", height: 34, padding: "0 12px", borderRadius: 9, border: "none", background: "var(--risk)", color: "var(--onAccent)", fontSize: 12.5, fontWeight: 600 }}>
+                Confirm delete
+              </button>
+              <button onClick={() => setConfirming(null)} aria-label={`Cancel deleting ${c.name}`} className="pf-touch" style={{ cursor: "pointer", height: 34, padding: "0 12px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--fg)", fontSize: 12.5, fontWeight: 600 }}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setConfirming(c.id)} aria-label={`Delete ${c.name}`} className="pf-touch" style={{ cursor: "pointer", height: 34, padding: "0 12px", borderRadius: 9, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: "var(--risk)", fontSize: 12.5, fontWeight: 600 }}>
+              Delete
+            </button>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export function ContactsBoard() {
   const contacts = usePfStore((s) => s.contacts);
   const clearContacts = usePfStore((s) => s.clearContacts);
@@ -123,7 +183,7 @@ export function ContactsBoard() {
     <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
         <span style={{ display: "flex", color: "var(--accent)" }}><Icon name="users" size={18} /></span>
-        <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Your contacts</h2>
+        <h2 id="pf-contacts-heading" tabIndex={-1} className="pf-display-sm" style={{ fontSize: 21, margin: 0, outline: "none" }}>Your contacts</h2>
         <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>
           {contacts.length} {contacts.length === 1 ? "person" : "people"} · private to you
         </span>
@@ -164,6 +224,8 @@ export function ContactsBoard() {
           </button>
         </div>
       )}
+
+      <StillRelevant stale={contacts.filter((c) => isStaleContact(c))} />
 
       <div className="pf-contacts-board">
         {CONTACT_STAGES.map((stage) => {

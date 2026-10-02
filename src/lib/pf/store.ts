@@ -339,6 +339,8 @@ interface PfState {
   /** Change stage. Chatted logs a coffee chat and Referred logs a self-reported referral; neither is progress by hand-waving (see the store). */
   moveContact: (id: string, stage: ContactStage) => void;
   setContactFollowUp: (id: string, day: string | undefined) => void;
+  /** "Still relevant?" answered yes: restarts the 12-month retention clock without changing anything else. */
+  keepContact: (id: string) => void;
   removeContact: (id: string) => void;
   clearContacts: () => void;
   /** Make this contact the working contact, so research, outreach and prep apply to them. */
@@ -822,6 +824,8 @@ export const usePfStore = create<PfState>()(
           }),
         }));
       },
+      keepContact: (id) =>
+        set((st) => ({ contacts: st.contacts.map((c) => (c.id === id ? { ...c, updatedAt: Date.now() } : c)) })),
       removeContact: (id) => {
         const cur = get().contacts.find((c) => c.id === id);
         if (!cur) return;
