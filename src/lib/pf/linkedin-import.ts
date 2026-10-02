@@ -49,9 +49,14 @@ function parseCsv(text: string): string[][] {
 
 const clip = (s: string) => s.trim().slice(0, MAX_LEN);
 
+const RESAVED =
+  "This file looks re-saved in a different format (its columns are separated by semicolons). Please use the original Connections.csv from your LinkedIn download, without opening and saving it in a spreadsheet.";
+
 export function parseLinkedInConnections(text: string): {
   rows: ImportRow[];
   error?: string;
+  /** Rows left out because they had no first or last name. */
+  skippedNoName: number;
 } {
   const table = parseCsv(text.replace(/^﻿/, "").replace(/\r\n?/g, "\n"));
   const need = ["first name", "last name", "company", "position"];
@@ -61,16 +66,28 @@ export function parseLinkedInConnections(text: string): {
     cols = need.map((n) => names.indexOf(n));
     return cols.every((i) => i >= 0);
   });
-  if (h < 0) return { rows: [], error: NOT_CONNECTIONS };
+  if (h < 0) {
+    const need2 = ["first name", "last name", "company", "position"];
+    const semicolons = text.split(/\r\n?|\n/).some((l) => {
+      const cells = l.split(";").map((c) => c.trim().toLowerCase());
+      return need2.every((n) => cells.includes(n));
+    });
+    return { rows: [], skippedNoName: 0, error: semicolons ? RESAVED : NOT_CONNECTIONS };
+  }
 
   const rows: ImportRow[] = [];
+  let skippedNoName = 0;
   for (const r of table.slice(h + 1)) {
     const [firstName, lastName, company, position] = cols.map((i) => clip(r[i] ?? ""));
     const name = clip(`${firstName} ${lastName}`);
-    if (!name) continue;
+    if (!name) {
+      // A fully blank line is just trailing whitespace, not a dropped connection.
+      if (r.some((c) => c.trim())) skippedNoName++;
+      continue;
+    }
     rows.push({ firstName, lastName, name, company, position });
   }
-  return { rows };
+  return { rows, skippedNoName };
 }
 
 /** Rows the student ticked in the preview, in original order. */

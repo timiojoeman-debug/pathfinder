@@ -30,6 +30,10 @@ export const HOW_WE_MET_LABEL: Record<HowWeMet, string> = {
   other: "Other",
 };
 
+/** Hard ceiling on the board, and on one import. Both exist so a pasted export can't flood localStorage. */
+export const MAX_CONTACTS = 500;
+export const MAX_IMPORT_ROWS = 200;
+
 export interface Contact {
   id: string;
   name: string;

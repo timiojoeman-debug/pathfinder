@@ -36,7 +36,7 @@ import {
 } from "./logic";
 import { categoryOf, LEETCODE_CATEGORIES, LEETCODE_PROBLEMS } from "./leetcode";
 import { makeEvent, nextEventId, type PfEvent, type PfEventType, type PfPhase } from "./events";
-import { CONTACT_STAGE_LABEL, newContactId, sanitizeContacts, validDay, HOW_WE_MET, type Contact, type ContactStage, type HowWeMet } from "./contacts";
+import { CONTACT_STAGE_LABEL, MAX_CONTACTS, newContactId, sanitizeContacts, validDay, HOW_WE_MET, type Contact, type ContactStage, type HowWeMet } from "./contacts";
 import { safeHttpUrl } from "@/lib/jobs/types";
 import { deriveProfile, type CareerProfile, type ProfileInput } from "./profile";
 import { computeProgress, type ProgressReport } from "./progress";
@@ -333,6 +333,8 @@ interface PfState {
   /** Add a contact (stage Researched). Deduped on name + company. */
   addContact: (input: { name: string; company: string; role?: string; howWeMet: HowWeMet; link?: string }) => AddContactResult;
   /** Edit details. A blank name, a clashing name + company or a non-http(s) link leaves that field as it was. */
+  /** Batch add for the import: one dedupe pass, one `set`. Rows over `MAX_CONTACTS` are skipped. */
+  addContacts: (inputs: { name: string; company: string; role?: string; howWeMet: HowWeMet }[]) => { added: number; skipped: number };
   updateContact: (id: string, patch: Partial<Pick<Contact, "name" | "company" | "role" | "howWeMet" | "link" | "notes">>) => void;
   /** Change stage. Chatted logs a coffee chat and Referred logs a self-reported referral; neither is progress by hand-waving (see the store). */
   moveContact: (id: string, stage: ContactStage) => void;
@@ -737,6 +739,27 @@ export const usePfStore = create<PfState>()(
         };
         set((st) => ({ contacts: [contact, ...st.contacts] }));
         return "added";
+      },
+      addContacts: (inputs) => {
+        const seen = new Set(get().contacts.map((c) => netContactKey(c)));
+        const room = Math.max(0, MAX_CONTACTS - get().contacts.length);
+        const now = Date.now();
+        const fresh: Contact[] = [];
+        for (const i of inputs) {
+          const who = i.name.trim().slice(0, 120);
+          const co = i.company.trim().slice(0, 120);
+          const key = netContactKey({ name: who, company: co });
+          if (!who || seen.has(key) || fresh.length >= room) continue;
+          seen.add(key);
+          const ro = i.role?.trim().slice(0, 120);
+          fresh.push({
+            id: newContactId(), name: who, company: co, ...(ro ? { role: ro } : {}),
+            howWeMet: HOW_WE_MET.includes(i.howWeMet) ? i.howWeMet : "other",
+            stage: "researched", notes: "", createdAt: now, updatedAt: now,
+          });
+        }
+        if (fresh.length) set((st) => ({ contacts: [...fresh, ...st.contacts] }));
+        return { added: fresh.length, skipped: inputs.length - fresh.length };
       },
       updateContact: (id, patch) => {
         const cur = get().contacts.find((c) => c.id === id);

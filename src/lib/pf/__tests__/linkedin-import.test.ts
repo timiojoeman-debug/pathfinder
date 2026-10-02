@@ -40,7 +40,7 @@ describe("parseLinkedInConnections", () => {
 
   it("copes with a BOM and CRLF", () => {
     const crlf = "﻿" + fixture.replace(/\n/g, "\r\n");
-    expect(parseLinkedInConnections(crlf)).toEqual({ rows });
+    expect(parseLinkedInConnections(crlf).rows).toEqual(rows);
   });
 
   it("matches the header case-insensitively and clips to 120 chars", () => {
@@ -59,5 +59,18 @@ describe("selectImportRows", () => {
   it("keeps only ticked rows", () => {
     expect(selectImportRows(["a", "b", "c"], [0, 2])).toEqual(["a", "c"]);
     expect(selectImportRows(["a", "b"], [])).toEqual([]);
+  });
+});
+
+describe("parseLinkedInConnections: dropped and re-saved files", () => {
+  it("counts rows dropped for having no name", () => {
+    expect(parseLinkedInConnections(fixture).skippedNoName).toBe(1);
+  });
+
+  it("says a semicolon-separated file was re-saved, rather than 'not a Connections.csv'", () => {
+    const r = parseLinkedInConnections("First Name;Last Name;Company;Position\nA;B;C;D\n");
+    expect(r.rows).toEqual([]);
+    expect(r.error).toMatch(/re-saved/);
+    expect(r.error).toMatch(/original/);
   });
 });
