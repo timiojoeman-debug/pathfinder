@@ -3,12 +3,12 @@ import {
   toneFor, fitTone,
   readinessFrom,
   callbackSummary,
-  directionReady, directionStatement, directionSpecificity, extractChatPatch,
+  directionReady, directionStatement, directionSpecificity,
   targetKeywords, analyzeCvText,
   roleFit, analyzeJobDescription, cardWhen,
   buildCoverLetter, followUpMessage,
   trackerDerived,
-  roleFamiliesFor, outreachSubject, buildOutreachTemplate,
+  roleFamiliesFor, targetRoleOptions, pruneTargetRoles, mapExplorePreferences, exploreMessages, EXPLORE_MAX_TURNS, EXPLORE_MAX_CHARS, outreachSubject, buildOutreachTemplate,
   jobPassesFit, composeSharedAttributes,
   type OnbState, type DirectionFields,
 } from '../logic';
@@ -90,12 +90,7 @@ describe('direction derivations', () => {
     expect(directionSpecificity(dir({ dirRole: 'x', dirIndustry: 'y', dirSize: 'z', dirSetting: 'Remote', dirStack: ['React'] })).label).toMatch(/high/i);
   });
 
-  it('extracts wizard fields from free text', () => {
-    const patch = extractChatPatch('I love frontend work at fintech startups');
-    expect(patch.dirRole).toBe('Frontend');
-    expect(patch.dirIndustry).toBe('Fintech');
-    expect(patch.dirSize).toBe('Startups 0–50');
-  });
+
 });
 
 /* ── CV analysis ──────────────────────────────────────────────────── */
@@ -346,5 +341,48 @@ describe('callbackSummary', () => {
 describe('trackerDerived funnel', () => {
   it('draws no Applied bar before anything is applied to', () => {
     expect(trackerDerived(EMPTY_BOARD, 0).funnel[0]).toMatchObject({ value: 0, pct: '0%' });
+  });
+});
+
+describe('targetRoleOptions', () => {
+  it('leads with the chosen family and offers more than three distinct titles', () => {
+    const opts = targetRoleOptions('Backend');
+    expect(opts.slice(0, 3).map((o) => o.title)).toEqual(roleFamiliesFor('Backend').map((r) => r.title));
+    expect(opts.length).toBeGreaterThan(3);
+    expect(new Set(opts.map((o) => o.title)).size).toBe(opts.length);
+    expect(opts.slice(3).every((o) => o.relation === 'Other')).toBe(true);
+  });
+});
+
+describe('mapExplorePreferences', () => {
+  it('maps the explore route preferences onto wizard chips, stack and size included', () => {
+    expect(mapExplorePreferences({
+      role: 'Backend Engineer', industry: 'FinTech', companySize: 'early-stage startup', techStack: ['Node.js', 'python', 'Rust'],
+    })).toEqual({ dirRole: 'Backend', dirIndustry: 'Fintech', dirSize: 'Startups 0–50', dirStack: ['Node', 'Python'] });
+  });
+
+  it('leaves a non-engineering role unset instead of forcing it into one', () => {
+    expect(mapExplorePreferences({ role: 'Product Manager' }).dirRole).toBeUndefined();
+    expect(mapExplorePreferences({ role: 'HTML wizard' }).dirRole).toBeUndefined();
+    expect(mapExplorePreferences(undefined)).toEqual({});
+  });
+});
+
+describe('pruneTargetRoles', () => {
+  it('drops titles no longer offered and keeps the rest in order', () => {
+    expect(pruneTargetRoles(['Backend Engineer Intern', 'Not A Title', 'Data Engineer Intern'], 'Backend'))
+      .toEqual(['Backend Engineer Intern', 'Data Engineer Intern']);
+  });
+});
+
+describe('exploreMessages', () => {
+  it('sends the context plus only the latest turns, each trimmed under the route caps', () => {
+    const chat = Array.from({ length: 60 }, (_, i) => ({ who: (i % 2 ? 'ai' : 'you') as 'you' | 'ai', text: `m${i}` }));
+    const msgs = exploreMessages('x'.repeat(20_000), chat);
+    expect(msgs).toHaveLength(EXPLORE_MAX_TURNS + 1);
+    expect(msgs.length).toBeLessThanOrEqual(50);
+    expect(msgs[0]).toEqual({ role: 'system', content: 'x'.repeat(EXPLORE_MAX_CHARS) });
+    expect(msgs[msgs.length - 1]).toEqual({ role: 'assistant', content: 'm59' });
+    expect(exploreMessages('c', [{ who: 'you', text: 'y'.repeat(9000) }])[1].content).toHaveLength(EXPLORE_MAX_CHARS);
   });
 });

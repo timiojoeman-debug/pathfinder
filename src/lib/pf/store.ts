@@ -23,9 +23,8 @@ import {
 import {
   analyzeCvText,
   analyzeJobDescription,
-  chatReplyFor,
-  extractChatPatch,
   fitTone,
+  pruneTargetRoles,
   readinessFrom,
   roleFit,
   trackCardKey,
@@ -61,6 +60,10 @@ export interface SavedJob {
   jdText?: string;
 }
 
+/** The statement `/api/direction` composed. Persisted because the profile shows it on other
+ *  pages; cleared whenever a direction chip changes, so it can never describe stale inputs. */
+export interface DirStatementAi { statement: string; specificity: string; suggestions: string[] }
+
 export interface InterviewFeedback { company: string; rating: number; note: string; date: string }
 
 interface PfState {
@@ -86,6 +89,9 @@ interface PfState {
   dirGenerating: boolean;
   dirGenerated: boolean;
   copiedVariant: string | null;
+  dirStatementAi: DirStatementAi | null;
+  /** Titles the student ticked to search under. Capped at three. */
+  dirTargetRoles: string[];
   chat: ChatMsg[];
   chatDraft: string;
   chatN: number;
@@ -160,7 +166,8 @@ interface PfState {
   toggleDirStack: (value: string) => void;
   generateDirection: () => void;
   copyVariant: (v: string) => void;
-  sendChat: () => void;
+  /** Tick or untick a target role. Ticking a fourth is a no-op. */
+  toggleDirTargetRole: (title: string) => void;
   acceptChat: () => void;
 
   analyzeCv: () => void;
@@ -239,6 +246,8 @@ export const usePfStore = create<PfState>()(
       dirGenerating: false,
       dirGenerated: false,
       copiedVariant: null,
+      dirStatementAi: null,
+      dirTargetRoles: [],
       chat: [],
       chatDraft: "",
       chatN: 0,
@@ -351,11 +360,19 @@ export const usePfStore = create<PfState>()(
       },
       readiness: () => readinessFrom(get().onb),
 
-      pickDirChip: (key, value) => set({ [key]: value, dirGenerated: false } as Partial<PfState>),
+      pickDirChip: (key, value) =>
+        set((s) => ({
+          [key]: value,
+          dirGenerated: false,
+          dirStatementAi: null,
+          // A role change can retire ticked target roles; never count titles the list no longer shows.
+          ...(key === "dirRole" ? { dirTargetRoles: pruneTargetRoles(s.dirTargetRoles, value) } : {}),
+        }) as Partial<PfState>),
       toggleDirStack: (value) =>
         set((s) => ({
           dirStack: s.dirStack.includes(value) ? s.dirStack.filter((x) => x !== value) : [...s.dirStack, value],
           dirGenerated: false,
+          dirStatementAi: null,
         })),
       generateDirection: () => {
         const s = get();
@@ -367,18 +384,13 @@ export const usePfStore = create<PfState>()(
         try { void navigator.clipboard.writeText(v); } catch { /* clipboard unavailable */ }
         set({ copiedVariant: v });
       },
-      sendChat: () => {
-        const s = get();
-        const t = s.chatDraft.trim();
-        if (!t) return;
-        const patch = extractChatPatch(t);
-        const reply = chatReplyFor(s.chatN);
-        set({
-          ...(patch as Partial<PfState>),
-          chat: [...s.chat, { who: "you", text: t }, { who: "ai", text: reply }],
-          chatDraft: "",
-          chatN: s.chatN + 1,
-        });
+      toggleDirTargetRole: (title) => {
+        const cur = get().dirTargetRoles;
+        const on = cur.includes(title);
+        if (!on && cur.length >= 3) return;
+        const next = on ? cur.filter((t) => t !== title) : [...cur, title];
+        set({ dirTargetRoles: next });
+        get().emit("CareerDirectionUpdated", "direction", next.length ? `Target roles: ${next.join(", ")}` : "Cleared target roles", { targetRoles: next.join(", ") });
       },
       /** Hand the chat's answers to the wizard. Only a role and industry the student actually
        *  stated count; the company size is left for them to pick rather than assumed. */
@@ -631,6 +643,8 @@ export const usePfStore = create<PfState>()(
         dirSize: s.dirSize,
         dirSetting: s.dirSetting,
         dirGenerated: s.dirGenerated,
+        dirStatementAi: s.dirStatementAi,
+        dirTargetRoles: s.dirTargetRoles,
         chat: s.chat,
         chatN: s.chatN,
         asstMsgs: s.asstMsgs,
@@ -686,7 +700,7 @@ export const usePfStore = create<PfState>()(
 function toProfileInput(s: PfState): ProfileInput {
   return {
     onb: s.onb, onbDone: s.onbDone,
-    dirRole: s.dirRole, dirStack: s.dirStack, dirIndustry: s.dirIndustry, dirSize: s.dirSize, dirSetting: s.dirSetting, dirGenerated: s.dirGenerated,
+    dirRole: s.dirRole, dirStack: s.dirStack, dirIndustry: s.dirIndustry, dirSize: s.dirSize, dirSetting: s.dirSetting, dirGenerated: s.dirGenerated, dirStatementAi: s.dirStatementAi,
     chat: s.chat,
     cvText: s.cvText, cvAnalyzed: s.cvAnalyzed, cvProjects: s.cvProjects, cvLinkedIn: s.cvLinkedIn, cvScores: s.cvScores,
     savedJobs: s.savedJobs,

@@ -73,7 +73,6 @@ export default function StartPage() {
   const readinessDash = Math.round(402 * (1 - shownReadiness / 100));
 
   const pillars = [
-    { label: "Academic baseline", value: 82, color: "var(--strong)", pct: "82%" },
     { label: "CV & positioning", value: cvV, color: toneFor(cvV), pct: cvV + "%" },
     { label: "Portfolio strength", value: projV, color: toneFor(projV), pct: projV + "%" },
     { label: "Networking activity", value: outV, color: toneFor(outV), pct: outV + "%" },
@@ -81,7 +80,7 @@ export default function StartPage() {
   ];
   const gaps = [
     { label: "CV & positioning", value: cvV, href: "/cv" },
-    { label: "Portfolio strength", value: projV, href: "/direction" },
+    { label: "Portfolio strength", value: projV, href: "/cv" },
     { label: "Networking activity", value: outV, href: "/networking" },
     { label: "Application cadence", value: cadV, href: "/tracker" },
   ]
@@ -89,9 +88,9 @@ export default function StartPage() {
     .sort((a, b) => a.value - b.value);
 
   const stepBg = (n: number) => (onb.step >= n ? "var(--accent)" : "var(--panel3)");
-  const isStep1 = onb.step === 1 && !s.onbScanning;
-  const isStep2 = onb.step === 2 && !s.onbScanning;
-  const isStep3 = onb.step === 3 && !s.onbScanning;
+  const isStep1 = onb.step === 1;
+  const isStep2 = onb.step === 2;
+  const isStep3 = onb.step === 3;
 
   const finish = () => {
     s.finishOnb();
@@ -192,17 +191,6 @@ export default function StartPage() {
         </Reveal>
       )}
 
-      {s.onbScanning && (
-        <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "50px 30px", textAlign: "center" }}>
-          <div className="pf-anim-spin" style={{ width: 44, height: 44, borderRadius: "50%", border: "3px solid var(--panel3)", borderTopColor: "var(--accent)", margin: "0 auto 20px" }} />
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Calculating your baseline…</div>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 20 }}>Weighing academic fit, CV, portfolio, network and cadence.</div>
-          <div style={{ height: 5, width: 220, margin: "0 auto", borderRadius: 3, background: "var(--panel3)", overflow: "hidden" }}>
-            <div className="pf-anim-scan" style={{ height: "100%", background: "var(--accent)" }} />
-          </div>
-        </Reveal>
-      )}
-
       {isStep3 && (
         <div>
           <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: 30, textAlign: "center", marginBottom: 18 }}>
@@ -234,7 +222,7 @@ export default function StartPage() {
                 </div>
               ))}
               <div style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.5, marginTop: 4 }}>
-                Academic baseline is an assumed starting point — everything else is scored from your answers above.
+                These are your own ratings from step 2. The command centre&apos;s numbers start at zero and move only with real work.
               </div>
             </Reveal>
 

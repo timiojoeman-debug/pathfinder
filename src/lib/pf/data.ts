@@ -142,12 +142,6 @@ export const TITLE_VARIANTS: Record<string, string[]> = {
   "Data / ML": ["Data Science Intern", "Machine Learning Intern", "Data Engineer Intern", "AI Engineer Intern"],
 };
 
-export const CHAT_REPLIES = [
-  "Noted. What kind of problems pull you in — interfaces people touch, data and models, or the systems underneath?",
-  "Good signal. Small startup where you wear every hat, or somewhere bigger with more structure and mentorship?",
-  "That’s enough to draft a direction. I’ve pre-filled the wizard from what you said — accept it below or keep refining.",
-];
-
 export const HIRE_FRAMEWORK = [
   { k: "H", label: "Hone direction", note: "Direction statement + 3 target roles", status: "Done", statusColor: "var(--strong)", bg: "var(--strong)", fg: "#fff" },
   { k: "I", label: "Intensify profile", note: "CV, LinkedIn, GitHub aligned", status: "In progress", statusColor: "var(--warn)", bg: "var(--warn)", fg: "#fff" },

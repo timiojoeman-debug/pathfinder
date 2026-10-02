@@ -62,7 +62,15 @@ describe("POST /api/direction", () => {
     const json = await res.json();
     expect(json.statement).toContain("fintech");
     expect(json.specificity).toBe("Clear");
+    expect(json.source).toBe("ai");
     expect(json.suggestions).toContain("Name one or two target companies.");
+  });
+
+  it("accepts the statement answered at the root as well as under `data`", async () => {
+    mockOpenAI(DIRECTION_ENVELOPE.data);
+    const json = await (await POST(req(INPUT))).json();
+    expect(json.source).toBe("ai");
+    expect(json.statement).toContain("fintech");
   });
 
   it("serves a locally-derived statement when the model is unreachable", async () => {
@@ -74,6 +82,8 @@ describe("POST /api/direction", () => {
     expect(json.statement).toMatch(/^I'm targeting/);
     expect(json.statement).toContain("Backend Engineering");
     expect(typeof json.specificity).toBe("string");
+    // Labelled, so the client never presents the fallback as an AI answer.
+    expect(json.source).toBe("local");
   });
 
   it("accepts a tech stack passed as a string[] without crashing", async () => {

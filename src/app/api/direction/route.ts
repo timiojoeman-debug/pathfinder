@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { readBody } from "@/lib/api";
-import { callAIValidated } from "@/lib/ai";
+import { aiShape, callAIValidated } from "@/lib/ai";
 import { logger } from "@/lib/logger";
 import { buildDirectionPrompt } from "@/lib/prompts";
 
-/** Shape the prompt actually asks for — the statement lives under `data`. */
-const DirectionResponse = z.object({
-  data: z.object({
+/** The prompt nests these under `data`, but the model sometimes answers at the
+ *  root; `aiShape` accepts either rather than failing a working reply. */
+const DirectionResponse = aiShape(
+  z.object({
     directionStatement: z.string(),
     specificityScore: z.number().optional(),
     specificityTier: z.string(),
     sharpeningSuggestions: z.array(z.string()).default([]),
   }),
-});
+);
 
 /**
  * Every field below is `.trim()`-ed, so a non-string value used to throw and
@@ -136,16 +137,20 @@ export async function POST(req: Request) {
       DirectionResponse,
       "direction",
     );
+    // `source` lets the client tell a model answer from the local fallback below,
+    // which is also a 200: a degraded statement must never be labelled as AI.
     return NextResponse.json({
-      statement: aiResult.data.directionStatement,
-      specificity: aiResult.data.specificityTier,
-      suggestions: aiResult.data.sharpeningSuggestions ?? [],
+      source: "ai",
+      statement: aiResult.directionStatement,
+      specificity: aiResult.specificityTier,
+      suggestions: aiResult.sharpeningSuggestions ?? [],
     });
   } catch (e) {
     logger.error("direction — AI unusable, serving locally-derived statement", {
       error: e instanceof Error ? e.message : String(e),
     });
     return NextResponse.json({
+      source: "local",
       statement,
       specificity: level,
       suggestions,

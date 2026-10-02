@@ -5,7 +5,7 @@
  */
 
 import {
-  CHAT_REPLIES,
+  DIR_STACK_OPTS,
   DEFAULT_TARGET_KEYWORDS,
   KEYWORD_VOCAB,
   VAGUE_TERMS,
@@ -101,23 +101,60 @@ export function directionSuggestions(d: DirectionFields): string[] {
   return out;
 }
 
-/** Regex extraction of wizard fields from a free-text chat message. */
-export function extractChatPatch(text: string): Partial<DirectionFields> {
-  const patch: Partial<DirectionFields> = {};
-  if (/front|ui|interface|design/i.test(text)) patch.dirRole = "Frontend";
-  else if (/data|ml|machine|model/i.test(text)) patch.dirRole = "Data / ML";
-  else if (/backend|systems|infra/i.test(text)) patch.dirRole = "Backend";
-  else if (/full|web|product/i.test(text)) patch.dirRole = "Full-Stack SWE";
-  if (/fintech|bank|finance|trading/i.test(text)) patch.dirIndustry = "Fintech";
-  if (/travel/i.test(text)) patch.dirIndustry = "Travel Tech";
-  if (/health/i.test(text)) patch.dirIndustry = "Healthtech";
-  if (/startup|small/i.test(text)) patch.dirSize = "Startups 0–50";
-  if (/big tech|large|faang/i.test(text)) patch.dirSize = "Big Tech";
-  return patch;
+/** Turns of chat sent to the explore route. Its schema caps `messages` at 50, so a
+ *  persisted chat sent whole would 400 forever once it grew past that. */
+export const EXPLORE_MAX_TURNS = 20;
+/** Per-message cap, kept under the route's `zText(8000)` with room for the 100 KB body cap. */
+export const EXPLORE_MAX_CHARS = 4000;
+
+/** The explore request: the profile context, then the most recent turns, each trimmed. */
+export function exploreMessages(
+  context: string,
+  chat: { who: "you" | "ai"; text: string }[],
+): { role: string; content: string }[] {
+  return [
+    { role: "system", content: context.slice(0, EXPLORE_MAX_CHARS) },
+    ...chat.slice(-EXPLORE_MAX_TURNS).map((m) => ({
+      role: m.who === "you" ? "user" : "assistant",
+      content: m.text.slice(0, EXPLORE_MAX_CHARS),
+    })),
+  ];
 }
 
-export function chatReplyFor(turn: number): string {
-  return CHAT_REPLIES[Math.min(turn, CHAT_REPLIES.length - 1)];
+/** What the explore route's `extractedPreferences` may carry. Every field is optional:
+ *  the model fills only what the student has actually said. */
+export interface ExplorePreferences {
+  role?: string;
+  industry?: string;
+  techStack?: string[];
+  companySize?: string;
+}
+
+/**
+ * Map the explore route's free-text preferences onto the wizard's chip values.
+ * Only a value that clearly names a chip maps; anything else (e.g. "Product
+ * Manager") is left unset rather than squeezed into an engineering role.
+ */
+export function mapExplorePreferences(p: ExplorePreferences | undefined): Partial<DirectionFields> {
+  const patch: Partial<DirectionFields> = {};
+  const role = (p?.role || "").toLowerCase();
+  if (/front/.test(role)) patch.dirRole = "Frontend";
+  else if (/back/.test(role)) patch.dirRole = "Backend";
+  else if (/data|\bml\b|machine/.test(role)) patch.dirRole = "Data / ML";
+  else if (/full|software|\bswe\b/.test(role)) patch.dirRole = "Full-Stack SWE";
+  const ind = (p?.industry || "").toLowerCase();
+  if (/fintech|finance/.test(ind)) patch.dirIndustry = "Fintech";
+  else if (/travel/.test(ind)) patch.dirIndustry = "Travel Tech";
+  else if (/health/.test(ind)) patch.dirIndustry = "Healthtech";
+  else if (/dev|tool/.test(ind)) patch.dirIndustry = "Dev Tools";
+  const size = (p?.companySize || "").toLowerCase();
+  if (/start|seed|small/.test(size)) patch.dirSize = "Startups 0–50";
+  else if (/scale|growth|mid/.test(size)) patch.dirSize = "Scaleups";
+  else if (/big|large|faang|enterprise/.test(size)) patch.dirSize = "Big Tech";
+  const stack = Array.isArray(p?.techStack) ? p.techStack.filter((t): t is string => typeof t === "string") : [];
+  const picked = DIR_STACK_OPTS.filter((opt) => stack.some((t) => t.trim().toLowerCase().startsWith(opt.toLowerCase())));
+  if (picked.length) patch.dirStack = picked;
+  return patch;
 }
 
 /* ── Target role families ──────────────────────────────────────────────
@@ -159,6 +196,33 @@ const ROLE_FAMILIES: Record<string, RoleFamily[]> = {
 /** Role families for the chosen direction — three targets, methodology's cap. */
 export function roleFamiliesFor(dirRole: string | null): RoleFamily[] {
   return ROLE_FAMILIES[dirRole ?? ""] ?? ROLE_FAMILIES["Full-Stack SWE"];
+}
+
+/** Keep only ticked target roles that are still offered for this role. */
+export function pruneTargetRoles(picked: string[], dirRole: string | null): string[] {
+  const valid = new Set(targetRoleOptions(dirRole).map((o) => o.title));
+  return picked.filter((t) => valid.has(t));
+}
+
+export interface TargetRoleOption { title: string; note: string; relation: RoleFamily["relation"] | "Other"; tone: string }
+
+/**
+ * Every title the student can tick as a target role: the chosen direction's
+ * family first, then the other families' titles, so the cap of three is a real
+ * choice rather than a fixed list of three.
+ */
+export function targetRoleOptions(dirRole: string | null): TargetRoleOption[] {
+  const primary: TargetRoleOption[] = roleFamiliesFor(dirRole);
+  const seen = new Set(primary.map((r) => r.title));
+  const others: TargetRoleOption[] = [];
+  for (const fam of Object.values(ROLE_FAMILIES)) {
+    for (const r of fam) {
+      if (seen.has(r.title)) continue;
+      seen.add(r.title);
+      others.push({ title: r.title, note: "Outside your chosen direction. Tick it only if you would apply.", relation: "Other", tone: "var(--faint)" });
+    }
+  }
+  return [...primary, ...others];
 }
 
 /* ── CV analysis ───────────────────────────────────────────────────── */

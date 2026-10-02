@@ -50,6 +50,19 @@ describe("POST /api/direction/title-variants", () => {
     else process.env.OPENAI_API_KEY = originalKey;
   });
 
+  it("passes the student's shortlisted target roles into the prompt", async () => {
+    mockOpenAI(VARIANTS);
+    const res = await POST(req({ role: "Backend", targetRoles: ["Platform / Infrastructure Intern"] }));
+    expect(res.status).toBe(200);
+    const sent = (globalThis.fetch as unknown as { mock: { calls: [string, { body: string }][] } }).mock.calls[0][1].body;
+    expect(sent).toContain("Platform / Infrastructure Intern");
+  });
+
+  it("rejects more than three target roles", async () => {
+    const res = await POST(req({ role: "Backend", targetRoles: ["a", "b", "c", "d"] }));
+    expect(res.status).toBe(400);
+  });
+
   it("rejects a request with no role", async () => {
     const res = await POST(req({ role: "" }));
     expect(res.status).toBe(400);
