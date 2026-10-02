@@ -201,7 +201,7 @@ The spine of the app. Nothing derived is stored twice:
 
 ## Database
 
-Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`, `0005_rate_limit`, `0006_error_events`, `0007_pilot_interest`, `0010_ai_cache` — 0008/0009 land on parallel branches). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector), rate_limit_buckets, error_events, pilot_interest, ai_response_cache.
+Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`, `0005_rate_limit`, `0006_error_events`, `0007_pilot_interest`, `0008_job_cache`, `0009_ai_usage`, `0010_ai_cache`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector), rate_limit_buckets, error_events, pilot_interest, ai_response_cache.
 
 RLS restricts students to their own rows; `methodology_chunks` is publicly readable. The server uses the service-role key and scopes queries by `user_id` at the application layer.
 
