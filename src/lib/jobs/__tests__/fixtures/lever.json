@@ -1,0 +1,6 @@
+[
+  { "id": "aaa-1", "text": "Software Engineering Internship", "hostedUrl": "https://jobs.lever.co/acme/aaa-1", "createdAt": 1788000000000, "workplaceType": "hybrid", "categories": { "location": "London", "allLocations": ["London", "Edinburgh"] } },
+  { "id": "aaa-2", "text": "Early Careers Programme, Forward Deployed", "hostedUrl": "https://jobs.lever.co/acme/aaa-2", "createdAt": 1788100000000, "categories": { "location": "Edinburgh" } },
+  { "id": "aaa-3", "text": "Graduate-level Senior Engineer", "hostedUrl": "https://jobs.lever.co/acme/aaa-3", "categories": { "location": "London" } },
+  { "id": "aaa-4", "text": "Staff Engineer", "hostedUrl": "https://jobs.lever.co/acme/aaa-4", "categories": { "location": "London" } }
+]

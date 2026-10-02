@@ -19,6 +19,8 @@ export interface JobListing {
   /** null when the listing gave us nothing to score against — never a guess. */
   matchScore: number | null;
   atsKeywords: string[];
+  /** ISO timestamp the employer published it, when the source says. Never guessed. */
+  postedAt?: string | null;
 }
 
 /**

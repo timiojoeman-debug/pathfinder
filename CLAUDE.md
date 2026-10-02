@@ -116,9 +116,13 @@ login — do **not** widen `isGuestAllowed` to an OpenAI route without a matchin
 - `/profile` — profile read/write
 - `/direction`, `/direction/{explore,title-variants}` — career direction wizard
 - `/cv/{analyze,ats-audit,match,projects}` — CV upload, parsing, AI analysis
-- `/jobs/{search,analyze}` — job search and JD analysis. `search` returns real
-  Adzuna listings when `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` are set, and an empty
-  list with `configured: false` otherwise. **It must never return placeholder
+- `/jobs/{search,analyze}` — job search and JD analysis. `search` reads, in order:
+  the `job_listings` cache (early-career roles from employers' own
+  Greenhouse/Lever/Ashby boards: `lib/jobs/employers.ts` + `ats.ts`, refreshed daily by
+  `/api/cron/refresh-jobs`), the GitHub lists, then real Adzuna listings when
+  `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` are set, merged with `dedupeListings`. An empty or
+  unreachable cache just means fewer results. With no source at all it returns an empty
+  list with `configured: false`. **It must never return placeholder
   listings** — it previously shipped three invented companies with
   `example.com` apply links. Tests in `__tests__/search.test.ts` enforce that.
   Filters: `location` maps to Adzuna's `where`; `roleType`, `industry` and
@@ -144,6 +148,10 @@ login — do **not** widen `isGuestAllowed` to an OpenAI route without a matchin
   manufacture the progress every number is derived from. They sit under
   `/api/mentor/` so `classifyRoute` puts them in the AI bucket without
   dragging plain `/api/profile` read/write in with them.
+- `/cron/refresh-jobs` — GET, daily Vercel Cron (`vercel.json`). Public in middleware but gated
+  by `Authorization: Bearer $CRON_SECRET` (401 when the secret is unset). Fetches each employer
+  once and closes vanished roles **only for employers whose fetch succeeded**. A new employer
+  slug must return 200 first; `docs/employer-feed-verification.md` records the run.
 - `/health` — health check (GET); probes OpenAI and Supabase
 
 ### Career-OS (`src/lib/pf/`)
@@ -202,7 +210,7 @@ The spine of the app. Nothing derived is stored twice:
 
 ## Database
 
-Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`, `0005_rate_limit`, `0006_error_events`, `0007_pilot_interest`, `0008_job_cache`, `0009_ai_usage`, `0010_ai_cache`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector), rate_limit_buckets, error_events, pilot_interest, ai_usage, ai_response_cache.
+Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`, `0005_rate_limit`, `0006_error_events`, `0007_pilot_interest`, `0008_job_cache`, `0009_ai_usage`, `0010_ai_cache`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector), rate_limit_buckets, error_events, pilot_interest, ai_usage, ai_response_cache, job_listings.
 
 RLS restricts students to their own rows; `methodology_chunks` is publicly readable. The server uses the service-role key and scopes queries by `user_id` at the application layer.
 

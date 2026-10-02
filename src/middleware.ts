@@ -23,6 +23,9 @@ const PUBLIC_API_ROUTES = [
   // path failing in a different way. Writes one row, calls no model, and
   // carries its own per-IP daily cap on top of the strict per-minute bucket.
   '/api/pilot-interest',
+  // Vercel Cron has no session cookie. The route checks CRON_SECRET itself and
+  // answers 401 without it (including when the secret is unset).
+  '/api/cron/refresh-jobs',
 ];
 
 function isPublicRoute(pathname: string): boolean {

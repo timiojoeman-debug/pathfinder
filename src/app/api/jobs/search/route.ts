@@ -12,6 +12,7 @@ import {
   type JobListing,
 } from "@/lib/jobs/types";
 import { fetchGithubListings } from "@/lib/jobs/github";
+import { getActiveListings } from "@/lib/db/job-listings";
 
 /**
  * Job search.
@@ -19,7 +20,9 @@ import { fetchGithubListings } from "@/lib/jobs/github";
  * This route used to return three hardcoded listings — invented companies with
  * apply links pointing at example.com. A product that coaches people not to
  * embellish their CV cannot invent the jobs it sends them to. Now every listing
- * is real, from one of two sources:
+ * is real, from one of three sources:
+ *   - the employer-feed cache (job_listings, refreshed daily from employers' own
+ *     ATS boards) — read first; empty or unreachable just means fewer results
  *   - GitHub internship lists (always on, free, curated) — see lib/jobs/github
  *   - Adzuna (UK-native) — only when API credentials are configured
  * Merged, deduped and filtered; every failure path returns fewer real jobs,
@@ -141,6 +144,22 @@ export async function POST(req: Request) {
   const workModeTerm = body.workMode ? WORK_MODE_TERMS[body.workMode.trim().toLowerCase()] : undefined;
   const what = [body.roleType && expandRoleQuery(body.roleType), body.industry, workModeTerm].filter(Boolean).join(" ").trim() || "intern";
 
+  // Employer-feed cache first. It is filtered locally by every filter the student
+  // set, like GitHub. An empty or unreachable table must never fail the search.
+  let employers: JobListing[] = [];
+  try {
+    employers = filterListings(await getActiveListings(), {
+      roleType: body.roleType,
+      location: body.location,
+      industry: body.industry,
+      workMode: workModeTerm,
+    });
+  } catch (err) {
+    logger.error("jobs/search — job cache unreachable", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   // GitHub lists are always available and free; filtered locally by every filter
   // the student set, so the UI's "filters apply" holds for both sources.
   const githubAll = await fetchGithubListings();
@@ -165,14 +184,14 @@ export async function POST(req: Request) {
     }
   }
 
-  const jobs = sortByFit(dedupeListings([...adzuna, ...github])).slice(0, MAX_RESULTS);
+  const jobs = sortByFit(dedupeListings([...employers, ...adzuna, ...github])).slice(0, MAX_RESULTS);
 
   const message = jobs.length ? undefined : adzunaError ? UNAVAILABLE_MESSAGE : NO_MATCHES_MESSAGE;
 
   return NextResponse.json({
     jobs,
     configured: true,
-    sources: { github: github.length, adzuna: creds ? adzuna.length : null },
+    sources: { employers: employers.length, github: github.length, adzuna: creds ? adzuna.length : null },
     message,
   });
 }
