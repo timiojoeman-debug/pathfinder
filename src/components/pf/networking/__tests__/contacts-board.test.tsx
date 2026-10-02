@@ -123,6 +123,21 @@ describe("contact drawer", () => {
     expect(s().contactDetail).toBe(id());
   });
 
+  it("both drawers offer a plain new-tab alumni search for the company", () => {
+    const expected = "https://www.linkedin.com/search/results/people/?keywords=Monzo";
+    s().openContact(id());
+    const { unmount } = render(<Drawers />);
+    let link = screen.getByRole("link", { name: /Find alumni at Monzo/ });
+    expect(link).toHaveAttribute("href", expected);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    unmount();
+    act(() => { s().openApp("monzo::backend intern"); });
+    render(<Drawers />);
+    link = screen.getByRole("link", { name: /Find alumni at monzo/i });
+    expect(link).toHaveAttribute("href", "https://www.linkedin.com/search/results/people/?keywords=monzo");
+  });
+
   it("Work on this contact selects them and goes to research and outreach", () => {
     s().openContact(id());
     render(<Drawers />);

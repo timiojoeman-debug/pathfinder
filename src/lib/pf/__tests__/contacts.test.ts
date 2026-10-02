@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getProfile, getProgress, usePfStore } from "../store";
 import { makeEvent } from "../events";
-import { applicationsAtCompany, contactsAtCompany, sanitizeContacts } from "../contacts";
+import { alumniSearchUrl, applicationsAtCompany, contactsAtCompany, sanitizeContacts } from "../contacts";
 
 /**
  * The contacts board holds other people's data and must not become a way to
@@ -374,5 +374,19 @@ describe("sanitizeContacts — duplicate ids", () => {
       { id: "a", name: "Mid", updatedAt: 5 },
     ]);
     expect(out.map((c) => c.name)).toEqual(["New"]);
+  });
+});
+
+describe("alumniSearchUrl", () => {
+  const base = "https://www.linkedin.com/search/results/people/?keywords=";
+  it("encodes the company and the university", () => {
+    expect(alumniSearchUrl("Procter & Gamble", "University of Edinburgh")).toBe(`${base}Procter%20%26%20Gamble%20University%20of%20Edinburgh`);
+  });
+  it("uses the company alone when the university is unset or blank", () => {
+    expect(alumniSearchUrl(" Monzo ")).toBe(`${base}Monzo`);
+    expect(alumniSearchUrl("Monzo", "  ")).toBe(`${base}Monzo`);
+  });
+  it("returns null without a company", () => {
+    expect(alumniSearchUrl("   ", "Edinburgh")).toBeNull();
   });
 });
