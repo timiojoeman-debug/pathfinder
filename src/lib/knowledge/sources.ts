@@ -176,6 +176,22 @@ export const SOURCES: Record<string, SourceRef> = {
     confidence: 'medium',
   },
 
+  // ── TechTalk slide decks (transcribed in the 2026-10-02 slide audit) ───
+  'deck-recruiters-looking-for': {
+    id: 'deck-recruiters-looking-for',
+    title: 'TechTalk — What Recruiters Are Really Looking For (slides)',
+    kind: 'masterclass-doc',
+    vaultPath: 'Slide Audit 2026-10-02/report-D.md (deck: recruiters-looking-for)',
+    confidence: 'medium',
+  },
+  'deck-portfolio': {
+    id: 'deck-portfolio',
+    title: 'TechTalk — How to Build a Portfolio That Gets You Hired (slides)',
+    kind: 'masterclass-doc',
+    vaultPath: 'Slide Audit 2026-10-02/report-D.md (deck: portfolio)',
+    confidence: 'medium',
+  },
+
   // ── Provenance / source notes ─────────────────────────────────────────
   'wiki-techtalk-tactics': {
     id: 'wiki-techtalk-tactics',

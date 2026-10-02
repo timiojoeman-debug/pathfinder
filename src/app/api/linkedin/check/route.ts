@@ -6,7 +6,8 @@ export async function POST(req: Request) {
   try {
     const __p = await readLoose(req);
     if (!__p.ok) return __p.response;
-    const { headline, aboutSection, targetRole, techStack, industry } = __p.data;
+    const { headline, aboutSection, targetRole, techStack, industry, cvSummary } = __p.data;
+    const cv = typeof cvSummary === 'string' ? cvSummary.trim().slice(0, 3000) : '';
     if (!headline && !aboutSection) {
       return NextResponse.json({ error: 'Headline or about section required' }, { status: 400 });
     }
@@ -40,6 +41,9 @@ For each keyword, indicate:
 - suggestedPlacement: where to add it if missing — "headline", "about", "skills section", or "experience titles"
 
 These should be specific to the student's target role and tech stack, not generic.
+${cv ? `
+CV CONSISTENCY CHECK (TechTalk recruiter deck): a recruiter who likes the CV cross-checks the LinkedIn, and does not move forward if the two do not match or at least complement each other. The student also pasted a CV summary. Compare it with the LinkedIn text and add a "feedback" item for each mismatch you can actually see in job titles, roles and their descriptions, employers, and dates. Start that item's "issue" with "CV vs LinkedIn:". Quote both versions in "currentState". Compare only what both texts state; if a detail appears in only one, say it is missing from the other rather than calling it a conflict. If they agree, add no mismatch items and list the agreement under "strengths". Never invent a mismatch.
+` : ''}
 
 Respond ONLY with valid JSON:
 {
@@ -65,7 +69,7 @@ Respond ONLY with valid JSON:
     "keywords": [{ "keyword": string, "priority": "critical" | "important" | "helpful", "foundInProfile": boolean, "suggestedPlacement": string }]
   }
 }`,
-      userMessage: `Headline: ${headline || 'Not provided'}\n\nAbout section: ${aboutSection || 'Not provided'}`,
+      userMessage: `Headline: ${headline || 'Not provided'}\n\nAbout section: ${aboutSection || 'Not provided'}${cv ? `\n\nCV summary (for the consistency check only):\n${cv}` : ''}`,
       temperature: 0.3,
     },
     aiEnvelope(["suggestedHeadline"]),

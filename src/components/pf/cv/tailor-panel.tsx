@@ -18,6 +18,7 @@
 import { usePfStore } from "@/lib/pf/store";
 import { useAiTask, type AiEnvelope } from "@/lib/pf/use-ai";
 import { Reveal } from "@/components/pf/ui";
+import { cleanMustHaves, summariseMustHaves, type MustHave } from "@/lib/methodology/recruiter-signals";
 import { AiCaveat, AiError, AiList, AiSection, AiTag, GenerateButton } from "@/components/pf/ai-panel";
 
 const mono = "'JetBrains Mono',monospace";
@@ -61,6 +62,8 @@ export type MatchEnvelope = AiEnvelope<MatchData> & {
   nonNegotiables?: NonNegotiable[];
   hasBlockers?: boolean;
   blockerWarning?: string | null;
+  /** Also beside the envelope; the route cleans it. */
+  mustHaves?: MustHave[];
 };
 
 export type AtsEnvelope = AiEnvelope<AtsData>;
@@ -114,6 +117,8 @@ export function TailorPanel() {
   const audit = atsResult?.data;
   const score = matchResult?.data;
   const blockers = matchResult?.nonNegotiables?.filter((n) => !n.studentMeets) ?? [];
+  const mustHaves = cleanMustHaves(matchResult?.mustHaves);
+  const mustSummary = summariseMustHaves(mustHaves);
 
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
@@ -257,6 +262,32 @@ export function TailorPanel() {
                 ))}
               </div>
             </div>
+          )}
+
+          {mustSummary && (
+            <AiSection title="Must-haves met">
+              <div style={{ fontFamily: mono, fontSize: 12.5, fontWeight: 700, color: mustSummary.meetsRule ? "var(--strong)" : "var(--warn)" }}>
+                {mustSummary.met} of {mustSummary.total} ({mustSummary.pct}%)
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 9 }}>
+                {mustHaves.map((m) => (
+                  <div key={m.skill} style={{ display: "flex", gap: 9, fontSize: 12.5, lineHeight: 1.55 }}>
+                    <span style={{ color: m.met ? "var(--strong)" : "var(--risk)", flexShrink: 0 }}>{m.met ? "✓" : "×"}</span>
+                    <span style={{ color: "var(--muted)" }}>{m.skill}</span>
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, margin: "10px 0 0" }}>
+                {mustSummary.meetsRule
+                  ? "You are at or above the 70% mark, so the rule says apply."
+                  : "You are under the 70% mark. Weigh whether the missing must-haves are ones you can evidence soon."}
+              </p>
+              <AiCaveat>
+                The 70% rule is a rule of thumb from a TechTalk recruiter session, not a measured
+                threshold. The split into must-haves is the model&apos;s reading of the advert: check it
+                against the signal words yourself.
+              </AiCaveat>
+            </AiSection>
           )}
 
           {score.guidance && (

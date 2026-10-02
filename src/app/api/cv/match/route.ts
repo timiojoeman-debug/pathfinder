@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
 import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildMatchScorePrompt } from '@/lib/prompts';
+import { cleanMustHaves } from '@/lib/methodology/recruiter-signals';
 
 export async function POST(req: Request) {
   try {
@@ -23,7 +24,9 @@ export async function POST(req: Request) {
     "cv/match",
     );
 
-    return NextResponse.json(result);
+    // The model may put the list beside the envelope or inside `data`; the app derives "x of y" from it.
+    const mustHaves = cleanMustHaves(result.mustHaves ?? (result.data as { mustHaves?: unknown }).mustHaves);
+    return NextResponse.json({ ...result, mustHaves });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Match scoring failed', retryable: true },

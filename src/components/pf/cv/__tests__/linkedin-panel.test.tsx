@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const emit = vi.fn();
+const storeState = { emit, cvText: "Software Intern at Acme, 2024" };
 vi.mock("@/lib/pf/store", () => ({
-  usePfStore: (sel: (s: { emit: typeof emit }) => unknown) => sel({ emit }),
+  usePfStore: (sel: (s: typeof storeState) => unknown) => sel(storeState),
   useProfile: () => ({ targetRole: "Backend Engineer", targetKeywords: ["Go"], targetIndustry: "fintech" }),
 }));
 vi.mock("@/lib/pf/use-ai", () => ({ useAiTask: vi.fn() }));
@@ -44,6 +45,21 @@ describe("LinkedInPanel", () => {
 
     await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ aboutSection: "I like code.", targetRole: "Backend Engineer", industry: "fintech" })));
     await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "cv", expect.stringContaining("LinkedIn")));
+  });
+
+  it("prefills the CV summary from the store and sends it, or the edited text, for the consistency check", async () => {
+    const run = vi.fn(async () => ({ data: { suggestedHeadline: "x" } }));
+    vi.mocked(useAiTask).mockReturnValue(aiTask({ run: run as never }));
+    render(<LinkedInPanel />);
+    const box = screen.getByLabelText(/cv summary for the consistency check/i) as HTMLTextAreaElement;
+    expect(box.value).toBe("Software Intern at Acme, 2024");
+    fireEvent.change(screen.getByPlaceholderText(/current about section/i), { target: { value: "I like code." } });
+    fireEvent.click(screen.getByRole("button", { name: /review my profile/i }));
+    await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ cvSummary: "Software Intern at Acme, 2024" })));
+
+    fireEvent.change(box, { target: { value: "Data Analyst at Beta" } });
+    fireEvent.click(screen.getByRole("button", { name: /review my profile/i }));
+    await waitFor(() => expect(run).toHaveBeenLastCalledWith(expect.objectContaining({ cvSummary: "Data Analyst at Beta" })));
   });
 
   it("renders the scores, a suggested headline, and the keyword analysis beside the envelope", () => {
