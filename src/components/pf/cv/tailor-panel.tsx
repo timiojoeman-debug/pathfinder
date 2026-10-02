@@ -80,7 +80,7 @@ function scoreTone(n: number): string {
 export function TailorPanel() {
   const cvText = usePfStore((s) => s.cvText);
   const emit = usePfStore((s) => s.emit);
-  const set = usePfStore((s) => s.set);
+  const keepTailorResult = usePfStore((s) => s.keepTailorResult);
   // The advert and the results run against it live in the store, so leaving the
   // page doesn't lose them, and the job drawer can hand an advert over.
   const jd = usePfStore((s) => s.cvTailorJD);
@@ -94,18 +94,19 @@ export function TailorPanel() {
   const jobDescription = jd.trim();
   const ready = jobDescription.length >= MIN_JD && cvText.trim().length > 0;
 
+  // Results are kept only if the advert is unchanged when they land; the store drops stale ones.
   const runAts = async () => {
+    const forJD = jd;
     const result = await ats.run({ jobDescription, cvData: cvText });
-    if (result?.data) {
-      set({ cvTailorAts: result });
+    if (result?.data && keepTailorResult("ats", result, forJD)) {
       emit("AiConsulted", "cv", "Ran an ATS audit against a job description");
     }
   };
 
   const runMatch = async () => {
+    const forJD = jd;
     const result = await match.run({ jobDescription, cvData: cvText });
-    if (result?.data) {
-      set({ cvTailorMatch: result });
+    if (result?.data && keepTailorResult("match", result, forJD)) {
       emit("AiConsulted", "cv", "Scored the CV against a job description");
     }
   };

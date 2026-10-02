@@ -15,7 +15,7 @@
  * one-line check of their schema.
  */
 
-import { computeMatchScore, type JobListing } from "./types";
+import { computeMatchScore, safeHttpUrl, type JobListing } from "./types";
 import { logger } from "@/lib/logger";
 
 interface GithubSource {
@@ -62,7 +62,7 @@ function mapRawListing(r: RawGithubListing, label: string): JobListing | null {
   if (r.active === false || r.is_visible === false) return null;
   const title = r.title?.trim();
   const company = r.company_name?.trim();
-  const url = r.url?.trim();
+  const url = safeHttpUrl(r.url);
   if (!title || !company || !url) return null;
 
   const location = Array.isArray(r.locations) && r.locations.length

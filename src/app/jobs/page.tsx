@@ -7,8 +7,9 @@
  */
 
 import { useState } from "react";
-import { buildCoverLetter, fitTone, jobPassesFit, postingKey, targetKeywords } from "@/lib/pf/logic";
+import { buildCoverLetter, fitTone, jobPassesFit, MAX_JD_CHARS, postingKey, targetKeywords } from "@/lib/pf/logic";
 import { getProfile, usePfStore, type SavedJob } from "@/lib/pf/store";
+import { safeHttpUrl } from "@/lib/jobs/types";
 import { useAiTask, type AiTask } from "@/lib/pf/use-ai";
 import { AiCaveat, AiError } from "@/components/pf/ai-panel";
 import { Chip, Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
@@ -76,8 +77,8 @@ function toSavedJob(j: { title?: string; company?: string; location?: string; so
       ? (fit >= 70 ? "Strong match" : fit >= 55 ? "Reach — tailor hard" : "Long shot")
       : "Fit unknown — paste the full JD below to score it",
     action: "+ Save",
-    jdText: j.description ?? "",
-    ...(j.url ? { url: j.url } : {}),
+    jdText: (j.description ?? "").slice(0, MAX_JD_CHARS),
+    ...(safeHttpUrl(j.url) ? { url: safeHttpUrl(j.url) as string } : {}),
   };
 }
 
@@ -212,7 +213,7 @@ function AnalysisResult({ aiRead, read }: { aiRead: AiJdRead | null; read: AiTas
     const paras = text.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean);
     const raw = json?.data?.assumptions;
     const assumptions = Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
-    st.keepCoverLetter({ key, paras, assumptions, words: text.split(/\s+/).length }, st.jfCompany.trim(), st.jfTitle.trim());
+    st.keepCoverLetter({ key, paras, assumptions, words: text.split(/\s+/).length });
     st.emit("AiConsulted", "jobs", `Drafted a cover letter for ${st.jfCompany.trim() || "a role"}`);
     if (refinement) setRefineDraft("");
   };
