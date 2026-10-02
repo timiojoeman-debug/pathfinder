@@ -24,6 +24,7 @@ import { usePfStore, useProfile, useProgress } from "@/lib/pf/store";
 import { relativeTime } from "@/lib/pf/events";
 import { useAiTask } from "@/lib/pf/use-ai";
 import { AiError } from "@/components/pf/ai-panel";
+import { Icon } from "@/components/pf/icons";
 
 const mono = "var(--font-mono), 'JetBrains Mono', monospace";
 
@@ -104,9 +105,7 @@ export function MentorAssistant() {
           boxShadow: "0 6px 22px color-mix(in srgb,var(--accent) 28%,transparent)",
         }}
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--onAccent)" strokeWidth="2">
-          <path d="M21 11.5a8.38 8.38 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 21 11.5z" />
-        </svg>
+        <Icon name="chat" size={17} stroke={2} />
         Ask the mentor
       </button>
     );

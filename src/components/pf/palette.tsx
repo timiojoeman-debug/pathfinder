@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { SCREEN_ROUTES } from "@/lib/pf/data";
 import { usePfStore } from "@/lib/pf/store";
+import { Icon } from "@/components/pf/icons";
 
 interface Cmd { label: string; hint: string; pick: () => void }
 
@@ -62,7 +63,7 @@ export function CommandPalette() {
         style={{ position: "fixed", top: "14vh", left: "50%", transform: "translateX(-50%)", width: "min(560px,92vw)", zIndex: 81, background: "var(--panelSolid)", border: "1px solid var(--lineStrong)", borderRadius: 18, overflow: "hidden", boxShadow: "0 30px 70px rgba(30,22,12,.35)" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "16px 18px", borderBottom: "1px solid var(--line)" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+          <span style={{ color: "var(--faint)" }}><Icon name="search" /></span>
           <input
             autoFocus
             value={q}

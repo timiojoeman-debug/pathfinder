@@ -14,6 +14,7 @@ import { PHASE_LABEL, type PfPhase } from "@/lib/pf/events";
 import { useAuthStore } from "@/lib/stores";
 import { setTheme, useThemeMode } from "@/lib/theme";
 import { CommandPalette } from "./palette";
+import { Icon } from "./icons";
 import { Drawers } from "./drawers";
 import { MentorAssistant } from "./assistant";
 import { ProfileSync } from "./profile-sync";
@@ -31,38 +32,38 @@ type Badge = { kind: "fix" } | { kind: "done" } | { kind: "dot" } | null;
 const NAV_OVERVIEW: { href: string; label: string; icon: ReactNode; badge: Badge }[] = [
   {
     href: "/start", label: "Get started", badge: null,
-    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M5 21V4l7 3 7-3v13l-7 3-7-3" /></svg>,
+    icon: <Icon name="start" />,
   },
   {
     href: "/intel", label: "Command Centre", badge: null,
-    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>,
+    icon: <Icon name="dashboard" />,
   },
 ];
 
 const NAV_PHASES: { href: string; label: string; icon: ReactNode; phase?: PfPhase }[] = [
   {
     href: "/direction", label: "Career Direction", phase: "direction",
-    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5 5-2z" /></svg>,
+    icon: <Icon name="compass" />,
   },
   {
     href: "/cv", label: "CV Optimisation", phase: "cv",
-    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h5" /></svg>,
+    icon: <Icon name="file" />,
   },
   {
     href: "/jobs", label: "Opportunity Discovery", phase: "jobs",
-    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>,
+    icon: <Icon name="search" />,
   },
   {
     href: "/networking", label: "Networking", phase: "networking",
-    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="9" cy="8" r="3.2" /><path d="M15.5 11a3 3 0 100-5M3 20a6 6 0 0112 0M15 20a6 6 0 00-3-5.2" /></svg>,
+    icon: <Icon name="users" />,
   },
   {
     href: "/interview", label: "Interview Prep", phase: "interview",
-    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0014 0M12 18v3" /></svg>,
+    icon: <Icon name="mic" />,
   },
   {
     href: "/tracker", label: "Application Tracking", phase: "tracker",
-    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg>,
+    icon: <Icon name="board" />,
   },
 ];
 
@@ -199,7 +200,7 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
           badge={null}
           active={pathname === "/settings"}
           collapsed={collapsed}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>}
+          icon={<Icon name="settings" />}
         />
       </nav>
 
@@ -261,7 +262,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
           aria-label="Toggle navigation"
           style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, borderRadius: 9, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", cursor: "pointer", flexShrink: 0 }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+          <Icon name="menu" />
         </button>
         <div className="pf-mono pf-hide-mobile" style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 11, letterSpacing: ".08em", color: "var(--faint)", whiteSpace: "nowrap" }}>
           <span className="pf-anim-pulse" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--strong)" }} />
@@ -273,7 +274,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
           onClick={openPalette}
           style={{ display: "flex", alignItems: "center", gap: 9, height: 36, padding: "0 12px 0 13px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", fontSize: 13, cursor: "pointer" }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+          <Icon name="search" size={16} />
           <span className="pf-hide-mobile">Search</span>
           <span className="pf-mono pf-hide-mobile" style={{ fontSize: 10, border: "1px solid var(--line)", borderRadius: 5, padding: "1px 5px", color: "var(--faint)" }}>⌘K</span>
         </button>
@@ -283,15 +284,16 @@ function Header({ onMenu }: { onMenu: () => void }) {
           className="pf-mono"
           style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 7, height: 36, padding: "0 13px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", fontSize: 11, fontWeight: 600, transition: "all .2s var(--ease)" }}
         >
-          <span style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid currentColor" }} />
+          <Icon name={mode === "dark" ? "sun" : "moon"} size={15} />
           {mode === "dark" ? "Paper" : "Night"}
         </button>
         <button
           onClick={() => router.push("/start")}
           className="pf-hide-mobile"
-          style={{ cursor: "pointer", display: "flex", alignItems: "center", height: 38, padding: "0 18px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap" }}
+          style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, height: 38, padding: "0 16px 0 18px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap" }}
         >
-          Re-assess →
+          Re-assess
+          <Icon name="arrowRight" size={16} stroke={2} />
         </button>
       </div>
     </header>
