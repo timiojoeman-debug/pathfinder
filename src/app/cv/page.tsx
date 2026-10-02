@@ -56,6 +56,7 @@ export default function CvPage() {
   const cvLinkedIn = usePfStore((s) => s.cvLinkedIn);
   const aiRead = usePfStore((s) => s.cvAiRead);
   const dirStack = usePfStore((s) => s.dirStack);
+  const dirRole = usePfStore((s) => s.dirRole);
   const set = usePfStore((s) => s.set);
   const emit = usePfStore((s) => s.emit);
   const keepCvAiRead = usePfStore((s) => s.keepCvAiRead);
@@ -120,7 +121,7 @@ export default function CvPage() {
   const cvCanAnalyze = cvText.trim().length >= MIN_CV;
   const cvBtnBg = cvCanAnalyze ? "var(--accent)" : "var(--panel3)";
 
-  const analysis = analyzeCvText(cvText, dirStack);
+  const analysis = analyzeCvText(cvText, dirStack, dirRole);
   const hasVague = analysis.vague.length > 0;
   const hasMissing = analysis.missing.length > 0;
   const linkedinChevron = cvLinkedIn ? "▾" : "▸";

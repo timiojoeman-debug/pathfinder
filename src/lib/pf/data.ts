@@ -22,6 +22,8 @@
  * from serving placeholders.
  */
 
+import { ROLE_STACK_TERMS } from "./taxonomy";
+
 /* ── Types ─────────────────────────────────────────────────────────── */
 
 export interface BoardCard {
@@ -91,27 +93,20 @@ export const VAGUE_TERMS: [string, string][] = [
   ["involved in", "State your role and the outcome"],
 ];
 
-export const KEYWORD_VOCAB = [
+const BASE_VOCAB = [
   "React", "TypeScript", "JavaScript", "Next.js", "Node", "Express", "Python", "Go", "Java", "C++",
   "SQL", "PostgreSQL", "MongoDB", "AWS", "Docker", "Kubernetes", "GraphQL", "REST", "CI/CD", "Testing", "Git", "Linux",
 ];
+
+/** Engineering terms first, then every role's stack terms (Figma, Tableau, Kotlin, SIEM, roadmapping...),
+ *  so a CV or advert for a designer or analyst has something to find. De-duplicated, case-insensitively. */
+export const KEYWORD_VOCAB: string[] = [...new Map([...BASE_VOCAB, ...ROLE_STACK_TERMS].map((t) => [t.toLowerCase(), t])).values()];
 
 export const DEFAULT_TARGET_KEYWORDS = ["React", "TypeScript", "Node", "SQL"];
 
 /* ── Direction ─────────────────────────────────────────────────────── */
 
-export const DIR_ROLE_OPTS = ["Full-Stack SWE", "Frontend", "Backend", "Data / ML"];
-export const DIR_STACK_OPTS = ["React", "TypeScript", "Node", "Python", "Go", "SQL", "AWS"];
-export const DIR_INDUSTRY_OPTS = ["Fintech", "Travel Tech", "Dev Tools", "Healthtech", "Open"];
-export const DIR_SIZE_OPTS = ["Startups 0–50", "Scaleups", "Big Tech"];
 export const DIR_SETTING_OPTS = ["Remote", "Hybrid", "On-site"];
-
-export const TITLE_VARIANTS: Record<string, string[]> = {
-  "Full-Stack SWE": ["Software Engineer Intern", "Full-Stack Developer Intern", "Web Application Engineer Intern", "Product Engineer Intern"],
-  "Frontend": ["Frontend Engineer Intern", "UI Engineer Intern", "Web Developer Intern", "Design Engineer Intern"],
-  "Backend": ["Backend Engineer Intern", "Platform Engineer Intern", "API Engineer Intern", "Infrastructure Intern"],
-  "Data / ML": ["Data Science Intern", "Machine Learning Intern", "Data Engineer Intern", "AI Engineer Intern"],
-};
 
 export const HIRE_FRAMEWORK = [
   { k: "H", label: "Hone direction", note: "Direction statement + 3 target roles" },
@@ -268,41 +263,10 @@ export const DIAG_FIX: Record<string, { href: string; label: string }> = {
 
 /* ── Onboarding (Stage 00) ─────────────────────────────────────────── */
 
-export const ONB_ROLE_OPTS = ["Software Engineering", "Data / ML", "Product", "Design"];
-export const ONB_INDUSTRY_OPTS = ["Fintech", "Travel Tech", "Developer Tools", "Healthtech"];
-export const ONB_STAGE_OPTS = ["Seed–Series B startups", "Growth-stage scaleups", "Big Tech"];
 export const ONB_CV_OPTS: [string, number][] = [["Needs work", 12], ["Solid draft", 45], ["Tailored & sharp", 85]];
 export const ONB_PROJ_OPTS: [string, number][] = [["Just started", 10], ["A couple built", 42], ["Shipped & deployed", 78]];
 export const ONB_OUTREACH_OPTS: [string, number][] = [["Haven't started", 8], ["A few contacts", 42], ["Regular warm intros", 80]];
 export const ONB_CADENCE_OPTS: [string, number][] = [["Not yet consistent", 8], ["Some weeks", 42], ["3+ / week reliably", 85]];
-
-/**
- * Onboarding and the Direction wizard ask the same question in different
- * vocabularies. These maps carry the Stage 00 answer into the direction chips
- * so a student never re-picks a target they just chose.
- *
- * Product and Design have no Direction equivalent (that wizard only offers
- * engineering tracks), so they map to null and the student picks a role there.
- */
-export const ONB_TO_DIR_ROLE: Record<string, string | null> = {
-  "Software Engineering": "Full-Stack SWE",
-  "Data / ML": "Data / ML",
-  Product: null,
-  Design: null,
-};
-
-export const ONB_TO_DIR_INDUSTRY: Record<string, string> = {
-  Fintech: "Fintech",
-  "Travel Tech": "Travel Tech",
-  "Developer Tools": "Dev Tools",
-  Healthtech: "Healthtech",
-};
-
-export const ONB_TO_DIR_SIZE: Record<string, string> = {
-  "Seed–Series B startups": "Startups 0–50",
-  "Growth-stage scaleups": "Scaleups",
-  "Big Tech": "Big Tech",
-};
 
 /* ── Navigation / palette ──────────────────────────────────────────── */
 

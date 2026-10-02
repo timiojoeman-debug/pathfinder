@@ -1,4 +1,5 @@
 import { FOUR_PILLARS } from "@/lib/methodology";
+import { exploreOptionsPrompt } from "@/lib/pf/taxonomy";
 
 type WizardAnswers = {
   roleType: string;
@@ -63,6 +64,9 @@ Your job is to ask follow-up questions to narrow down to a Direction Statement.
 Use the nextQuestion pattern — always end with a specific follow-up question.
 After enough information (typically 3-5 turns), recommend a Direction Statement.
 In extractedPreferences, fill only what the student has actually said. Leave a field empty rather than guessing.
+For role, industry and companySize, use the exact wording of one of these options when the student's words clearly fit it, and leave the field empty when none fits. Never invent a new option.
+${exploreOptionsPrompt()}
+techStack may name any technologies or skills the student mentions.
 
 Conversation so far:
 ${conversationHistory}

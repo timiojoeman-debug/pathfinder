@@ -65,9 +65,9 @@ describe('onboarding → Career-OS handoff', () => {
     completeOnboarding();
     const s = usePfStore.getState();
     // Onboarding vocabulary is translated into the Direction wizard's chips.
-    expect(s.dirRole).toBe('Full-Stack SWE');
+    expect(s.dirRole).toBe('Full-Stack');
     expect(s.dirIndustry).toBe('Fintech');
-    expect(s.dirSize).toBe('Startups 0–50');
+    expect(s.dirSize).toBe('Early-stage startups');
   });
 
   it('carries the target into Direction without marking it done', () => {
@@ -75,7 +75,7 @@ describe('onboarding → Career-OS handoff', () => {
     const profile = deriveProfile(profileInput());
     // The chips are pre-filled, so Direction has started, but nothing counts as a
     // direction until the student composes the statement.
-    expect(profile.targetRole).toBe('Full-Stack SWE');
+    expect(profile.targetRole).toBe('Full-Stack');
     expect(profile.directionSet).toBe(false);
     const direction = computeProgress(profile).phases.find((p) => p.phase === 'direction');
     expect(direction!.pct).toBeGreaterThan(0);
@@ -118,14 +118,14 @@ describe('onboarding → Career-OS handoff', () => {
     expect(s.dirSize).toBe('Big Tech');
   });
 
-  it('leaves the role blank for tracks the Direction wizard does not offer', () => {
+  it('maps a non-engineering onboarding role onto a Direction role', () => {
     usePfStore.getState().setOnb({
       step: 3, role: 'Design', industry: 'Healthtech', stage: 'Big Tech',
       cv: 12, projects: 10, outreach: 8, cadence: 8,
     });
     usePfStore.getState().finishOnb();
     const s = usePfStore.getState();
-    expect(s.dirRole).toBeNull();        // Design has no engineering-track equivalent
+    expect(s.dirRole).toBe('UX / Product design');
     expect(s.dirIndustry).toBe('Healthtech');
     expect(s.dirSize).toBe('Big Tech');
   });

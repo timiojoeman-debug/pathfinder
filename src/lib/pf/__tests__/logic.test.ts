@@ -20,7 +20,8 @@ describe('postingKey', () => {
     expect(postingKey('Wise', 'Backend Intern', 'We use Go and Kafka.')).not.toBe(a);
   });
 });
-import { DIR_ROLE_OPTS, EMPTY_BOARD, DEFAULT_TARGET_KEYWORDS, OUTREACH_PERSONAS, type BoardCard } from '../data';
+import { ROLE_LABELS } from '../taxonomy';
+import { EMPTY_BOARD, DEFAULT_TARGET_KEYWORDS, OUTREACH_PERSONAS, type BoardCard } from '../data';
 
 /* ── helpers ──────────────────────────────────────────────────────── */
 
@@ -232,7 +233,7 @@ describe('trackerDerived', () => {
 
 describe('roleFamiliesFor', () => {
   it('gives exactly three families for every wizard role', () => {
-    for (const role of DIR_ROLE_OPTS) {
+    for (const role of ROLE_LABELS) {
       const fams = roleFamiliesFor(role);
       expect(fams, role).toHaveLength(3);
     }
@@ -245,7 +246,7 @@ describe('roleFamiliesFor', () => {
   });
 
   it('carries no fabricated fit score — only a relation label', () => {
-    const fams = roleFamiliesFor('Full-Stack SWE');
+    const fams = roleFamiliesFor('Full-Stack');
     const relations = fams.map((f) => f.relation);
     expect(relations).toContain('Primary');
     for (const f of fams) {
@@ -255,8 +256,13 @@ describe('roleFamiliesFor', () => {
   });
 
   it('falls back to Full-Stack families for an unknown or null role', () => {
-    expect(roleFamiliesFor(null)).toEqual(roleFamiliesFor('Full-Stack SWE'));
-    expect(roleFamiliesFor('Nonsense')).toEqual(roleFamiliesFor('Full-Stack SWE'));
+    expect(roleFamiliesFor(null)).toEqual(roleFamiliesFor('Full-Stack'));
+  });
+
+  it('gives a typed Other role one honest Primary target, not Full-Stack families', () => {
+    const fams = roleFamiliesFor('Hardware verification');
+    expect(fams).toHaveLength(1);
+    expect(fams[0]).toMatchObject({ title: 'Hardware verification Intern', relation: 'Primary' });
   });
 });
 
@@ -398,12 +404,21 @@ describe('mapExplorePreferences', () => {
   it('maps the explore route preferences onto wizard chips, stack and size included', () => {
     expect(mapExplorePreferences({
       role: 'Backend Engineer', industry: 'FinTech', companySize: 'early-stage startup', techStack: ['Node.js', 'python', 'Rust'],
-    })).toEqual({ dirRole: 'Backend', dirIndustry: 'Fintech', dirSize: 'Startups 0–50', dirStack: ['Node', 'Python'] });
+    })).toEqual({ dirRole: 'Backend', dirIndustry: 'Fintech', dirSize: 'Early-stage startups', dirStack: ['Node', 'Python', 'Rust'] });
   });
 
-  it('leaves a non-engineering role unset instead of forcing it into one', () => {
-    expect(mapExplorePreferences({ role: 'Product Manager' }).dirRole).toBeUndefined();
+  it('maps non-engineering roles onto the shared taxonomy', () => {
+    expect(mapExplorePreferences({ role: 'Product Manager' }).dirRole).toBe('Product management');
+    expect(mapExplorePreferences({ role: 'UX researcher' }).dirRole).toBe('UX research');
+    expect(mapExplorePreferences({ role: 'Product Designer' }).dirRole).toBe('UX / Product design');
+    expect(mapExplorePreferences({ role: 'Security engineer', industry: 'cybersecurity' })).toMatchObject({ dirRole: 'Cybersecurity / Security engineering', dirIndustry: 'Cybersecurity' });
+    expect(mapExplorePreferences({ role: 'Machine learning engineer' }).dirRole).toBe('Machine learning / AI engineering');
+    expect(mapExplorePreferences({ industry: 'AI startups', companySize: 'Big Tech' })).toMatchObject({ dirIndustry: 'AI / ML companies', dirSize: 'Big Tech' });
+  });
+
+  it('leaves a role that names nothing we offer unset', () => {
     expect(mapExplorePreferences({ role: 'HTML wizard' }).dirRole).toBeUndefined();
+    expect(mapExplorePreferences({ role: 'Zookeeper' }).dirRole).toBeUndefined();
     expect(mapExplorePreferences(undefined)).toEqual({});
   });
 });

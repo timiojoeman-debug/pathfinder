@@ -13,18 +13,17 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   EMPTY_BOARD,
-  ONB_TO_DIR_INDUSTRY,
-  ONB_TO_DIR_ROLE,
-  ONB_TO_DIR_SIZE,
   type BoardCard,
   type BoardColumn,
   type OutreachPersona,
 } from "./data";
+import { addCustomStack, onbToDirIndustry, onbToDirRole, onbToDirSize } from "./taxonomy";
 import {
   analyzeCvText,
   analyzeJobDescription,
   fitTone,
   migrateDiags,
+  migrateDirection,
   pruneTargetRoles,
   readinessFrom,
   MAX_JD_CHARS,
@@ -261,7 +260,9 @@ interface PfState {
   finishOnb: () => void;
   readiness: () => number;
 
-  pickDirChip: (key: "dirRole" | "dirIndustry" | "dirSize" | "dirSetting", value: string) => void;
+  pickDirChip: (key: "dirRole" | "dirIndustry" | "dirSize" | "dirSetting", value: string | null) => void;
+  /** Append a keyword the student typed to the stack. Returns an error message, or null. */
+  addDirStack: (raw: string) => string | null;
   toggleDirStack: (value: string) => void;
   generateDirection: () => void;
   copyVariant: (v: string) => void;
@@ -454,9 +455,9 @@ export const usePfStore = create<PfState>()(
        */
       finishOnb: () => {
         const { onb } = get();
-        const role = ONB_TO_DIR_ROLE[onb.role ?? ""] ?? null;
-        const industry = ONB_TO_DIR_INDUSTRY[onb.industry ?? ""] ?? null;
-        const size = ONB_TO_DIR_SIZE[onb.stage ?? ""] ?? null;
+        const role = onbToDirRole(onb.role);
+        const industry = onbToDirIndustry(onb.industry);
+        const size = onbToDirSize(onb.stage);
 
         // Never clobber a direction the student already built in the wizard.
         set((s) => ({
@@ -495,6 +496,11 @@ export const usePfStore = create<PfState>()(
           // A role change can retire ticked target roles; never count titles the list no longer shows.
           ...(key === "dirRole" ? { dirTargetRoles: pruneTargetRoles(s.dirTargetRoles, value) } : {}),
         }) as Partial<PfState>),
+      addDirStack: (raw) => {
+        const { stack, error } = addCustomStack(get().dirStack, raw);
+        if (stack !== get().dirStack) set({ dirStack: stack, dirGenerated: false, dirStatementAi: null });
+        return error;
+      },
       toggleDirStack: (value) =>
         set((s) => ({
           dirStack: s.dirStack.includes(value) ? s.dirStack.filter((x) => x !== value) : [...s.dirStack, value],
@@ -532,7 +538,7 @@ export const usePfStore = create<PfState>()(
         const s0 = get();
         if (s0.cvText.trim().length < 60) return;
         const s = s0;
-        const analysis = analyzeCvText(s.cvText, s.dirStack);
+        const analysis = analyzeCvText(s.cvText, s.dirStack, s.dirRole);
         const prev = s.cvScores.length ? s.cvScores[s.cvScores.length - 1] : null;
         const label = prev !== null && prev !== analysis.score
           ? `ATS score ${prev} → ${analysis.score}`
@@ -576,7 +582,7 @@ export const usePfStore = create<PfState>()(
       analyzeJf: () => {
         const s = get();
         if (s.jfJD.trim().length < 80) return;
-        const result = analyzeJobDescription(s.jfJD, s.cvText, targetKeywords(s.dirStack));
+        const result = analyzeJobDescription(s.jfJD, s.cvText, targetKeywords(s.dirStack, s.dirRole));
         set({ jfResult: result });
         get().emit("JobMatched", "jobs", `Matched ${s.jfCompany.trim() || "a role"}, ${result.compat}% compatible`, { company: s.jfCompany.trim(), compat: result.compat });
       },
@@ -928,7 +934,8 @@ export const usePfStore = create<PfState>()(
         const ivSolved: Record<string, number> = {};
         for (const c of LEETCODE_CATEGORIES) ivSolved[c.name] = c.problems.filter((x) => ivProblems[x.slug]).length;
         const diags = p.diags ? migrateDiags(p.diags) : current.diags;
-        return { ...current, ...p, board, ivProblems, ivSolved, diags };
+        // Direction values saved before the shared taxonomy move onto the current labels.
+        return { ...current, ...p, ...migrateDirection(p), board, ivProblems, ivSolved, diags };
       },
     },
   ),

@@ -5,7 +5,6 @@
  */
 
 import {
-  DIR_STACK_OPTS,
   DEFAULT_TARGET_KEYWORDS,
   KEYWORD_VOCAB,
   VAGUE_TERMS,
@@ -14,6 +13,23 @@ import {
   type OutreachPersona,
 } from "./data";
 import type { PfEvent } from "./events";
+import {
+  ALL_STACK_TERMS,
+  INDUSTRIES,
+  ROLES,
+  STAGES,
+  findRole,
+  isCustomRole,
+  matchIndustry,
+  matchRole,
+  matchStage,
+  migrateIndustry,
+  migrateRole,
+  migrateStage,
+  migrateTargetTitle,
+  phraseFor,
+  type RoleDef,
+} from "./taxonomy";
 
 /* ── Shared scales ─────────────────────────────────────────────────── */
 
@@ -76,8 +92,8 @@ export function directionStatement(d: DirectionFields): string {
   if (!directionReady(d)) return "Pick a role, industry and company size to compose your statement.";
   return (
     d.dirRole +
-    " internships in " + d.dirIndustry!.toLowerCase() +
-    " at " + d.dirSize!.toLowerCase() +
+    " internships in " + phraseFor(INDUSTRIES, d.dirIndustry!) +
+    " at " + phraseFor(STAGES, d.dirSize!) +
     (d.dirSetting ? ", " + d.dirSetting.toLowerCase() : "") +
     (d.dirStack.length ? ", working in " + d.dirStack.slice(0, 3).join(" / ") : "") +
     "."
@@ -138,22 +154,15 @@ export interface ExplorePreferences {
  */
 export function mapExplorePreferences(p: ExplorePreferences | undefined): Partial<DirectionFields> {
   const patch: Partial<DirectionFields> = {};
-  const role = (p?.role || "").toLowerCase();
-  if (/front/.test(role)) patch.dirRole = "Frontend";
-  else if (/back/.test(role)) patch.dirRole = "Backend";
-  else if (/data|\bml\b|machine/.test(role)) patch.dirRole = "Data / ML";
-  else if (/full|software|\bswe\b/.test(role)) patch.dirRole = "Full-Stack SWE";
-  const ind = (p?.industry || "").toLowerCase();
-  if (/fintech|finance/.test(ind)) patch.dirIndustry = "Fintech";
-  else if (/travel/.test(ind)) patch.dirIndustry = "Travel Tech";
-  else if (/health/.test(ind)) patch.dirIndustry = "Healthtech";
-  else if (/dev|tool/.test(ind)) patch.dirIndustry = "Dev Tools";
-  const size = (p?.companySize || "").toLowerCase();
-  if (/start|seed|small/.test(size)) patch.dirSize = "Startups 0–50";
-  else if (/scale|growth|mid/.test(size)) patch.dirSize = "Scaleups";
-  else if (/big|large|faang|enterprise/.test(size)) patch.dirSize = "Big Tech";
+  const role = matchRole(p?.role);
+  if (role) patch.dirRole = role;
+  const industry = matchIndustry(p?.industry);
+  if (industry) patch.dirIndustry = industry;
+  const size = matchStage(p?.companySize);
+  if (size) patch.dirSize = size;
   const stack = Array.isArray(p?.techStack) ? p.techStack.filter((t): t is string => typeof t === "string") : [];
-  const picked = DIR_STACK_OPTS.filter((opt) => stack.some((t) => t.trim().toLowerCase().startsWith(opt.toLowerCase())));
+  // A named term maps onto the known spelling ("Node.js" to "Node"); a term the taxonomy does not know is dropped, not guessed.
+  const picked = ALL_STACK_TERMS.filter((opt) => stack.some((t) => hasTerm(t.trim(), opt)));
   if (picked.length) patch.dirStack = picked;
   return patch;
 }
@@ -171,32 +180,39 @@ export interface RoleFamily {
   tone: string;
 }
 
-const ROLE_FAMILIES: Record<string, RoleFamily[]> = {
-  "Full-Stack SWE": [
-    { title: "Full-Stack Engineer Intern", note: "Your core target: front end and back end in one role.", relation: "Primary", tone: "var(--strong)" },
-    { title: "Frontend Engineer Intern", note: "Narrows to the UI half of your stack, a natural second search.", relation: "Adjacent", tone: "var(--strong)" },
-    { title: "Backend Engineer Intern", note: "Narrows to services and data. Worth searching under this name too.", relation: "Adjacent", tone: "var(--warn)" },
-  ],
-  "Frontend": [
-    { title: "Frontend Engineer Intern", note: "Your core target: UI, components and browser work.", relation: "Primary", tone: "var(--strong)" },
-    { title: "Full-Stack Engineer Intern", note: "Widens to the back end. Many front-end interns are hired under this title.", relation: "Adjacent", tone: "var(--strong)" },
-    { title: "Design Engineer Intern", note: "Front end with a design-systems slant. A stretch if you have UI work to show.", relation: "Stretch", tone: "var(--warn)" },
-  ],
-  "Backend": [
-    { title: "Backend Engineer Intern", note: "Your core target: APIs, services and data.", relation: "Primary", tone: "var(--strong)" },
-    { title: "Full-Stack Engineer Intern", note: "Widens to the UI. A common title for backend-leaning interns.", relation: "Adjacent", tone: "var(--strong)" },
-    { title: "Platform / Infrastructure Intern", note: "Deeper into systems. A stretch that rewards a deployed, operable project.", relation: "Stretch", tone: "var(--warn)" },
-  ],
-  "Data / ML": [
-    { title: "Data / ML Engineer Intern", note: "Your core target: models and the pipelines around them.", relation: "Primary", tone: "var(--strong)" },
-    { title: "Data Engineer Intern", note: "The pipelines without the modelling, often with more intern openings.", relation: "Adjacent", tone: "var(--strong)" },
-    { title: "Backend Engineer Intern", note: "Software-heavy roles value ML-adjacent skills. A stretch worth searching.", relation: "Stretch", tone: "var(--warn)" },
-  ],
-};
+const FAMILY_NOTES = {
+  primary: "Your core target.",
+  adjacent: "A neighbouring role that shares much of the toolkit. Worth searching under this name too.",
+  stretch: "A stretch from your chosen direction. Worth a search if you have work to show for it.",
+} as const;
 
-/** Role families for the chosen direction — three targets, methodology's cap. */
+const titleOf = (r: RoleDef) => r.variants[0];
+
+function familyOf(r: RoleDef): RoleFamily[] {
+  const rel = r.related.map((id) => ROLES.find((x) => x.id === id)).filter((x): x is RoleDef => !!x);
+  return [
+    { title: titleOf(r), note: FAMILY_NOTES.primary, relation: "Primary", tone: "var(--strong)" },
+    ...rel.slice(0, 2).map((x, i): RoleFamily => ({
+      title: titleOf(x),
+      note: i === 0 ? FAMILY_NOTES.adjacent : FAMILY_NOTES.stretch,
+      relation: i === 0 ? "Adjacent" : "Stretch",
+      tone: i === 0 ? "var(--strong)" : "var(--warn)",
+    })),
+  ];
+}
+
+/** A role the student typed: one honest primary target and nothing invented around it. */
+function customFamily(label: string): RoleFamily[] {
+  const title = /intern/i.test(label) ? label : `${label} Intern`;
+  return [{ title, note: "The role you typed. Suggestions around it are generic, so check each title on a real job board.", relation: "Primary", tone: "var(--strong)" }];
+}
+
+/** Role families for the chosen direction (the methodology caps targets at three). A missing role falls back to Full-Stack. */
 export function roleFamiliesFor(dirRole: string | null): RoleFamily[] {
-  return ROLE_FAMILIES[dirRole ?? ""] ?? ROLE_FAMILIES["Full-Stack SWE"];
+  const def = findRole(dirRole);
+  if (def) return familyOf(def);
+  if (isCustomRole(dirRole)) return customFamily(dirRole!.trim());
+  return familyOf(ROLES[0]);
 }
 
 /** Keep only ticked target roles that are still offered for this role. */
@@ -215,13 +231,15 @@ export interface TargetRoleOption { title: string; note: string; relation: RoleF
 export function targetRoleOptions(dirRole: string | null): TargetRoleOption[] {
   const primary: TargetRoleOption[] = roleFamiliesFor(dirRole);
   const seen = new Set(primary.map((r) => r.title));
+  const group = findRole(dirRole)?.group;
+  // Same-group roles first, so a designer sees design roles before engineering ones.
+  const ordered = [...ROLES.filter((r) => r.group === group), ...ROLES.filter((r) => r.group !== group)];
   const others: TargetRoleOption[] = [];
-  for (const fam of Object.values(ROLE_FAMILIES)) {
-    for (const r of fam) {
-      if (seen.has(r.title)) continue;
-      seen.add(r.title);
-      others.push({ title: r.title, note: "Outside your chosen direction. Tick it only if you would apply.", relation: "Other", tone: "var(--faint)" });
-    }
+  for (const r of ordered) {
+    const title = titleOf(r);
+    if (seen.has(title)) continue;
+    seen.add(title);
+    others.push({ title, note: "Outside your chosen direction. Tick it only if you would apply.", relation: "Other", tone: "var(--faint)" });
   }
   return [...primary, ...others];
 }
@@ -239,15 +257,30 @@ export interface CvAnalysis {
   targetKw: string[];
 }
 
-export function targetKeywords(dirStack: string[]): string[] {
-  return dirStack.length ? dirStack : DEFAULT_TARGET_KEYWORDS;
+/**
+ * Whole-term match of `term` in `text`, so "Go" is not evidenced by "good" and "SQL" is not
+ * found inside "NoSQL". Terms of one or two characters ("Go", "C") also match case-sensitively,
+ * since lower-case "go" and "c" are ordinary words. "C" does not match inside "C++" or "C#".
+ */
+export function hasTerm(text: string, term: string): boolean {
+  const t = term.trim();
+  if (!t) return false;
+  const esc = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![a-z0-9])${esc}(?![a-z0-9+#])`, t.length <= 2 ? "" : "i").test(text);
 }
 
-export function analyzeCvText(cvText: string, dirStack: string[]): CvAnalysis {
+/** The stack the student picked; before they pick one, their role's suggested stack; before a role, the default. */
+export function targetKeywords(dirStack: string[], dirRole?: string | null): string[] {
+  if (dirStack.length) return dirStack;
+  const def = findRole(dirRole);
+  return def ? def.stack.slice(0, 4) : DEFAULT_TARGET_KEYWORDS;
+}
+
+export function analyzeCvText(cvText: string, dirStack: string[], dirRole?: string | null): CvAnalysis {
   const lower = cvText.toLowerCase();
   const vague = VAGUE_TERMS.filter(([t]) => lower.indexOf(t) >= 0).map(([term, fix]) => ({ term, fix }));
-  const targetKw = targetKeywords(dirStack);
-  const missing = targetKw.filter((k) => lower.indexOf(k.toLowerCase()) < 0).map((k) => ({ label: k }));
+  const targetKw = targetKeywords(dirStack, dirRole);
+  const missing = targetKw.filter((k) => !hasTerm(cvText, k)).map((k) => ({ label: k }));
   const score = Math.max(25, Math.min(95, 92 - vague.length * 7 - missing.length * 6));
   return {
     score,
@@ -279,22 +312,18 @@ export interface JfResult {
  *  score: no CV yet, or a posting that names no technology. It used to start from the student's
  *  self-rated onboarding baseline, which made a slider answer look like a match score. */
 export function roleFit(jd: string, cvText: string): number | null {
-  const jdLower = jd.toLowerCase();
-  const cvLower = cvText.toLowerCase();
-  const asked = KEYWORD_VOCAB.filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0);
+  const asked = KEYWORD_VOCAB.filter((k) => hasTerm(jd, k));
   if (!asked.length || !cvText.trim()) return null;
-  const evidenced = asked.filter((k) => cvLower.indexOf(k.toLowerCase()) >= 0).length;
+  const evidenced = asked.filter((k) => hasTerm(cvText, k)).length;
   let fit = Math.round((evidenced / asked.length) * 100);
   if (/senior|staff|[3-9]\+ years|phd/i.test(jd)) fit -= 26;
   return Math.max(5, Math.min(95, fit));
 }
 
 export function analyzeJobDescription(jd: string, cvText: string, targetKw: string[]): JfResult {
-  const jdLower = jd.toLowerCase();
-  const cvLower = cvText.toLowerCase();
-  const kws = KEYWORD_VOCAB.filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0);
+  const kws = KEYWORD_VOCAB.filter((k) => hasTerm(jd, k));
   const rows: JfRow[] = kws.slice(0, 8).map((k) => {
-    const have = cvLower.indexOf(k.toLowerCase()) >= 0 || targetKw.indexOf(k) >= 0;
+    const have = hasTerm(cvText, k) || targetKw.indexOf(k) >= 0;
     return { kw: k, mark: have ? "✓" : "✕", bg: have ? "var(--strong)" : "var(--risk)", action: have ? "Keep it in the top third" : "Add to Skills + one bullet" };
   });
   const foundN = rows.filter((r) => r.mark === "✓").length;
@@ -322,11 +351,10 @@ export function analyzeJobDescription(jd: string, cvText: string, targetKw: stri
 export interface CoverLetter { p1: string; p2: string; p3: string; words: number; assumptions: string[] }
 
 export function buildCoverLetter(company: string, role: string, jd: string, targetKw: string[]): CoverLetter {
-  const jdLower = jd.toLowerCase();
   const letterCompany = company.trim() || "the company";
   const letterRole = role.trim() || "the role";
   const emphasis = jd
-    ? KEYWORD_VOCAB.filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0).slice(0, 2).join(" and ") || "engineering rigour"
+    ? KEYWORD_VOCAB.filter((k) => hasTerm(jd, k)).slice(0, 2).join(" and ") || "engineering rigour"
     : "engineering rigour";
   const p1 = "Dear hiring team, I’m writing to apply for the " + letterRole + " position at " + letterCompany + ". I build with " + targetKw.slice(0, 3).join(", ") + ", and I’d welcome the chance to contribute this summer.";
   const p2 = "Your posting emphasises " + emphasis + ", the same things I focused on in a recent project, where I owned the work end to end and wrote the tests that kept it shipping.";
@@ -485,6 +513,46 @@ export function rejectionInsight(diags: Record<string, string>, diagCauses: Reco
 /** The "1–2 days" rejection bucket was relabelled "2+ days" to match the TechTalk positioning band. */
 export function migrateDiags(diags: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(diags).map(([k, v]) => [k, v === "1–2 days" ? "2+ days" : v]));
+}
+
+/** The direction fields of persisted state that predate the shared taxonomy. */
+export interface PersistedDirection {
+  dirRole?: string | null;
+  dirIndustry?: string | null;
+  dirSize?: string | null;
+  dirTargetRoles?: string[];
+  dirStatementAi?: object | null;
+  onb?: OnbState;
+}
+
+/**
+ * Bring values saved before the taxonomy ("Full-Stack SWE", "Travel Tech", "Startups 0–50",
+ * onboarding's "Software Engineering"...) onto the current labels. A role the student typed
+ * under "Other" is kept as typed. Ticked target roles are renamed where a title moved, then
+ * pruned against the migrated role, so none are left that the list no longer offers. An AI
+ * statement written from old labels is dropped when a label changed, because it names them.
+ * Returns only the keys that were present, so it spreads safely over defaults.
+ */
+export function migrateDirection(p: PersistedDirection): Omit<PersistedDirection, "dirStatementAi"> & { dirStatementAi?: null } {
+  const out: ReturnType<typeof migrateDirection> = {};
+  let changed = false;
+  const take = (key: "dirRole" | "dirIndustry" | "dirSize", fn: (v: string | null | undefined) => string | null) => {
+    if (!(key in p)) return;
+    const next = fn(p[key]);
+    if (next !== (p[key] ?? null)) changed = true;
+    out[key] = next;
+  };
+  take("dirRole", migrateRole);
+  take("dirIndustry", migrateIndustry);
+  take("dirSize", migrateStage);
+  if (p.onb && typeof p.onb === "object") {
+    out.onb = { ...p.onb, role: migrateRole(p.onb.role), industry: migrateIndustry(p.onb.industry), stage: migrateStage(p.onb.stage) };
+  }
+  if (Array.isArray(p.dirTargetRoles)) {
+    out.dirTargetRoles = pruneTargetRoles(p.dirTargetRoles.map(migrateTargetTitle), ("dirRole" in out ? out.dirRole : p.dirRole) ?? null);
+  }
+  if (changed && p.dirStatementAi) out.dirStatementAi = null;
+  return out;
 }
 
 /* ── Misc ──────────────────────────────────────────────────────────── */
