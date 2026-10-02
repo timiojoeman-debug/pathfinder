@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePfStore, useRecommendations } from "@/lib/pf/store";
+import { Icon } from "@/components/pf/icons";
 
 const mono = "var(--font-mono), 'JetBrains Mono', monospace";
 
@@ -34,7 +35,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
         style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 12, border: "1px solid color-mix(in srgb,var(--accent) 26%,transparent)", background: "var(--accentSoft)", textDecoration: "none", color: "var(--fg)" }}
       >
         <span style={{ display: "flex", width: 22, height: 22, alignItems: "center", justifyContent: "center", borderRadius: 7, background: "var(--accent)", flexShrink: 0 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--onAccent)"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
+          <span style={{ color: "var(--onAccent)" }}><Icon name="zap" size={13} stroke={1.5} fill="currentColor" /></span>
         </span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ fontFamily: mono, fontSize: 8.5, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accentText)" }}>Recommended next step</span>
@@ -51,7 +52,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
       style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 18px", borderRadius: 14, border: "1px solid color-mix(in srgb,var(--accent) 24%,transparent)", background: "linear-gradient(120deg,var(--accentSoft),transparent)", marginBottom: 20 }}
     >
       <span style={{ display: "flex", width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 9, background: "var(--accent)", flexShrink: 0, boxShadow: "var(--rim)" }}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--onAccent)"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
+        <span style={{ color: "var(--onAccent)" }}><Icon name="zap" size={16} stroke={1.5} fill="currentColor" /></span>
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
