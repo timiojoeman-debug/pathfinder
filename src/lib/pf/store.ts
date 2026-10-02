@@ -218,6 +218,9 @@ interface PfState {
   asstMsgs: AsstMsg[];
   asstDraft: string;
 
+  /* profile — self-reported, only used to build alumni-search links; feeds no progress number or AI prompt */
+  university: string;
+
   /* cv */
   cvText: string;
   cvAnalyzed: boolean;
@@ -319,6 +322,7 @@ interface PfState {
   /** Keep a generated cover letter, and attach it to the saved role it was written for. */
   keepCoverLetter: (letter: JfCoverLetter) => void;
   /** Hand an advert to the CV Tailor panel, clearing results run against the old one. */
+  setUniversity: (name: string) => void;
   setTailorJD: (jd: string) => void;
   /** Keep an AI read of `forText` (length-capped). False, and nothing kept, if the CV changed meanwhile. */
   keepCvAiRead: (read: CvAiRead, forText: string) => boolean;
@@ -430,6 +434,8 @@ export const usePfStore = create<PfState>()(
       asstOpen: false,
       asstMsgs: [],
       asstDraft: "",
+
+      university: "",
 
       cvText: "",
       cvAnalyzed: false,
@@ -661,6 +667,7 @@ export const usePfStore = create<PfState>()(
           savedJobs: s.savedJobs.map((j) => (postingKey(j.company, j.role, j.jdText ?? "") === letter.key ? { ...j, coverLetter: text } : j)),
         }));
       },
+      setUniversity: (name) => set({ university: name.trim().slice(0, 120) }),
       setTailorJD: (jd) => set({ cvTailorJD: jd, cvTailorAts: null, cvTailorMatch: null }),
       keepCvAiRead: (read, forText) => {
         // A read that lands after the CV was edited describes text that no longer
@@ -1093,6 +1100,7 @@ export const usePfStore = create<PfState>()(
         chat: s.chat,
         chatN: s.chatN,
         asstMsgs: s.asstMsgs,
+        university: s.university,
         cvText: s.cvText,
         cvAnalyzed: s.cvAnalyzed,
         cvProjects: s.cvProjects,
@@ -1154,7 +1162,7 @@ export const usePfStore = create<PfState>()(
           contacts.unshift({ id: newContactId(), name: working.name.trim(), company: (working.company ?? "").trim(), howWeMet: "other", stage: "researched", notes: "", createdAt: now, updatedAt: now });
         }
         // Direction values saved before the shared taxonomy move onto the current labels.
-        return { ...current, ...p, ...migrateDirection(p), board, ivProblems, ivSolved, diags, contacts, contactsSeeded: true, contactDetail: null };
+        return { ...current, ...p, ...migrateDirection(p), board, ivProblems, ivSolved, diags, contacts, contactsSeeded: true, contactDetail: null, university: typeof p.university === "string" ? p.university.trim().slice(0, 120) : "" };
       },
     },
   ),

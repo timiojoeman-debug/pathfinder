@@ -32,6 +32,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export function ContactDrawer({ id }: { id: string }) {
   const contacts = usePfStore((s) => s.contacts);
+  const university = usePfStore((s) => s.university);
   const board = usePfStore((s) => s.board);
   const updateContact = usePfStore((s) => s.updateContact);
   const moveContact = usePfStore((s) => s.moveContact);
@@ -146,7 +147,7 @@ export function ContactDrawer({ id }: { id: string }) {
             Open their profile ↗
           </a>
         )}
-        <div><AlumniLink company={c.company} /></div>
+        <div><AlumniLink company={c.company} university={university} /></div>
 
         <Kicker style={{ fontSize: 9.5, margin: "14px 0 8px" }}>Notes</Kicker>
         <textarea

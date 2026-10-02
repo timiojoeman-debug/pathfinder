@@ -150,6 +150,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
   const setCardNote = usePfStore((s) => s.setCardNote);
   const setStore = usePfStore((s) => s.set);
   const contacts = usePfStore((s) => s.contacts);
+  const university = usePfStore((s) => s.university);
   const openContact = usePfStore((s) => s.openContact);
   const router = useRouter();
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -281,7 +282,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
           </a>
         )}
 
-        <div><AlumniLink company={c.company} /></div>
+        <div><AlumniLink company={c.company} university={university} /></div>
 
         {people.length > 0 && (
           <div style={{ marginTop: 18 }}>

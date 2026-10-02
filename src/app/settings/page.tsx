@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuthStore } from "@/lib/stores";
+import { usePfStore } from "@/lib/pf/store";
 import { setTheme, useThemeMode } from "@/lib/theme";
 import { PageHeader, Panel, Kicker } from "@/components/pf/ui";
 
@@ -37,6 +38,10 @@ export default function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const mode = useThemeMode();
+  const university = usePfStore((s) => s.university);
+  const setUniversity = usePfStore((s) => s.setUniversity);
+  // The store keeps the trimmed value, so while typing the raw text lives here (else a space after a word is eaten).
+  const [uniDraft, setUniDraft] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -113,6 +118,23 @@ export default function SettingsPage() {
             <Link href="/login" className="pf-shine" style={{ ...btn("solid"), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Sign in →</Link>
           </Row>
         )}
+      </Panel>
+
+      {/* Profile */}
+      <Panel style={{ padding: "20px 24px", marginBottom: 18 }}>
+        <Kicker style={{ marginBottom: 4 }}>Profile</Kicker>
+        <Row title="University" desc="Optional. Used only to build LinkedIn alumni-search links; it never changes your progress.">
+          <input
+            aria-label="University"
+            value={uniDraft ?? university}
+            onChange={(e) => { setUniDraft(e.target.value); setUniversity(e.target.value); }}
+            onBlur={() => setUniDraft(null)}
+            placeholder="e.g. University of Edinburgh"
+            maxLength={120}
+            className="pf-input"
+            style={{ width: 240, height: 38, padding: "0 12px" }}
+          />
+        </Row>
       </Panel>
 
       {/* Appearance */}
