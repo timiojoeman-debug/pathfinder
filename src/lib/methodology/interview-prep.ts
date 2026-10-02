@@ -119,7 +119,7 @@ export const INTERVIEW_PREP = {
       'Pause to think before you answer, and do not be afraid of silence',
       'Structure with STAR or CAR',
     ],
-    sourceIds: ['doc-recruiters-looking-for'],
+    sourceIds: ['deck-recruiters-looking-for'],
   },
 
   /** Company research levels. Source: Day 3 slides 017-019 and 022-028. */

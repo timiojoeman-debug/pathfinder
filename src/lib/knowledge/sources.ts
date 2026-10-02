@@ -110,20 +110,6 @@ export const SOURCES: Record<string, SourceRef> = {
     vaultPath: 'Slide Audit 2026-10-02/report-A.md',
     confidence: 'medium',
   },
-  'doc-recruiters-looking-for': {
-    id: 'doc-recruiters-looking-for',
-    title: 'TechTalk — What Recruiters Are Really Looking For',
-    kind: 'masterclass-doc',
-    vaultPath: 'Slide Audit 2026-10-02/report-D.md',
-    confidence: 'medium',
-  },
-  'doc-september-surge': {
-    id: 'doc-september-surge',
-    title: 'TechTalk — Win the September Surge, and The Psychology of Rejection',
-    kind: 'masterclass-doc',
-    vaultPath: 'Slide Audit 2026-10-02/report-C.md',
-    confidence: 'medium',
-  },
 
   // ── Distilled Wiki concepts ───────────────────────────────────────────
   'wiki-referral-leverage': {
