@@ -147,6 +147,14 @@ describe("pf store — direction chips + chat", () => {
     expect(s().dirStatementAi).toBeNull();
   });
 
+  it("changing the role prunes target roles the list no longer offers", () => {
+    usePfStore.setState({ dirTargetRoles: ["Retired Title", "Backend Engineer Intern"] });
+    s().pickDirChip("dirIndustry", "Fintech");
+    expect(s().dirTargetRoles).toHaveLength(2); // only a role change prunes
+    s().pickDirChip("dirRole", "Backend");
+    expect(s().dirTargetRoles).toEqual(["Backend Engineer Intern"]);
+  });
+
   it("toggleDirTargetRole caps the list at three and logs each change", () => {
     s().toggleDirTargetRole("A");
     s().toggleDirTargetRole("B");

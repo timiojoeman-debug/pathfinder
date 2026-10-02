@@ -101,19 +101,24 @@ export function directionSuggestions(d: DirectionFields): string[] {
   return out;
 }
 
-/** Regex extraction of wizard fields from a free-text chat message. */
-export function extractChatPatch(text: string): Partial<DirectionFields> {
-  const patch: Partial<DirectionFields> = {};
-  if (/front|ui|interface|design/i.test(text)) patch.dirRole = "Frontend";
-  else if (/data|ml|machine|model/i.test(text)) patch.dirRole = "Data / ML";
-  else if (/backend|systems|infra/i.test(text)) patch.dirRole = "Backend";
-  else if (/full|web|product/i.test(text)) patch.dirRole = "Full-Stack SWE";
-  if (/fintech|bank|finance|trading/i.test(text)) patch.dirIndustry = "Fintech";
-  if (/travel/i.test(text)) patch.dirIndustry = "Travel Tech";
-  if (/health/i.test(text)) patch.dirIndustry = "Healthtech";
-  if (/startup|small/i.test(text)) patch.dirSize = "Startups 0–50";
-  if (/big tech|large|faang/i.test(text)) patch.dirSize = "Big Tech";
-  return patch;
+/** Turns of chat sent to the explore route. Its schema caps `messages` at 50, so a
+ *  persisted chat sent whole would 400 forever once it grew past that. */
+export const EXPLORE_MAX_TURNS = 20;
+/** Per-message cap, kept under the route's `zText(8000)` with room for the 100 KB body cap. */
+export const EXPLORE_MAX_CHARS = 4000;
+
+/** The explore request: the profile context, then the most recent turns, each trimmed. */
+export function exploreMessages(
+  context: string,
+  chat: { who: "you" | "ai"; text: string }[],
+): { role: string; content: string }[] {
+  return [
+    { role: "system", content: context.slice(0, EXPLORE_MAX_CHARS) },
+    ...chat.slice(-EXPLORE_MAX_TURNS).map((m) => ({
+      role: m.who === "you" ? "user" : "assistant",
+      content: m.text.slice(0, EXPLORE_MAX_CHARS),
+    })),
+  ];
 }
 
 /** What the explore route's `extractedPreferences` may carry. Every field is optional:
@@ -191,6 +196,12 @@ const ROLE_FAMILIES: Record<string, RoleFamily[]> = {
 /** Role families for the chosen direction — three targets, methodology's cap. */
 export function roleFamiliesFor(dirRole: string | null): RoleFamily[] {
   return ROLE_FAMILIES[dirRole ?? ""] ?? ROLE_FAMILIES["Full-Stack SWE"];
+}
+
+/** Keep only ticked target roles that are still offered for this role. */
+export function pruneTargetRoles(picked: string[], dirRole: string | null): string[] {
+  const valid = new Set(targetRoleOptions(dirRole).map((o) => o.title));
+  return picked.filter((t) => valid.has(t));
 }
 
 export interface TargetRoleOption { title: string; note: string; relation: RoleFamily["relation"] | "Other"; tone: string }

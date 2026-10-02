@@ -3,12 +3,12 @@ import {
   toneFor, fitTone,
   readinessFrom,
   callbackSummary,
-  directionReady, directionStatement, directionSpecificity, extractChatPatch,
+  directionReady, directionStatement, directionSpecificity,
   targetKeywords, analyzeCvText,
   roleFit, analyzeJobDescription, cardWhen,
   buildCoverLetter, followUpMessage,
   trackerDerived,
-  roleFamiliesFor, targetRoleOptions, mapExplorePreferences, outreachSubject, buildOutreachTemplate,
+  roleFamiliesFor, targetRoleOptions, pruneTargetRoles, mapExplorePreferences, exploreMessages, EXPLORE_MAX_TURNS, EXPLORE_MAX_CHARS, outreachSubject, buildOutreachTemplate,
   jobPassesFit, composeSharedAttributes,
   type OnbState, type DirectionFields,
 } from '../logic';
@@ -90,12 +90,7 @@ describe('direction derivations', () => {
     expect(directionSpecificity(dir({ dirRole: 'x', dirIndustry: 'y', dirSize: 'z', dirSetting: 'Remote', dirStack: ['React'] })).label).toMatch(/high/i);
   });
 
-  it('extracts wizard fields from free text', () => {
-    const patch = extractChatPatch('I love frontend work at fintech startups');
-    expect(patch.dirRole).toBe('Frontend');
-    expect(patch.dirIndustry).toBe('Fintech');
-    expect(patch.dirSize).toBe('Startups 0–50');
-  });
+
 });
 
 /* ── CV analysis ──────────────────────────────────────────────────── */
@@ -370,5 +365,24 @@ describe('mapExplorePreferences', () => {
     expect(mapExplorePreferences({ role: 'Product Manager' }).dirRole).toBeUndefined();
     expect(mapExplorePreferences({ role: 'HTML wizard' }).dirRole).toBeUndefined();
     expect(mapExplorePreferences(undefined)).toEqual({});
+  });
+});
+
+describe('pruneTargetRoles', () => {
+  it('drops titles no longer offered and keeps the rest in order', () => {
+    expect(pruneTargetRoles(['Backend Engineer Intern', 'Not A Title', 'Data Engineer Intern'], 'Backend'))
+      .toEqual(['Backend Engineer Intern', 'Data Engineer Intern']);
+  });
+});
+
+describe('exploreMessages', () => {
+  it('sends the context plus only the latest turns, each trimmed under the route caps', () => {
+    const chat = Array.from({ length: 60 }, (_, i) => ({ who: (i % 2 ? 'ai' : 'you') as 'you' | 'ai', text: `m${i}` }));
+    const msgs = exploreMessages('x'.repeat(20_000), chat);
+    expect(msgs).toHaveLength(EXPLORE_MAX_TURNS + 1);
+    expect(msgs.length).toBeLessThanOrEqual(50);
+    expect(msgs[0]).toEqual({ role: 'system', content: 'x'.repeat(EXPLORE_MAX_CHARS) });
+    expect(msgs[msgs.length - 1]).toEqual({ role: 'assistant', content: 'm59' });
+    expect(exploreMessages('c', [{ who: 'you', text: 'y'.repeat(9000) }])[1].content).toHaveLength(EXPLORE_MAX_CHARS);
   });
 });
