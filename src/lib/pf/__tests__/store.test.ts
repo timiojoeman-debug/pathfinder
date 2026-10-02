@@ -168,9 +168,9 @@ describe("pf store — onboarding handoff", () => {
     });
     s().finishOnb();
     expect(s().onbDone).toBe(true);
-    expect(s().dirRole).toBe("Full-Stack SWE");
+    expect(s().dirRole).toBe("Full-Stack");
     expect(s().dirIndustry).toBe("Fintech");
-    expect(s().dirSize).toBe("Startups 0–50");
+    expect(s().dirSize).toBe("Early-stage startups");
     const types = s().events.map((e) => e.type);
     expect(types).toContain("ProfileCreated");
     expect(types).toContain("CareerDirectionUpdated");

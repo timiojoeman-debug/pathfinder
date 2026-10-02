@@ -11,41 +11,20 @@ import type { ReactNode } from "react";
 import {
   ONB_CADENCE_OPTS,
   ONB_CV_OPTS,
-  ONB_INDUSTRY_OPTS,
   ONB_OUTREACH_OPTS,
   ONB_PROJ_OPTS,
-  ONB_ROLE_OPTS,
-  ONB_STAGE_OPTS,
 } from "@/lib/pf/data";
 import { bandFor, readinessFrom, toneFor } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
-import { CountUp, Kicker, Reveal } from "@/components/pf/ui";
+import { INDUSTRIES, STAGES, phraseFor } from "@/lib/pf/taxonomy";
+import { Chip, CountUp, Kicker, Reveal } from "@/components/pf/ui";
+import { IndustryPicker, RolePicker, StagePicker } from "@/components/pf/taxonomy-picker";
 
-function OnbChip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
-  return (
-    <span
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      style={{
-        cursor: "pointer", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600, padding: "9px 15px", borderRadius: 10,
-        border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
-        background: on ? "var(--accent)" : "var(--panel2)",
-        color: on ? "var(--onAccent)" : "var(--muted)",
-        transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)", userSelect: "none",
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
-function ChipGroup({ title, children }: { title: string; children: ReactNode }) {
+function ChipGroup({ title, children, plain }: { title: string; children: ReactNode; plain?: boolean }) {
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{title}</div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{children}</div>
+      {plain ? children : <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{children}</div>}
     </div>
   );
 }
@@ -57,8 +36,8 @@ export default function StartPage() {
 
   const statement =
     onb.role && onb.industry && onb.stage
-      ? `${onb.role} internships in ${onb.industry}, ${onb.stage}.`
-      : "Choose a role, industry and stage above to build your statement.";
+      ? `${onb.role} internships in ${phraseFor(INDUSTRIES, onb.industry)} at ${phraseFor(STAGES, onb.stage)}.`
+      : "Choose a role, industry and company type above to build your statement.";
   const step1Ready = !!(onb.role && onb.industry && onb.stage);
   const step2Ready = !!(onb.cv && onb.projects && onb.outreach && onb.cadence);
 
@@ -117,20 +96,14 @@ export default function StartPage() {
         <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "28px 30px" }}>
           <Kicker style={{ marginBottom: 16 }}>Step 1 of 3 · Choose your target</Kicker>
 
-          <ChipGroup title="Role">
-            {ONB_ROLE_OPTS.map((l) => (
-              <OnbChip key={l} label={l} on={onb.role === l} onClick={() => s.setOnb({ role: l })} />
-            ))}
+          <ChipGroup title="Role" plain>
+            <RolePicker value={onb.role} onPick={(v) => s.setOnb({ role: v })} />
           </ChipGroup>
-          <ChipGroup title="Industry">
-            {ONB_INDUSTRY_OPTS.map((l) => (
-              <OnbChip key={l} label={l} on={onb.industry === l} onClick={() => s.setOnb({ industry: l })} />
-            ))}
+          <ChipGroup title="Industry" plain>
+            <IndustryPicker value={onb.industry} onPick={(v) => s.setOnb({ industry: v })} />
           </ChipGroup>
-          <ChipGroup title="Stage">
-            {ONB_STAGE_OPTS.map((l) => (
-              <OnbChip key={l} label={l} on={onb.stage === l} onClick={() => s.setOnb({ stage: l })} />
-            ))}
+          <ChipGroup title="Company type" plain>
+            <StagePicker value={onb.stage} onPick={(v) => s.setOnb({ stage: v })} />
           </ChipGroup>
 
           <div style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 14, background: "var(--accentSoft)", padding: "18px 20px", marginBottom: 22 }}>
@@ -154,22 +127,22 @@ export default function StartPage() {
 
           <ChipGroup title="How ready is your CV for these roles?">
             {ONB_CV_OPTS.map(([l, v]) => (
-              <OnbChip key={l} label={l} on={onb.cv === v} onClick={() => s.setOnb({ cv: v })} />
+              <Chip key={l} label={l} on={onb.cv === v} onClick={() => s.setOnb({ cv: v })} />
             ))}
           </ChipGroup>
           <ChipGroup title="How strong is your project portfolio?">
             {ONB_PROJ_OPTS.map(([l, v]) => (
-              <OnbChip key={l} label={l} on={onb.projects === v} onClick={() => s.setOnb({ projects: v })} />
+              <Chip key={l} label={l} on={onb.projects === v} onClick={() => s.setOnb({ projects: v })} />
             ))}
           </ChipGroup>
           <ChipGroup title="How active is your networking?">
             {ONB_OUTREACH_OPTS.map(([l, v]) => (
-              <OnbChip key={l} label={l} on={onb.outreach === v} onClick={() => s.setOnb({ outreach: v })} />
+              <Chip key={l} label={l} on={onb.outreach === v} onClick={() => s.setOnb({ outreach: v })} />
             ))}
           </ChipGroup>
           <ChipGroup title="How consistent is your weekly application rhythm?">
             {ONB_CADENCE_OPTS.map(([l, v]) => (
-              <OnbChip key={l} label={l} on={onb.cadence === v} onClick={() => s.setOnb({ cadence: v })} />
+              <Chip key={l} label={l} on={onb.cadence === v} onClick={() => s.setOnb({ cadence: v })} />
             ))}
           </ChipGroup>
 

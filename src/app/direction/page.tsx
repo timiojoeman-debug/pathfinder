@@ -7,15 +7,18 @@
  */
 
 import { useEffect, useState, type CSSProperties } from "react";
+import { DIR_SETTING_OPTS, HIRE_FRAMEWORK } from "@/lib/pf/data";
 import {
-  DIR_INDUSTRY_OPTS,
-  DIR_ROLE_OPTS,
-  DIR_SETTING_OPTS,
-  DIR_SIZE_OPTS,
   DIR_STACK_OPTS,
-  HIRE_FRAMEWORK,
-  TITLE_VARIANTS,
-} from "@/lib/pf/data";
+  MAX_CUSTOM_STACK,
+  MAX_CUSTOM_STACK_CHARS,
+  OTHER_ROLE_NOTE,
+  customStackOf,
+  findRole,
+  stackFor,
+  titleVariantsFor,
+} from "@/lib/pf/taxonomy";
+import { IndustryPicker, RolePicker, StagePicker } from "@/components/pf/taxonomy-picker";
 import {
   directionReady,
   directionSpecificity,
@@ -79,6 +82,83 @@ function ModeToggle() {
   );
 }
 
+/** The stack picker: the role's own suggestions first, the general list after, and the student's own additions. */
+function StackPicker() {
+  const dirRole = usePfStore((s) => s.dirRole);
+  const dirStack = usePfStore((s) => s.dirStack);
+  const toggle = usePfStore((s) => s.toggleDirStack);
+  const add = usePfStore((s) => s.addDirStack);
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const suggested = findRole(dirRole) ? stackFor(dirRole) : [];
+  const general = DIR_STACK_OPTS.filter((t) => !suggested.includes(t));
+  const shown = new Set([...suggested, ...general]);
+  // Everything picked that no row above shows (the student's own terms, or ones from a role they left).
+  const extras = dirStack.filter((t) => !shown.has(t));
+  const custom = customStackOf(dirStack).length;
+
+  const submit = () => {
+    const err = add(draft);
+    setError(err);
+    if (!err) setDraft("");
+  };
+  const row = { display: "flex", gap: 8, flexWrap: "wrap" as const };
+  const sub = { fontSize: 11, fontWeight: 600, color: "var(--faint)", margin: "10px 0 7px" } as const;
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+        Tech stack <span style={{ fontWeight: 500, color: "var(--faint)" }}>(pick 3+: these become your ATS keywords)</span>
+      </div>
+      {suggested.length > 0 && (
+        <>
+          <div style={sub}>Suggested for {dirRole}</div>
+          <div style={row}>
+            {suggested.map((l) => <Chip key={l} label={l} on={dirStack.includes(l)} onClick={() => toggle(l)} />)}
+          </div>
+        </>
+      )}
+      <div style={sub}>{suggested.length ? "General" : "Common"}</div>
+      <div style={row}>
+        {general.map((l) => <Chip key={l} label={l} on={dirStack.includes(l)} onClick={() => toggle(l)} />)}
+      </div>
+      {extras.length > 0 && (
+        <>
+          <div style={sub}>Your additions</div>
+          <div style={row}>
+            {extras.map((l) => <Chip key={l} label={l} on onClick={() => toggle(l)} />)}
+          </div>
+        </>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: 12, maxWidth: 420 }}>
+        <input
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); setError(null); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+          maxLength={MAX_CUSTOM_STACK_CHARS}
+          placeholder="Add your own, e.g. Terraform"
+          aria-label="Add your own keyword"
+          className="pf-input"
+          style={{ flex: 1, minWidth: 0, height: 44, padding: "0 14px" }}
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!draft.trim()}
+          className="pf-tap"
+          style={{ cursor: draft.trim() ? "pointer" : "default", padding: "0 18px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel2)", color: draft.trim() ? "var(--fg)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
+        >
+          Add
+        </button>
+      </div>
+      <div style={{ fontSize: 11.5, marginTop: 6, color: error ? "var(--risk)" : "var(--faint)" }} role={error ? "alert" : undefined}>
+        {error ?? `Up to ${MAX_CUSTOM_STACK} of your own, ${MAX_CUSTOM_STACK_CHARS} characters each (${custom}/${MAX_CUSTOM_STACK} used).`}
+      </div>
+    </div>
+  );
+}
+
 function Wizard({ onGenerate, generating }: { onGenerate: () => void; generating: boolean }) {
   const s = usePfStore();
   const ready = directionReady(s) && !generating;
@@ -87,41 +167,21 @@ function Wizard({ onGenerate, generating }: { onGenerate: () => void; generating
       <Kicker style={{ marginBottom: 16 }}>Build your direction statement</Kicker>
 
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Target role</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {DIR_ROLE_OPTS.map((l) => (
-            <Chip key={l} label={l} on={s.dirRole === l} onClick={() => s.pickDirChip("dirRole", l)} />
-          ))}
-        </div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Target role</div>
+        <RolePicker value={s.dirRole} onPick={(v) => s.pickDirChip("dirRole", v)} />
       </div>
+
+      <StackPicker />
 
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>
-          Tech stack <span style={{ fontWeight: 500, color: "var(--faint)" }}>(pick 3+: these become your ATS keywords)</span>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {DIR_STACK_OPTS.map((l) => (
-            <Chip key={l} label={l} on={s.dirStack.includes(l)} onClick={() => s.toggleDirStack(l)} />
-          ))}
-        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Industry</div>
+        <IndustryPicker size="sm" value={s.dirIndustry} onPick={(v) => s.pickDirChip("dirIndustry", v)} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 16, marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Industry</div>
-          <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-            {DIR_INDUSTRY_OPTS.map((l) => (
-              <Chip key={l} size="sm" label={l} on={s.dirIndustry === l} onClick={() => s.pickDirChip("dirIndustry", l)} />
-            ))}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Company size</div>
-          <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-            {DIR_SIZE_OPTS.map((l) => (
-              <Chip key={l} size="sm" label={l} on={s.dirSize === l} onClick={() => s.pickDirChip("dirSize", l)} />
-            ))}
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Company type</div>
+          <StagePicker size="sm" value={s.dirSize} onPick={(v) => s.pickDirChip("dirSize", v)} />
         </div>
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>Work setting</div>
@@ -354,7 +414,7 @@ function GeneratedStatement({ task, onSharpen }: { task: AiTask<DirectionResult>
     setAiVariants({ key, titles });
     s.emit("AiConsulted", "direction", `Found title variants for ${s.dirRole}`);
   };
-  const starter = TITLE_VARIANTS[s.dirRole ?? ""] ?? [];
+  const { variants: starter, tailored } = titleVariantsFor(s.dirRole);
 
   return (
     <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 24%,transparent)", borderRadius: 18, background: "linear-gradient(150deg,var(--accentSoft),transparent)", padding: "28px 30px", marginBottom: 18 }}>
@@ -394,7 +454,11 @@ function GeneratedStatement({ task, onSharpen }: { task: AiTask<DirectionResult>
       <Kicker style={{ fontSize: 9.5, margin: "16px 0 10px" }}>Search with these titles: the same role hides under different names</Kicker>
       {starter.length > 0 && (
         <>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Starter list: common titles for {s.dirRole}, not generated for you.</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+            {tailored
+              ? <>Starter list: common titles for {s.dirRole}, not generated for you.</>
+              : <>Generic starter titles built from the role you typed, so they are less tailored. {OTHER_ROLE_NOTE.split(". ").pop()}</>}
+          </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {starter.map((v) => <VariantChip key={v} title={v} />)}
           </div>
@@ -458,8 +522,6 @@ function TargetRoles() {
 export default function DirectionPage() {
   const dirMode = usePfStore((s) => s.dirMode);
   const dirGenerated = usePfStore((s) => s.dirGenerated);
-  const dirRole = usePfStore((s) => s.dirRole);
-  const onbRole = usePfStore((s) => s.onb.role);
   const statementTask = useAiTask<DirectionResult>("/api/direction");
   const { reset: resetStatement, run: runStatement } = statementTask;
 
@@ -517,12 +579,6 @@ export default function DirectionPage() {
       </PageHeader>
 
       <NextStep />
-
-      {!dirRole && (onbRole === "Product" || onbRole === "Design") && (
-        <Reveal style={{ border: "1px solid var(--line)", borderRadius: 12, background: "var(--panel2)", padding: "12px 16px", marginBottom: 18, fontSize: 13, lineHeight: 1.55 }}>
-          You said <strong>{onbRole}</strong> in onboarding. This wizard currently covers engineering roles only, so pick the closest one below or talk it through in Explore.
-        </Reveal>
-      )}
 
       <ModeToggle />
 

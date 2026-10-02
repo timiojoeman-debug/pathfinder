@@ -9,7 +9,7 @@
 
 import { KEYWORD_VOCAB, type BoardColumn } from "./data";
 import { LEETCODE_CATEGORIES, LEET_ON_TRACK } from "./leetcode";
-import { analyzeCvText, directionStatement, targetKeywords, trackerDerived, type SchemeWindow } from "./logic";
+import { analyzeCvText, directionStatement, hasTerm, targetKeywords, trackerDerived, type SchemeWindow } from "./logic";
 import type { PfEvent, PfPhase } from "./events";
 import type { ChatMsg, InterviewFeedback, SavedJob, SavedStory } from "./store";
 import type { OnbState } from "./logic";
@@ -126,16 +126,14 @@ export interface CareerProfile {
 /** Skills *evidenced in the CV* — kept disjoint from missing/target skills so
  *  the profile never claims a skill is both present and absent. */
 function detectSkills(cvText: string, aiSkills: string[] = []): string[] {
-  const lower = cvText.toLowerCase();
-  const found = KEYWORD_VOCAB.filter((k) => lower.includes(k.toLowerCase()));
+  const found = KEYWORD_VOCAB.filter((k) => hasTerm(cvText, k));
   // The AI read can name skills the vocabulary doesn't know, but a name the CV
   // text doesn't contain is the model's guess, not evidence, so it is dropped.
   const seen = new Set(found.map((k) => k.toLowerCase()));
   for (const skill of aiSkills) {
     const k = skill.trim().toLowerCase();
     // Whole-word match, so "Go" isn't evidenced by "good".
-    const esc = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (k && !seen.has(k) && new RegExp(`(^|[^a-z0-9])${esc}($|[^a-z0-9])`).test(lower)) {
+    if (k && !seen.has(k) && hasTerm(cvText, skill)) {
       seen.add(k);
       found.push(skill.trim());
     }
@@ -166,11 +164,11 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
   // the chips: those are a starting point, and counting them handed out
   // direction progress before any direction work happened.
   const directionSet = s.dirGenerated && !!s.dirRole;
-  const keywords = targetKeywords(s.dirStack);
+  const keywords = targetKeywords(s.dirStack, s.dirRole);
   const currentSkills = detectSkills(s.cvText, s.cvAiSkills);
 
   // CV / ATS
-  const analysis = s.cvText.trim().length >= 60 ? analyzeCvText(s.cvText, s.dirStack) : null;
+  const analysis = s.cvText.trim().length >= 60 ? analyzeCvText(s.cvText, s.dirStack, s.dirRole) : null;
   const atsHistory = s.cvScores.length ? s.cvScores : analysis && s.cvAnalyzed ? [analysis.score] : [];
   const atsScore = s.cvAnalyzed && atsHistory.length ? atsHistory[atsHistory.length - 1] : null;
   const atsDelta = atsHistory.length >= 2 ? atsHistory[atsHistory.length - 1] - atsHistory[0] : null;

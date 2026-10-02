@@ -233,7 +233,7 @@ function AnalysisResult({ aiRead, read }: { aiRead: AiJdRead | null; read: AiTas
   };
 
   if (!r) return null;
-  const localLetter = buildCoverLetter(s.jfCompany, s.jfTitle, s.jfJD, targetKeywords(s.dirStack));
+  const localLetter = buildCoverLetter(s.jfCompany, s.jfTitle, s.jfJD, targetKeywords(s.dirStack, s.dirRole));
   const letter = aiLetter
     ? { paras: aiLetter.paras, words: aiLetter.words, assumptions: aiLetter.assumptions.length ? aiLetter.assumptions : localLetter.assumptions }
     : { paras: [localLetter.p1, localLetter.p2, localLetter.p3], words: localLetter.words, assumptions: localLetter.assumptions };

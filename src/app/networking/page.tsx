@@ -66,7 +66,7 @@ export default function NetworkingPage() {
   const editContact = (patch: Partial<NetContact>) => s.set({ netContact: { ...contact, ...patch } });
 
   const role = s.dirRole ? `${s.dirRole} Intern` : "SWE Intern";
-  const techs = targetKeywords(s.dirStack).slice(0, 3).join(", ");
+  const techs = targetKeywords(s.dirStack, s.dirRole).slice(0, 3).join(", ");
   const subject = outreachSubject(s.netPersona, role);
   const templateParas = buildOutreachTemplate(s.netPersona, {
     name: contact.name,
