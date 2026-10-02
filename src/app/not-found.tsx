@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { AuthShell, authButtonStyle } from "@/components/pf/auth-shell";
 
