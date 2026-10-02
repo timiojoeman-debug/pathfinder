@@ -223,6 +223,26 @@
 
 .pf button { font-family: var(--font-sans), 'Manrope', sans-serif; }
 
+/* ── Press feedback ──────────────────────────────────────────────────
+   Every button answers a press: a 0.97 scale over 160ms on a strong ease-out,
+   so the interface feels like it heard the click. Only transform and colours
+   transition (never `all`, which also animated layout). Hover tints only on
+   devices with a real pointer, since a tap would otherwise leave it stuck on.
+   Links dressed as buttons opt in with .pf-press. .pf-cta keeps its own
+   magnetic transform, so it is left out. */
+.pf { --pressEase: cubic-bezier(.23, 1, .32, 1); }
+.pf button:not(.pf-cta), .pf .pf-press {
+  transition: transform .16s var(--pressEase), background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .2s ease, filter .16s ease;
+}
+.pf button:not(.pf-cta):not(:disabled):active, .pf .pf-press:active { transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) {
+  .pf button:not(.pf-cta):not(:disabled):hover, .pf .pf-press:hover { filter: brightness(.96); }
+  [data-theme="dark"] .pf button:not(.pf-cta):not(:disabled):hover, [data-theme="dark"] .pf .pf-press:hover { filter: brightness(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf button:not(.pf-cta):active, .pf .pf-press:active { transform: none; }
+}
+
 /* Scrollbars (subtle, warm) */
 .pf ::-webkit-scrollbar { width: 10px; height: 10px; }
 .pf ::-webkit-scrollbar-thumb { background: var(--panel3); border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }

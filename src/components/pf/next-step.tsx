@@ -31,7 +31,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
       <Link
         href={top.href}
         onClick={openCard}
-        className="pf-hover-border"
+        className="pf-hover-border pf-press"
         style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 12, border: "1px solid color-mix(in srgb,var(--accent) 26%,transparent)", background: "var(--accentSoft)", textDecoration: "none", color: "var(--fg)" }}
       >
         <span style={{ display: "flex", width: 22, height: 22, alignItems: "center", justifyContent: "center", borderRadius: 7, background: "var(--accent)", flexShrink: 0 }}>
@@ -65,7 +65,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
       {onThisPage && openCard ? (
         <button
           onClick={openCard}
-          className="pf-nextstep-cta"
+          className="pf-nextstep-cta pf-press"
           style={{ cursor: "pointer", flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
         >
           Open the card →
@@ -78,7 +78,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
         <Link
           href={top.href}
           onClick={openCard}
-          className="pf-nextstep-cta"
+          className="pf-nextstep-cta pf-press"
           style={{ flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, background: "var(--accent)", color: "var(--onAccent)", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
         >
           Do it →

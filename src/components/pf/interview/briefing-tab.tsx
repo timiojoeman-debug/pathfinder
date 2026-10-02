@@ -127,7 +127,7 @@ export function BriefingTab() {
                     background: on ? "var(--accentSoft)" : "var(--panel2)",
                     color: on ? "var(--accentText)" : "var(--muted)",
                     fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
-                    transition: "all .2s var(--ease)",
+                    transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)",
                   }}
                 >
                   {j.company}

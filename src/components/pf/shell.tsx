@@ -282,7 +282,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
           onClick={toggleTheme}
           aria-label="Toggle theme"
           className="pf-mono"
-          style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 7, height: 36, padding: "0 13px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", fontSize: 11, fontWeight: 600, transition: "all .2s var(--ease)" }}
+          style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 7, height: 36, padding: "0 13px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", fontSize: 11, fontWeight: 600, transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)" }}
         >
           <Icon name={mode === "dark" ? "sun" : "moon"} size={15} />
           {mode === "dark" ? "Paper" : "Night"}
