@@ -276,7 +276,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
                     border: `1px solid ${timing === t ? "var(--risk)" : "var(--line)"}`,
                     background: timing === t ? "var(--risk)" : "var(--panel2)",
                     color: timing === t ? "var(--onAccent)" : "var(--muted)",
-                    transition: "all .18s var(--ease)",
+                    transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)",
                   }}
                 >
                   {t}

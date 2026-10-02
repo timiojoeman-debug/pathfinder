@@ -33,7 +33,7 @@ function OnbChip({ label, on, onClick }: { label: string; on: boolean; onClick: 
         border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
         background: on ? "var(--accent)" : "var(--panel2)",
         color: on ? "var(--onAccent)" : "var(--muted)",
-        transition: "all .18s var(--ease)", userSelect: "none",
+        transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)", userSelect: "none",
       }}
     >
       {label}

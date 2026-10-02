@@ -69,7 +69,7 @@ function ModeToggle() {
   const btn = (on: boolean): CSSProperties => ({
     cursor: "pointer", height: 38, padding: "0 18px", borderRadius: 10, border: "1px solid var(--line)",
     background: on ? "var(--accent)" : "var(--panel)", color: on ? "var(--onAccent)" : "var(--muted)",
-    fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
+    fontSize: 13, fontWeight: 600, transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)",
   });
   return (
     <Reveal style={{ display: "flex", gap: 8, marginBottom: 18 }}>

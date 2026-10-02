@@ -45,7 +45,7 @@ export function GenerateButton({
         color: off ? "var(--faint)" : ghost ? "var(--fg)" : "var(--onAccent)",
         fontSize: 13,
         fontWeight: 600,
-        transition: "all .2s var(--ease)",
+        transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)",
         whiteSpace: "nowrap",
       }}
     >

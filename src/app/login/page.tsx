@@ -48,7 +48,7 @@ export default function LoginPage() {
   const tab = (on: boolean): React.CSSProperties => ({
     cursor: "pointer", flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--line)",
     background: on ? "var(--accent)" : "var(--panel)", color: on ? "var(--onAccent)" : "var(--muted)",
-    fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
+    fontSize: 13, fontWeight: 600, transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)",
   });
 
   return (

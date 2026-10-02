@@ -138,7 +138,7 @@ export default function InterviewPage() {
                 border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
                 background: on ? "var(--accent)" : "var(--panel)",
                 color: on ? "var(--onAccent)" : "var(--muted)",
-                fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
+                fontSize: 13, fontWeight: 600, transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)",
               }}
             >
               {label}

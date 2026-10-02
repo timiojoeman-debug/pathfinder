@@ -211,7 +211,7 @@ export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent
         border: `1px solid ${on ? activeBg : "var(--line)"}`,
         background: on ? activeBg : "var(--panel2)",
         color: on ? "var(--onAccent)" : "var(--muted)",
-        transition: "all .18s var(--ease)",
+        transition: "background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), transform .16s cubic-bezier(.23,1,.32,1)",
         userSelect: "none",
       }}
     >
