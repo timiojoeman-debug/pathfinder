@@ -114,7 +114,13 @@ export function QuestionsTab() {
 
       {questions.length > 0 && !degraded && (
         <AiCaveat>
-          A first draft of what they are likely to ask, not the actual paper. Practise the shape of the answer, not the wording.
+          A first draft of what they are likely to ask, not the actual paper.
+        </AiCaveat>
+      )}
+
+      {questions.some((q) => q.answerTemplate) && (
+        <AiCaveat>
+          A starting structure, not your answer. Rewrite it in your own words and practise it out loud.
         </AiCaveat>
       )}
     </Reveal>

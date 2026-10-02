@@ -285,7 +285,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
             </div>
             {timing && (
               <div style={{ fontSize: 13, lineHeight: 1.6, borderTop: "1px solid var(--line2)", paddingTop: 11 }}>
-                <span style={{ fontWeight: 700 }}>Diagnosis:</span> {REJECTION_DIAGNOSIS[timing]}
+                <span style={{ fontWeight: 700 }}>Likely signal:</span> {REJECTION_DIAGNOSIS[timing]}
               </div>
             )}
           </div>

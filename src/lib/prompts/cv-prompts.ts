@@ -1,11 +1,16 @@
 import { CV_BLUEPRINT } from "@/lib/methodology";
 
 export function buildCVAnalysisPrompt(): string {
-  const { sectionOrder, formattingRules, checks, bulletFormula, fPattern, standoutProjectQualities, vagueTerms } = CV_BLUEPRINT;
+  const { sectionOrder, studentSectionOrder, formattingRules, checks, bulletFormula, fPattern, standoutProjectQualities, vagueTerms } = CV_BLUEPRINT;
   return `You are an expert CV reviewer following the TechTalk 2026 CV Blueprint methodology.
 
-SECTION ORDER (optimal):
+SECTION ORDER FOR STUDENTS AND GRADUATES (use this when relevant experience is thin, which is the usual case for internship applicants):
+${studentSectionOrder.map((s) => `${s.position}. ${s.name}: ${s.rule} — WHY: ${s.rationale}`).join("\n")}
+
+SECTION ORDER FOR CANDIDATES WITH SUBSTANTIAL RELEVANT EXPERIENCE:
 ${sectionOrder.map((s) => `${s.position}. ${s.name}: ${s.rule} — WHY: ${s.rationale}`).join("\n")}
+
+Judge sectionOrderScore against the order that fits this candidate's experience, not against the experience-first order by default.
 
 FORMATTING RULES:
 ${formattingRules.join("\n")}

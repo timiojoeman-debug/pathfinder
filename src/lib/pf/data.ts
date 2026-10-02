@@ -117,7 +117,7 @@ export const HIRE_FRAMEWORK = [
   { k: "H", label: "Hone direction", note: "Direction statement + 3 target roles" },
   { k: "I", label: "Intensify profile", note: "CV, LinkedIn, GitHub aligned" },
   { k: "R", label: "Raise reach", note: "Warm paths into target tiers" },
-  { k: "E", label: "Excel in interviews", note: "STAR + technical patterns" },
+  { k: "E", label: "Excel in interviews", note: "STARL + technical patterns" },
 ];
 
 /* ── Networking ────────────────────────────────────────────────────── */
@@ -127,7 +127,7 @@ export type OutreachPersona = (typeof OUTREACH_PERSONAS)[number];
 
 export const NETWORK_PERSONA_ANGLES = [
   { kind: "Recruiter", tone: "var(--active)", title: "Speed & keywords", angle: "Wants fast signal that you match the req. Lead with stack + a quantified win." },
-  { kind: "Hiring manager", tone: "var(--accent)", title: "Judgement & fit", angle: "Wants to see how you think. Reference their team’s real work, ask one sharp question." },
+  { kind: "Hiring manager", tone: "var(--accent)", title: "Judgement & fit", angle: "Wants to see how you think. Reference their team’s real work, ask one sharp question. They decide on fit, so don’t ask them for a referral: peers and alumni give those." },
   { kind: "Peer / alumnus", tone: "var(--strong)", title: "Warmth & referral", angle: "Shared background or alumni path. Ask for a coffee chat, never a job. The referral follows." },
 ];
 
@@ -197,7 +197,7 @@ export const COFFEE_CHAT_FRAMEWORK = [
 
 /* ── Interview ─────────────────────────────────────────────────────── */
 
-export const IV_TABS: [string, string][] = [["leetcode", "LeetCode"], ["star", "STAR"], ["questions", "Questions"], ["briefing", "Briefing"], ["feedback", "Feedback"]];
+export const IV_TABS: [string, string][] = [["leetcode", "LeetCode"], ["star", "STARL"], ["questions", "Questions"], ["briefing", "Briefing"], ["feedback", "Feedback"]];
 
 // The LeetCode list lives in `./leetcode.ts` — 18 real categories and 100 real
 // problems, replacing the five invented patterns that used to sit here.
@@ -205,19 +205,19 @@ export const IV_TABS: [string, string][] = [["leetcode", "LeetCode"], ["star", "
 /* ── Tracker ───────────────────────────────────────────────────────── */
 
 export const REJECTION_DIAGNOSIS: Record<string, string> = {
-  "Within hours": "ATS keyword rejection: your CV never reached a human. Fix keywords before the next application.",
-  "1–2 days": "A human read it and passed: positioning or seniority mismatch. Sharpen the top third of your CV.",
-  "1–2 weeks": "Likely lost to a stronger shortlist, or the role closed. Not a CV signal.",
-  "Never": "Ghosted. Follow up once on LinkedIn, then move on. Open a warm path next time.",
+  "Within hours": "Likely automated screening. Check the must-have keywords match before changing anything else, and ask for feedback where you can.",
+  "2+ days": "A person probably read it and passed, which points to positioning or fit. Ask for feedback where you can before you rewrite your CV.",
+  "1–2 weeks": "Likely lost to a stronger shortlist, or the role closed. Not a CV signal. Ask for feedback where you can.",
+  "Never": "Ghosted. Follow up once, then move on. Open a warm path next time, and ask for feedback if anyone replies.",
 };
 
-export const DIAG_TIMINGS = ["Within hours", "1–2 days", "1–2 weeks", "Never"];
+export const DIAG_TIMINGS = ["Within hours", "2+ days", "1–2 weeks", "Never"];
 
 /** Where each diagnosis is fixed. Fast rejections are a CV problem; slow ones and
  *  silence are "not a CV signal", so they point at a warm path, not the CV page. */
 export const DIAG_FIX: Record<string, { href: string; label: string }> = {
-  "Within hours": { href: "/cv", label: "Fix keywords" },
-  "1–2 days": { href: "/cv", label: "Sharpen your CV" },
+  "Within hours": { href: "/cv", label: "Check the keywords" },
+  "2+ days": { href: "/cv", label: "Check your positioning" },
   "1–2 weeks": { href: "/networking", label: "Find a warm path" },
   "Never": { href: "/networking", label: "Open a warm path" },
 };

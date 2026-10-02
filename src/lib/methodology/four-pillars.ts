@@ -53,6 +53,7 @@ export const FOUR_PILLARS = {
     connectionRequests: '3 new connections per week',
     coffeeChats: '1 per week',
     posts: '1 LinkedIn post or comment per week',
+    sprintNetworking: '30-day sprint option: ~10 recruiter + ~10 peer/hiring-manager messages and 2–3 coffee chats a week',
   } as const,
 
   qualityWarnings: [
@@ -60,7 +61,7 @@ export const FOUR_PILLARS = {
       condition: 'applicationsThisWeek > 10',
       threshold: 10,
       type: 'too_many',
-      message: 'You\'ve submitted {count} applications this week. Are they all genuinely tailored? Past ~10 a week, quality usually slips. The CV Blueprint\'s 15-minute tailoring process should be applied to every single application.',
+      message: 'You\'ve submitted {count} applications this week. Are they all genuinely tailored? Past ~10 a week, quality usually slips. The CV Blueprint\'s 10-minute tailoring process should be applied to every single application.',
     },
     {
       condition: 'applicationsThisWeek === 0 && dayOfWeek >= 4',

@@ -43,6 +43,7 @@ describe("QuestionsTab", () => {
     expect(screen.getByText("Tell me about a conflict.")).toBeTruthy();
     expect(screen.getByText("Use STAR.")).toBeTruthy();
     expect(screen.getByRole("button", { name: /harder ones/i })).toBeTruthy();
+    expect(screen.getByText("A starting structure, not your answer. Rewrite it in your own words and practise it out loud.")).toBeTruthy();
   });
 
   it("says the set degraded, and logs no consult, when the route served its fallback", async () => {

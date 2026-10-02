@@ -24,6 +24,7 @@ import {
   analyzeCvText,
   analyzeJobDescription,
   fitTone,
+  migrateDiags,
   pruneTargetRoles,
   readinessFrom,
   MAX_JD_CHARS,
@@ -122,7 +123,7 @@ export interface JfCoverLetter { key: string; paras: string[]; assumptions: stri
 
 export interface InterviewFeedback { company: string; rating: number; note: string; date: string }
 /** A STAR story the student saved. Its count is the "stories prepared" evidence. */
-export interface SavedStory { id: string; title: string; situation: string; task: string; action: string; result: string; savedAt: number }
+export interface SavedStory { id: string; title: string; situation: string; task: string; action: string; result: string; /** Optional fifth STARL beat; stories saved with four beats have none. */ learnings?: string; savedAt: number }
 /** The last company briefing generated for a company, kept so it survives a reload. */
 export interface SavedBriefing {
   company: string;
@@ -682,7 +683,8 @@ export const usePfStore = create<PfState>()(
         if (beats.some((b) => !b)) return false;
         const [situation, task, action, result] = beats;
         const title = story.title.trim() || situation.slice(0, 60);
-        const saved: SavedStory = { id: nextEventId(), title, situation, task, action, result, savedAt: Date.now() };
+        const learnings = story.learnings?.trim();
+        const saved: SavedStory = { id: nextEventId(), title, situation, task, action, result, ...(learnings ? { learnings } : {}), savedAt: Date.now() };
         set((s) => ({ savedStories: [saved, ...s.savedStories] }));
         get().emit("StoryPrepared", "interview", `Prepared a STAR story · ${title}`, { title });
         return true;
@@ -911,7 +913,8 @@ export const usePfStore = create<PfState>()(
         const ivProblems = p.ivProblems ?? current.ivProblems;
         const ivSolved: Record<string, number> = {};
         for (const c of LEETCODE_CATEGORIES) ivSolved[c.name] = c.problems.filter((x) => ivProblems[x.slug]).length;
-        return { ...current, ...p, board, ivProblems, ivSolved };
+        const diags = p.diags ? migrateDiags(p.diags) : current.diags;
+        return { ...current, ...p, board, ivProblems, ivSolved, diags };
       },
     },
   ),

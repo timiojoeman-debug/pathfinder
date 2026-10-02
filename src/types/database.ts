@@ -6,7 +6,7 @@ export type ReferralStatus = 'not_asked' | 'asked' | 'pending' | 'received' | 'd
 export type StoryCategory = 'challenge' | 'teamwork' | 'leadership' | 'failure' | 'time_pressure';
 export type LeetCodeStatus = 'not_started' | 'attempted' | 'solved' | 'needs_review';
 export type InputQuality = 'minimal_effort' | 'rough_draft' | 'decent_attempt' | 'strong_input' | 'excellent_input';
-export type RejectionTiming = 'within_hours' | 'within_1_2_days' | 'after_2_weeks' | 'never_heard_back';
+export type RejectionTiming = 'within_hours' | 'after_2_days' | 'after_2_weeks' | 'never_heard_back';
 
 export interface User {
   id: string;

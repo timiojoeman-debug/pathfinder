@@ -1,47 +1,48 @@
 import { INTERVIEW_PREP } from "@/lib/methodology";
 
 export function buildSTARPrompt(
-  rawStory: { situation: string; task: string; action: string; result: string },
+  rawStory: { situation: string; task: string; action: string; result: string; learnings?: string },
   category: string
 ): string {
   const { star, storyCategories } = INTERVIEW_PREP;
   const matchedCategory = storyCategories.find(c => c.id === category || c.name === category);
   const categoryPrompt = matchedCategory?.prompt || "Improve this story.";
 
-  return `You are PathFinder's AI career mentor — TechTalk Interview Prep STAR builder.
+  return `You are PathFinder's AI career mentor, STARL story builder.
 
 PHILOSOPHY: ${INTERVIEW_PREP.philosophy}
 
-STAR STRUCTURE:
+STARL STRUCTURE (Situation, Task, Action, Result, Learnings):
 - Situation: ${star.situation.rule} (Common mistake: ${star.situation.common_mistake})
 - Task: ${star.task.rule} (Common mistake: ${star.task.common_mistake})
 - Action: ${star.action.rule} (Common mistake: ${star.action.common_mistake})
 - Result: ${star.result.rule} (Common mistake: ${star.result.common_mistake})
+- Learnings (optional beat): ${star.learnings.rule} (Common mistake: ${star.learnings.common_mistake})
 
 CATEGORY: ${matchedCategory?.name || category} — ${categoryPrompt}
 
 PRACTICE TIMINGS:
 - Short (${INTERVIEW_PREP.practiceTimings.short.duration}): ${INTERVIEW_PREP.practiceTimings.short.use}
 - Medium (${INTERVIEW_PREP.practiceTimings.medium.duration}): ${INTERVIEW_PREP.practiceTimings.medium.use}
-- Extended (${INTERVIEW_PREP.practiceTimings.extended.duration}): ${INTERVIEW_PREP.practiceTimings.extended.use}
 
 Raw story:
 S: ${rawStory.situation}
 T: ${rawStory.task}
 A: ${rawStory.action}
 R: ${rawStory.result}
+L: ${rawStory.learnings?.trim() || "(not given, so leave learnings empty rather than inventing any)"}
 
 Evaluate input quality first:
 - Too vague → prompt for specifics
-- Too long → help tighten to 60-90 seconds
-- Missing result → ask for quantified outcome
+- Too long → help tighten it to an answer that fits 3-5 minutes spoken
+- Missing result → ask for the outcome, with a number where they can give one. Never invent a number
 - Strong input → structure cleanly
 
 Respond ONLY with valid JSON:
 {
   "inputQuality": string,
   "inputQualityExplanation": string,
-  "methodologyReference": "TechTalk Interview Prep - STAR Method",
+  "methodologyReference": "PathFinder Interview Prep - STARL (structure from TechTalk Masterclass Day 3)",
   "feedback": [{ "issue": string, "severity": string, "methodologyBasis": string, "explanation": string, "currentState": string, "suggestedFix": string }],
   "strengths": string[],
   "crossPhaseInsights": string[],
@@ -53,6 +54,7 @@ Respond ONLY with valid JSON:
     "task": string,
     "action": string,
     "result": string,
+    "learnings": string,
     "mappedQuestions": string[],
     "estimatedDuration": string,
     "tips": string[]
@@ -70,7 +72,7 @@ export function buildInterviewQuestionsPrompt(
     .map((t) => `- ${t.topic}: ${t.prompt}`)
     .join("\n");
 
-  return `You are PathFinder's AI career mentor — TechTalk Interview Question Generator.
+  return `You are PathFinder's AI career mentor, interview question generator.
 
 PHILOSOPHY: ${INTERVIEW_PREP.philosophy}
 
@@ -102,7 +104,7 @@ Respond ONLY with valid JSON:
 {
   "inputQuality": string,
   "inputQualityExplanation": string,
-  "methodologyReference": "TechTalk Interview Prep",
+  "methodologyReference": "PathFinder Interview Prep",
   "feedback": [],
   "strengths": string[],
   "crossPhaseInsights": string[],
@@ -140,7 +142,7 @@ Respond ONLY with valid JSON:
 {
   "inputQuality": string,
   "inputQualityExplanation": string,
-  "methodologyReference": "TechTalk Interview Prep - Company Research",
+  "methodologyReference": "PathFinder Interview Prep - Company Research",
   "feedback": [],
   "strengths": string[],
   "crossPhaseInsights": string[],
@@ -191,7 +193,7 @@ Respond ONLY with valid JSON:
 {
   "inputQuality": string,
   "inputQualityExplanation": string,
-  "methodologyReference": "TechTalk Interview Prep",
+  "methodologyReference": "PathFinder Interview Prep",
   "feedback": [{ "issue": string, "severity": string, "methodologyBasis": string, "explanation": string, "currentState": string, "suggestedFix": string }],
   "strengths": string[],
   "crossPhaseInsights": string[],

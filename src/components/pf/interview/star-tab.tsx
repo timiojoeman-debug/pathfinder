@@ -1,18 +1,19 @@
 "use client";
 
 /**
- * STAR story builder. The four prompts were previously scaffolding only — text
- * to read, nothing to write into. Now the student drafts each beat and the
- * builder tightens it against the methodology, returning a 60–90 second version
- * plus the questions that story actually answers.
+ * STARL story builder (Situation, Task, Action, Result, plus an optional Learnings beat).
+ * The prompts were previously scaffolding only: text to read, nothing to write into. Now the
+ * student drafts each beat and the builder tightens it against the methodology, returning a
+ * version that fits a 3-5 minute answer plus the questions that story actually answers.
  *
  * `/api/interview/star-builder` builds its prompt from `rawStory.situation`
- * etc., so the body must carry the four beats as an object. Sending a single
+ * etc., so the body must carry the beats as an object. Sending a single
  * string produces a prompt full of "undefined" and a confidently wrong result.
  *
  * Saved stories are the evidence behind "stories prepared": the page header
  * counts them and they feed interview readiness. A story is saveable only with
- * all four beats written, either the student's draft or the tightened version.
+ * the four required beats written, either the student's draft or the tightened version.
+ * Learnings is optional, and stories saved with four beats still render.
  */
 
 import { useState } from "react";
@@ -32,22 +33,27 @@ const CATEGORIES = [
 ] as const;
 
 const BEATS = [
-  { k: "situation", mark: "S", label: "Situation", prompt: "Set the scene in one sentence: where were you and what was at stake?" },
+  { k: "situation", mark: "S", label: "Situation", prompt: "Set the scene briefly: where were you and what was at stake?" },
   { k: "task", mark: "T", label: "Task", prompt: "What was your specific responsibility or goal?" },
   { k: "action", mark: "A", label: "Action", prompt: 'What did you do? Lead with "I…" verbs and be concrete.' },
-  { k: "result", mark: "R", label: "Result", prompt: "The measurable outcome: a number, or what changed because of you." },
+  { k: "result", mark: "R", label: "Result", prompt: "The measurable outcome. Quantify where you can: numbers make it even better." },
+  { k: "learnings", mark: "L", label: "Learnings (optional)", prompt: "What would you do differently, and what did you take into later work?" },
 ] as const;
 
 type BeatKey = (typeof BEATS)[number]["k"];
 type RawStory = Record<BeatKey, string>;
 
-const EMPTY_STORY: RawStory = { situation: "", task: "", action: "", result: "" };
+const EMPTY_STORY: RawStory = { situation: "", task: "", action: "", result: "", learnings: "" };
+
+/** The four beats a story needs before it can be saved. Learnings is optional. */
+const REQUIRED_BEATS = BEATS.filter((b) => b.k !== "learnings");
 
 interface StarData {
   situation?: string;
   task?: string;
   action?: string;
   result?: string;
+  learnings?: string;
   mappedQuestions?: string[];
   estimatedDuration?: string;
   tips?: string[];
@@ -67,7 +73,11 @@ function toneFor(quality: string | undefined): string {
   return key ? QUALITY_TONE[key] : "var(--muted)";
 }
 
-const complete = (s: Partial<RawStory>): s is RawStory => BEATS.every((b) => !!s[b.k]?.trim());
+const complete = (s: Partial<RawStory>): boolean => REQUIRED_BEATS.every((b) => !!s[b.k]?.trim());
+
+/** Drops an empty learnings beat so a four-beat story is saved exactly as before. */
+const withLearnings = (beats: Omit<RawStory, "learnings">, learnings?: string): Omit<RawStory, "learnings"> & { learnings?: string } =>
+  learnings?.trim() ? { ...beats, learnings } : beats;
 
 function SavedStories() {
   const savedStories = usePfStore((s) => s.savedStories);
@@ -82,18 +92,18 @@ function SavedStories() {
       </div>
       {savedStories.length === 0 && (
         <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, margin: "8px 0 0" }}>
-          None saved yet. Write all four beats and save it: aim for {STORY_TARGET} stories that cover different questions.
+          None saved yet. Write the four main beats and save it: aim for {STORY_TARGET} stories that cover different questions.
         </p>
       )}
       {savedStories.map((st) => (
         <details key={st.id} style={{ borderTop: "1px solid var(--line2)", padding: "11px 0 3px", marginTop: 10 }}>
           <summary style={{ cursor: "pointer", fontSize: 13.5, fontWeight: 600 }}>{st.title}</summary>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, margin: "10px 0" }}>
-            {BEATS.map((b) => (
+            {BEATS.map((b) => (st[b.k] ? (
               <div key={b.k} style={{ fontSize: 12.5, lineHeight: 1.6 }}>
                 <strong>{b.mark}.</strong> <span style={{ color: "var(--muted)" }}>{st[b.k]}</span>
               </div>
-            ))}
+            ) : null))}
           </div>
           {confirmId === st.id ? (
             <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
@@ -122,7 +132,8 @@ export function StarTab() {
 
   const categoryName = CATEGORIES.find((c) => c.id === category)?.name ?? category;
   const save = (beats: RawStory, which: string) => {
-    if (saveStory({ title: title.trim() || categoryName, ...beats })) setSavedMsg(`Saved ${which}.`);
+    const { learnings, ...core } = beats;
+    if (saveStory({ title: title.trim() || categoryName, ...withLearnings(core, learnings) })) setSavedMsg(`Saved ${which}.`);
   };
 
   const { data, loading, error, needsAuth, run } = useAiTask<
@@ -147,9 +158,9 @@ export function StarTab() {
   return (
     <Reveal style={{ maxWidth: 720 }}>
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
-        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>STAR story builder</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>STARL story builder</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "52ch" }}>
-          Draft each beat roughly; messy is fine. The builder tightens it to 60–90 seconds and tells you which questions it answers.
+          Draft each beat roughly; messy is fine. The builder tightens it to an answer that fits 3–5 minutes and tells you which questions it answers.
         </span>
 
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap", margin: "15px 0 4px" }}>
@@ -219,7 +230,7 @@ export function StarTab() {
           <button
             onClick={() => save(story, "your draft")}
             disabled={!complete(story)}
-            title={complete(story) ? undefined : "Write all four beats to save"}
+            title={complete(story) ? undefined : "Write the four main beats to save"}
             style={{ cursor: complete(story) ? "pointer" : "default", height: 40, padding: "0 16px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: complete(story) ? "var(--fg)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
           >
             Save my draft
@@ -283,7 +294,7 @@ export function StarTab() {
 
           {complete(built) && (
             <button
-              onClick={() => save({ situation: built.situation!, task: built.task!, action: built.action!, result: built.result! }, "the tightened version")}
+              onClick={() => save({ situation: built.situation!, task: built.task!, action: built.action!, result: built.result!, learnings: built.learnings ?? story.learnings }, "the tightened version")}
               style={{ cursor: "pointer", marginTop: 14, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13, fontWeight: 600 }}
             >
               Save the tightened version
@@ -291,7 +302,7 @@ export function StarTab() {
           )}
 
           <AiCaveat>
-            Say it out loud once before you accept it. If a phrase isn&apos;t yours, it will sound like it isn&apos;t yours.
+            A starting structure, not your answer. Rewrite it in your own words and practise it out loud.
           </AiCaveat>
         </div>
       )}

@@ -25,7 +25,7 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       rationale:
         'Recruiters work the inbox top-down and OA/screening quotas fill, so early applicants are reviewed against an emptier pile and a fresher reader.',
       evidence: [
-        'Applying in the first 48–72 hours can 3–5× the callback rate.',
+        'Applying within 24–48 hours of a posting going live means your application is read before the pile builds.',
         'Some roles (parts of Jane Street, certain Meta New Grad, Google\'s ~2–4 week window) genuinely fill in days.',
       ],
       sourceIds: ['wiki-apply-early', 'doc-10-interviews', 'wiki-application-strategy'],
@@ -37,10 +37,10 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       statement:
         'High-volume cold applying is now a losing strategy — quantity competes in the most crowded, AI-screened channel.',
       rationale:
-        'AI mass-applying inflated volume while ~85% of companies use AI screening, so generic applications are auto-rejected in minutes and recruiters only read a fraction of the pile.',
+        'AI mass-applying inflated volume while ~85% of companies use AI screening, so generic applications are often screened out before a person reads them and recruiters only read a fraction of the pile.',
       evidence: [
-        'Application volume is 5×+ what it was 5–6 years ago.',
-        'A posting gets 1,000–2,000 applications; ~80% are irrelevant; recruiters review only ~10–20%.',
+        'Application volume is several times higher than a few years ago.',
+        'A posting gets hundreds of applications (often 200–500); ~80% are irrelevant; recruiters review only ~20–30%.',
         '30+ untargeted applications typically returns silence ("ghosting").',
       ],
       sourceIds: ['wiki-job-search-system', 'doc-hidden-market'],
@@ -54,7 +54,7 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       rationale:
         'A curated target list applied to early and tailored per role survives both the AI filter and the recruiter scan, and pairs with referrals to skip the pile entirely.',
       evidence: [
-        'A realistic funnel: 80–120 tailored roles → ~15–25% OAs → … → 1–4 offers.',
+        'A realistic funnel: 35–40 tailored applications a month → ~15–25% OAs → … → 1–4 offers.',
         'The three fatal mistakes are: no direction, generic materials, and cold-only.',
       ],
       sourceIds: ['wiki-job-search-system', 'doc-four-pillars'],
@@ -102,7 +102,7 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
         'Set realistic volume targets and diagnose where you leak, instead of guessing.',
       appliesWhen: 'Deciding how many roles to target and reading your own conversion.',
       steps: [
-        { label: 'Apply', detail: '80–120 unique, tailored roles across a cycle (diversify beyond one tier).' },
+        { label: 'Apply', detail: '35–40 tailored applications a month (diversify beyond one tier).' },
         { label: 'OA', detail: '~15–25% convert to online assessments.' },
         { label: 'Screen → final', detail: '~30–50% at each subsequent stage.' },
         { label: 'Offer', detail: '~30–60% of finals → 1–4 offers overall.' },
@@ -118,13 +118,13 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       domain: D,
       term: 'Apply Early',
       definition:
-        'Treating timing as a strategy: because employers use rolling admissions, applying in the first 48–72 hours of a posting can 3–5× your callback rate.',
+        'Treating timing as a strategy: because employers use rolling admissions, applying within 24–48 hours of a posting means your application is read before the pile builds.',
       purpose:
         'Shifts effort from "perfect the application forever" to "be ready before the posting opens and apply day-one".',
       prerequisiteIds: [],
       examples: [
         'Applying to Google within the first days of its mid-October window, which can close in 2–4 weeks.',
-        'Having CV variants, autofill, and references ready so you can apply within 2 hours of a posting going live.',
+        'Having CV variants, autofill, and references ready so you can apply within 24–48 hours of a posting going live.',
       ],
       antiPatterns: [
         'Polishing an application for a week while the OA quota fills.',
@@ -139,7 +139,7 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       domain: D,
       term: 'AI Screening Reality',
       definition:
-        'The fact that ~85% of companies use automated screening, so generic, untargeted applications are filtered out in minutes — making volume-only strategies fail.',
+        'The fact that ~85% of companies use automated screening, so generic, untargeted applications are often screened out before or alongside a human read — making volume-only strategies fail.',
       purpose:
         'Explains why cold mass-applying produces silence, and why tailoring + warm intros are the escape.',
       prerequisiteIds: [],
@@ -162,7 +162,7 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       definition:
         'The conversion math of a search — from tailored applications through OAs, screens, and finals to a realistic 1–4 offers.',
       purpose:
-        'Replaces vague effort with a target (80–120 tailored roles) and a way to diagnose where you leak.',
+        'Replaces vague effort with a target (35–40 tailored applications a month) and a way to diagnose where you leak.',
       prerequisiteIds: ['c-apply-early'],
       examples: [
         'Tracking that you sent 90 applications, got 18 OAs, and reached 4 finals — and seeing your weakest stage.',
@@ -184,16 +184,16 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       id: 'pb-application-day',
       domain: D,
       name: 'Be Ready Before Postings Open',
-      goal: 'Apply to any role within ~2 hours of it going live, so you capture the day-one advantage.',
+      goal: 'Apply to any role within 24–48 hours of it going live, so you are read before the pile builds.',
       whenToUse: 'In the weeks before a cycle opens, and on every application day.',
       steps: [
         { action: 'Prepare an ATS-friendly one-page master CV plus sector-tailored variants (e.g. big tech / fintech / quant).', why: 'Tailoring survives the AI filter; having variants ready removes the day-of bottleneck.', learn: 'c-ai-screening' },
         { action: 'Pre-fill all personal info in a password manager for autofill, and line up references in advance.', why: 'Most application time is data entry — eliminate it ahead of the rush.', learn: 'c-apply-early' },
         { action: 'Keep a tracker (company / role / date / status / contacts / next action).', why: 'You cannot read your funnel or time follow-ups without it.', learn: 'c-application-funnel' },
-        { action: 'When a target posting drops, apply the same day — tailor the master, do not rewrite from scratch.', why: 'Day-one applications can 3–5× callbacks; rewriting wastes the window.', learn: 'c-apply-early' },
+        { action: 'When a target posting drops, apply the same day — tailor the master, do not rewrite from scratch.', why: 'Early applications are read before the pile builds; rewriting wastes the window.', learn: 'c-apply-early' },
       ],
       successCriteria: [
-        'You can submit a tailored application within ~2 hours of a posting going live.',
+        'You can submit a tailored application within 24–48 hours of a posting going live.',
         'No fast-filling target role closes before you have applied.',
       ],
       conceptIds: ['c-apply-early', 'c-ai-screening', 'c-application-funnel'],
@@ -250,8 +250,8 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       domain: D,
       name: 'Time-to-apply',
       definition: 'Hours between a target posting going live and your application.',
-      target: 'Under 72 hours; ideally day-one for fast-filling roles.',
-      why: 'Early applications can 3–5× callbacks; this is the most controllable lever in the whole funnel.',
+      target: 'Within 24–48 hours; ideally day-one for fast-filling roles.',
+      why: 'Early applications are read before the pile builds; this is the most controllable lever in the whole funnel.',
       sourceIds: ['wiki-apply-early'],
     },
     {
@@ -259,7 +259,7 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       domain: D,
       name: 'Funnel conversion',
       definition: 'Stage-by-stage conversion: applications → OAs → screens → finals → offers.',
-      target: 'Roughly 80–120 tailored applications producing 1–4 offers over a cycle.',
+      target: 'Roughly 35–40 tailored applications a month, producing 1–4 offers over a cycle.',
       why: 'Tells you whether to fix the top (volume/targeting) or a specific leaking stage.',
       sourceIds: ['wiki-application-strategy'],
     },
@@ -275,7 +275,7 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       recommend:
         'Apply today. Tailor your master CV to the role and submit — do not keep polishing.',
       rationale:
-        'Rolling admissions mean day-one applications can 3–5× callbacks, and short windows close before most people notice. A tailored-master submission now beats a perfect submission too late.',
+        'Rolling admissions mean early applications are read before the pile builds, and short windows close before most people notice. A tailored-master submission now beats a perfect submission too late.',
       principleId: 'p-apply-early',
       teachesConceptId: 'c-apply-early',
       priority: 95,
@@ -288,7 +288,7 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       recommend:
         'Stop adding generic volume. Tailor each application to a target list and secure a referral on your top targets.',
       rationale:
-        'With ~85% of companies using AI screening, generic mass-applying is auto-filtered. Tailored + warm survives the filter and skips the pile.',
+        'With ~85% of companies using AI screening, generic mass-applying is often screened out. Tailored + warm survives the screen and skips the pile.',
       principleId: 'p-volume-cold-fails',
       teachesConceptId: 'c-ai-screening',
       priority: 70,
@@ -323,13 +323,13 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
           objective: 'Internalise apply-early and why cold volume fails.',
           conceptIds: ['c-apply-early', 'c-ai-screening'],
           playbookIds: [],
-          completionCriteria: 'You can explain the 3–5× early-application advantage and why generic volume gets filtered.',
+          completionCriteria: 'You can explain why early applications are read before the pile builds and why generic volume gets filtered.',
           exercise: 'Find one target employer\'s typical opening month and note it in your tracker.',
         },
         {
           id: 'lm-application-kit',
           title: 'Build your application-day kit',
-          objective: 'Be able to apply within ~2 hours of a posting opening.',
+          objective: 'Be able to apply within 24–48 hours of a posting opening.',
           conceptIds: ['c-apply-early'],
           playbookIds: ['pb-application-day', 'pb-monitoring-stack'],
           completionCriteria: 'A master CV + one variant + autofill + tracker + a monitoring stack exist.',
