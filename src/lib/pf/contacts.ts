@@ -137,3 +137,11 @@ export function alumniSearchUrl(company: string, university?: string): string | 
   const keywords = [co, university?.trim()].filter(Boolean).join(" ");
   return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(keywords)}`;
 }
+
+/** Contacts are other people's data, so one nobody has touched for a year is asked about
+ *  rather than kept forever. Calendar months, so 12 months is the same date a year ago. */
+export function isStaleContact(c: Pick<Contact, "updatedAt">, now = Date.now()): boolean {
+  const cutoff = new Date(now);
+  cutoff.setMonth(cutoff.getMonth() - 12);
+  return c.updatedAt < cutoff.getTime();
+}
