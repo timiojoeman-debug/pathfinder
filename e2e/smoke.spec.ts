@@ -46,11 +46,12 @@ test("logged out: onboarding works and AI generators ask to sign in", async ({ p
   await page.getByRole("button", { name: /Calculate my readiness/ }).click();
   await expect(page.getByText("Your pillars")).toBeVisible();
 
-  // Direction composes locally without an account, and offers the AI only with sign-in.
+  // Direction composes locally without an account. Generate also asks the AI,
+  // which answers 401 logged out: the page must say "sign in", not fail red.
   await pickDirection(page);
   await expect(page.getByText("Drafted locally").first()).toBeVisible();
-  await page.getByRole("button", { name: /Sharpen with AI/ }).click();
-  await expect(page.getByText(/sign in/i).first()).toBeVisible();
+  await expect(page.getByText(/Generating uses your account/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
 });
 
 test("signed in: an AI failure is labelled, never passed off as AI", async ({ page }) => {
