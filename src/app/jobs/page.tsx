@@ -11,7 +11,8 @@ import { buildCoverLetter, fitTone, jobPassesFit, MAX_JD_CHARS, postingKey, targ
 import { getProfile, usePfStore, type SavedJob } from "@/lib/pf/store";
 import { safeHttpUrl } from "@/lib/jobs/types";
 import { ukByDefault } from "@/lib/jobs/display";
-import { JobMeta } from "@/components/pf/job-meta";
+import { useRoleFreshness } from "@/lib/pf/use-freshness";
+import { FreshnessNote, JobMeta } from "@/components/pf/job-meta";
 import { useAiTask, type AiTask } from "@/lib/pf/use-ai";
 import { AiCaveat, AiError } from "@/components/pf/ai-panel";
 import { Chip, Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
@@ -383,6 +384,8 @@ function AnalysisResult({ aiRead, read }: { aiRead: AiJdRead | null; read: AiTas
 export default function JobsPage() {
   const s = usePfStore();
   const jobsAll = [...s.savedJobs];
+  // Saved roles whose posting has closed are flagged, never removed.
+  const freshness = useRoleFreshness(jobsAll.flatMap((j) => (j.url ? [j.url] : [])));
 
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
@@ -686,6 +689,7 @@ export default function JobsPage() {
                   <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.01em" }}>{j.company}</div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>{j.role}</div>
                   <JobMeta meta={j.meta} postedAt={j.postedAt} />
+                  <FreshnessNote status={j.url ? freshness[j.url] : undefined} />
                 </div>
                 <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
                   <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>

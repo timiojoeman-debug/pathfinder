@@ -152,6 +152,10 @@ login — do **not** widen `isGuestAllowed` to an OpenAI route without a matchin
   by `Authorization: Bearer $CRON_SECRET` (401 when the secret is unset). Fetches each employer
   once and closes vanished roles **only for employers whose fetch succeeded**. A new employer
   slug must return 200 first; `docs/employer-feed-verification.md` records the run.
+- `/saved-roles/freshness` — signed-in only, outside `/api/jobs/` so it is not billed to the AI quota.
+  Reports whether saved roles' postings have closed: "closed" from the `job_listings` cache, or "may
+  have closed" from an optional server-side 404/410 probe (weekly from the client; SSRF-guarded in
+  `lib/jobs/freshness.ts`). It never changes or deletes a role.
 - `/health` — health check (GET); probes OpenAI and Supabase
 
 ### Career-OS (`src/lib/pf/`)

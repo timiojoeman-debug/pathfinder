@@ -67,6 +67,23 @@ export async function getActiveListings(opts: { location?: string; ukOnly?: bool
 }
 
 /**
+ * Whether each given posting URL is still on its employer's board, for URLs the
+ * cache knows. A URL absent from the result is not in the cache (no evidence
+ * either way). A Map, so a URL such as "constructor" cannot match an inherited property.
+ * Returns an empty Map when Supabase is unconfigured or the read fails.
+ */
+export async function getListingActive(urls: string[]): Promise<Map<string, boolean>> {
+  const db = getServerDb();
+  if (!db || !urls.length) return new Map();
+  const { data, error } = await db.from('job_listings').select('url, active').in('url', urls);
+  if (error) {
+    logger.error('getListingActive failed', { error: error.message });
+    return new Map();
+  }
+  return new Map((data as { url: string; active: boolean }[]).map((r) => [r.url, r.active]));
+}
+
+/**
  * Make one employer's cached rows match what its board returned: upsert the
  * returned roles as active and close the employer's active rows that were not
  * returned. Call it ONLY after a successful fetch of that board; an employer
