@@ -8,3 +8,4 @@ export { getContacts, createContact, updateContact } from './contacts';
 export { getStories, createStory, updateStory } from './stories';
 export { getInterviewLogs, createInterviewLog } from './interviews';
 export { storeInteraction, getInteractionHistory } from './interactions';
+export { recordAiUsage } from './ai-usage';

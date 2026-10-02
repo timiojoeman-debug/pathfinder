@@ -5,6 +5,7 @@ import { COFFEE_CHAT } from '@/lib/methodology/coffee-chat';
 import { FOUR_PILLARS } from '@/lib/methodology/four-pillars';
 import { INTERVIEW_PREP } from '@/lib/methodology/interview-prep';
 import { logger } from '@/lib/logger';
+import { keepAlive, recordAiUsage } from '@/lib/db/ai-usage';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/embeddings';
 
@@ -26,6 +27,8 @@ async function getEmbedding(text: string): Promise<number[]> {
 
   if (!res.ok) throw new Error(`Embedding API error: ${res.status}`);
   const data = await res.json();
+  // Ingest and retrieval run outside a user context: recorded with a null user.
+  keepAlive(() => recordAiUsage({ route: 'embedding/retrieval', model: 'text-embedding-3-small', usage: data.usage }));
   return data.data[0].embedding;
 }
 
