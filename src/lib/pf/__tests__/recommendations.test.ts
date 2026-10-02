@@ -14,7 +14,7 @@ import type { PfPhase } from "../events";
 function mkProfile(overrides: Partial<CareerProfile> = {}): CareerProfile {
   return {
     targetRole: null, targetIndustry: null, companySize: null, workSetting: null,
-    directionStatement: null, directionSet: false, targetStack: [], coffeeChatsDone: 0,
+    directionStatement: null, directionSet: false, targetStack: [], coffeeChatsDone: 0, contactNudges: [], referralsReceived: 0,
     currentSkills: [], missingSkills: [], targetKeywords: [],
     cvAnalyzed: false, cvHasContent: false, atsScore: null, atsHistory: [], atsDelta: null, projectsGenerated: false,
     targetCompanies: [], applicationsSubmitted: 0, interviewsLanded: 0, offers: 0, interviewRate: 0, schemeWindows: [],
@@ -166,5 +166,44 @@ describe("recommend — tracker reminders and follow-ups", () => {
     const ids = recommend(p, mkProgress(), "2026-10-02").map((r) => r.id);
     expect(ids).toContain("remind-monzo::backend intern");
     expect(ids.some((id) => id.startsWith("follow-up-"))).toBe(false);
+  });
+});
+
+describe("recommend — contact follow-ups", () => {
+  const contact = (over: Partial<CareerProfile["contactNudges"][number]> = {}) => ({
+    id: "ct-1", name: "Sam Lee", company: "Monzo", stage: "messaged" as const, followUpOn: "2026-10-02", ...over,
+  });
+  const find = (p: CareerProfile, today: string) => recommend(p, mkProgress(), today).find((r) => r.id.startsWith("contact-follow-up-"));
+
+  it("raises a follow-up on or after its date, opening the contact, and not before", () => {
+    const p = mkProfile({ directionSet: true, contactNudges: [contact()] });
+    expect(find(p, "2026-10-01")).toBeUndefined();
+    const due = find(p, "2026-10-02")!;
+    expect(due).toMatchObject({ contactId: "ct-1", href: "/networking", phase: "networking", impact: "due today" });
+    expect(due.cardKey).toBeUndefined();
+    expect(due.title).toBe("Follow up with Sam Lee at Monzo");
+    expect(find(p, "2026-10-05")!.impact).toBe("overdue");
+  });
+
+  it("never nags for a contact who has referred you or is parked, or has no date", () => {
+    for (const stage of ["referred", "not-now"] as const) {
+      expect(find(mkProfile({ directionSet: true, contactNudges: [contact({ stage })] }), "2026-10-09")).toBeUndefined();
+    }
+    expect(find(mkProfile({ directionSet: true, contactNudges: [contact({ followUpOn: undefined })] }), "2026-10-09")).toBeUndefined();
+  });
+
+  it("nags at every live stage, and one rec per contact", () => {
+    for (const stage of ["researched", "messaged", "replied", "chatted"] as const) {
+      expect(find(mkProfile({ directionSet: true, contactNudges: [contact({ stage })] }), "2026-10-09")).toBeDefined();
+    }
+    const two = mkProfile({ directionSet: true, contactNudges: [contact(), contact({ id: "ct-2", name: "Ana" })] });
+    expect(recommend(two, mkProgress(), "2026-10-09").filter((r) => r.id.startsWith("contact-follow-up-"))).toHaveLength(2);
+  });
+
+  it("outranks the generic networking nudge but not a missing direction", () => {
+    const p = mkProfile({ contactNudges: [contact()] });
+    const recs = recommend(p, mkProgress(), "2026-10-09");
+    expect(recs[0].id).toBe("set-direction");
+    expect(recs[1].id).toMatch(/^contact-follow-up-/);
   });
 });
