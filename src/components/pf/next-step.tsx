@@ -47,7 +47,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
 
   return (
     <div
-      className="pf-anim-up"
+      className="pf-anim-up pf-nextstep"
       style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 18px", borderRadius: 14, border: "1px solid color-mix(in srgb,var(--accent) 24%,transparent)", background: "linear-gradient(120deg,var(--accentSoft),transparent)", marginBottom: 20 }}
     >
       <span style={{ display: "flex", width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 9, background: "var(--accent)", flexShrink: 0, boxShadow: "var(--rim)" }}>
@@ -64,18 +64,20 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
       {onThisPage && openCard ? (
         <button
           onClick={openCard}
+          className="pf-nextstep-cta"
           style={{ cursor: "pointer", flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
         >
           Open the card →
         </button>
       ) : onThisPage ? (
-        <span style={{ flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, background: "color-mix(in srgb,var(--strong) 14%,transparent)", color: "var(--strong)", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)" }}>
+        <span className="pf-nextstep-cta" style={{ flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, background: "color-mix(in srgb,var(--strong) 14%,transparent)", color: "var(--strong)", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)" }}>
           You&apos;re in the right place
         </span>
       ) : (
         <Link
           href={top.href}
           onClick={openCard}
+          className="pf-nextstep-cta"
           style={{ flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
         >
           Do it →
