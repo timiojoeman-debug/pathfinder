@@ -9,7 +9,12 @@
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:start": "supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "e2e:env": "node scripts/e2e-env.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -33,6 +38,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -44,6 +50,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "jsdom": "^29.0.2",
+    "supabase": "^2.119.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.3"

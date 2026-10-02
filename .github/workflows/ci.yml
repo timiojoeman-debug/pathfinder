@@ -48,3 +48,42 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+
+  # End-to-end smoke tests: a production build against a LOCAL Supabase stack
+  # (Docker on the runner, migrations applied by the CLI). The OpenAI key is
+  # deliberately invalid, so nothing here can reach production or spend money.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Start local Supabase
+        run: npm run db:start
+
+      - name: Write e2e env
+        run: npm run e2e:env
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        run: npm run test:e2e
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

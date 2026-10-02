@@ -42,3 +42,9 @@ next-env.d.ts
 
 # local agent/editor tooling
 .claude/
+
+# e2e
+/test-results/
+/playwright-report/
+/supabase/.temp/
+/supabase/.branches/
