@@ -10,6 +10,7 @@ export async function POST(req: Request) {
 
   const { content } = await generateWithAI(
     {
+      route: "interview/random-problem",
       systemPrompt:
         "Generate ONE random LeetCode-style coding problem suitable for interview prep. Return JSON: { title, description, difficulty: 'Easy'|'Medium'|'Hard', category, leetcodeUrl (or similar), hints (array of 2 strings) }. Avoid problems whose IDs might be in completedIds.",
       userPrompt: `Completed problem IDs (avoid similar): ${[...completedIds].join(", ")}. Generate a fresh problem.`,

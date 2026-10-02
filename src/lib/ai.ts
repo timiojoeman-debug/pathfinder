@@ -1,9 +1,13 @@
 import { z } from "zod";
+import { headers } from "next/headers";
 import { logger } from "@/lib/logger";
+import { recordAiUsage } from "@/lib/db/ai-usage";
 
 export type AIRequest = {
   systemPrompt: string;
   userPrompt: string;
+  /** Cost-log label (e.g. "interview/random-problem"). Optional. */
+  route?: string;
 };
 
 export type AIResponse = {
@@ -27,6 +31,22 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 export function isAIAvailable(): boolean {
   return !!(process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY);
+}
+
+/**
+ * Log one call's tokens to ai_usage, off the request path. The user id comes
+ * from the x-user-id header the middleware stamps on authenticated requests, so
+ * routes need no changes; outside a request scope headers() throws and the row
+ * is simply recorded without a user. Never throws, never awaited.
+ */
+function trackUsage(model: string, data: { usage?: unknown }, route?: string, userId?: string | null) {
+  void (async () => {
+    let uid = userId ?? null;
+    if (!uid) {
+      try { uid = (await headers()).get("x-user-id"); } catch { /* no request scope */ }
+    }
+    await recordAiUsage({ userId: uid, route, model, usage: data?.usage as never });
+  })();
 }
 
 function handleOpenAIErrorResponse(res: Response, errText: string): never {
@@ -110,6 +130,7 @@ async function callOpenAI(request: AIRequest): Promise<string> {
   }
 
   const data = await res.json();
+  trackUsage("gpt-4.1-mini", data, request.route);
   const content =
     data?.choices?.[0]?.message?.content ??
     (Array.isArray(data?.choices?.[0]?.message?.content)
@@ -140,7 +161,7 @@ export async function generateWithAI(request: AIRequest, fallback: () => string)
  * Use with methodology-driven prompt builders for TechTalk-style output.
  */
 export async function callAI<T = Record<string, unknown>>(
-  params: { systemPrompt: string; userMessage: string; temperature?: number },
+  params: { systemPrompt: string; userMessage: string; temperature?: number; route?: string; userId?: string | null },
   _isRetry = false,
 ): Promise<T> {
   const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
@@ -175,6 +196,7 @@ export async function callAI<T = Record<string, unknown>>(
   }
 
   const data = await res.json();
+  trackUsage("gpt-4.1-mini", data, params.route, params.userId);
   let content =
     data?.choices?.[0]?.message?.content ??
     (Array.isArray(data?.choices?.[0]?.message?.content)
@@ -221,11 +243,13 @@ export async function callAI<T = Record<string, unknown>>(
  * logged instead of disappearing.
  */
 export async function callAIValidated<T>(
-  params: { systemPrompt: string; userMessage: string; temperature?: number },
+  params: { systemPrompt: string; userMessage: string; temperature?: number; route?: string; userId?: string | null },
   schema: z.ZodType<T>,
   context?: string,
 ): Promise<T> {
-  const raw = await callAI<unknown>(params);
+  // `context` is already each route's label ("cv/ats-audit"), so it doubles as
+  // the cost-log route without touching any route handler.
+  const raw = await callAI<unknown>({ route: context, ...params });
   const parsed = schema.safeParse(raw);
   if (parsed.success) return parsed.data;
 

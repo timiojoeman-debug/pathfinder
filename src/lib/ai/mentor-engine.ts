@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/client';
 import { AIError } from '@/lib/ai';
 import { renderKnowledgeBlock, type Domain } from '@/lib/knowledge';
 import { logger } from '@/lib/logger';
+import { recordAiUsage } from '@/lib/db/ai-usage';
 import { LEETCODE_TOTAL } from '@/lib/pf/leetcode';
 import { factsFromClientState } from './client-state-context';
 import type {
@@ -182,7 +183,7 @@ export async function buildUserContext(userId: string): Promise<UserContext> {
 }
 
 // Step 2: Retrieve methodology (RAG or static)
-async function retrieveMethodology(feature: string, userInput: string): Promise<string> {
+async function retrieveMethodology(feature: string, userInput: string, userId?: string): Promise<string> {
   const config = FEATURE_CONFIG[feature];
   if (!config || config.methodologyType === 'static') {
     return ''; // Static methodology is injected directly in prompts
@@ -207,6 +208,7 @@ async function retrieveMethodology(feature: string, userInput: string): Promise<
 
     if (!embeddingRes.ok) return '';
     const embeddingData = await embeddingRes.json();
+    void recordAiUsage({ userId, route: `mentor/${feature}/embedding`, model: 'text-embedding-3-small', usage: embeddingData?.usage });
     const embedding = embeddingData.data?.[0]?.embedding;
     if (!embedding) return '';
 
@@ -321,7 +323,7 @@ Teach the principle, not just the fix — the student should leave understanding
 }
 
 // Step 5: Call OpenAI
-async function callOpenAI(systemPrompt: string, userMessage: string, temperature: number): Promise<string> {
+async function callOpenAI(systemPrompt: string, userMessage: string, temperature: number, feature: string, userId?: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
   if (!apiKey) {
     throw new AIError(
@@ -380,6 +382,7 @@ async function callOpenAI(systemPrompt: string, userMessage: string, temperature
   }
 
   const data = await res.json();
+  void recordAiUsage({ userId, route: `mentor/${feature}`, model: 'gpt-4o', usage: data?.usage });
   let content = data?.choices?.[0]?.message?.content ?? '';
   if (typeof content !== 'string') content = String(content);
 
@@ -476,7 +479,7 @@ export async function runMentorEngine(params: {
   // Step 2: Retrieve methodology, supplemented by the structured knowledge layer.
   // The knowledge block is compressed-first and citation-bearing, so even when
   // RAG is unavailable (static features, no DB) the mentor still teaches and cites.
-  const ragMethodology = await retrieveMethodology(feature, userMessage);
+  const ragMethodology = await retrieveMethodology(feature, userMessage, userId);
   const knowledgeBlock = renderKnowledgeBlock(userMessage, FEATURE_DOMAIN[feature]);
   const methodology = [ragMethodology, knowledgeBlock].filter(Boolean).join('\n\n');
 
@@ -493,7 +496,7 @@ export async function runMentorEngine(params: {
   });
 
   // Step 5: Call OpenAI
-  const rawResponse = await callOpenAI(systemPrompt, userMessage, config.temperature);
+  const rawResponse = await callOpenAI(systemPrompt, userMessage, config.temperature, feature, userId);
 
   // Step 6: Parse response
   let response: MentorResponse;
@@ -562,7 +565,7 @@ export async function runMentorLocal(params: {
     userContext,
   });
 
-  const rawResponse = await callOpenAI(systemPrompt, params.userMessage, config.temperature);
+  const rawResponse = await callOpenAI(systemPrompt, params.userMessage, config.temperature, params.feature);
 
   try {
     const response = JSON.parse(rawResponse);

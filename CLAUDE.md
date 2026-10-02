@@ -173,6 +173,7 @@ The spine of the app. Nothing derived is stored twice:
 - `api.ts` — `readBody`/`readLoose` request validation helpers
 - `hooks.ts` — `useIsHydrated`, `usePrefersReducedMotion` (both `useSyncExternalStore`)
 - `theme.ts` — `useThemeMode`, `setTheme`; `ThemeController` in `layout.tsx` owns `<html data-theme>`
+- `ai.ts` also logs every OpenAI call (model + `usage` token counts, route, user — never prompt or response text) to `ai_usage` via `recordAiUsage` (`db/ai-usage.ts`, fire-and-forget); route comes from the `callAIValidated` context label, user from the middleware's `x-user-id`; per-day/model/route sums via the service-role-only `ai_usage_daily()` RPC.
 - `rate-limit.ts` — shared counters (see the API-routes note above)
 - `logger.ts` — structured logs; **`logger.error` also persists to `error_events`**, so a
   production failure is a query rather than a log-tail. Context is redacted for
@@ -199,7 +200,7 @@ The spine of the app. Nothing derived is stored twice:
 
 ## Database
 
-Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`, `0005_rate_limit`, `0006_error_events`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector), rate_limit_buckets, error_events.
+Deployed to Supabase with migrations in `supabase/migrations/` (`0001_init`, `0002_client_state`, `0003_auth_tokens`, `0004_rag_functions`, `0005_rate_limit`, `0006_error_events`, `0009_ai_usage`). Tables: users, profiles, cvs, applications, networking_contacts, coffee_chat_notes, interview_stories, leetcode_progress, interview_logs, ai_interactions, methodology_chunks (pgvector), rate_limit_buckets, error_events, ai_usage.
 
 RLS restricts students to their own rows; `methodology_chunks` is publicly readable. The server uses the service-role key and scopes queries by `user_id` at the application layer.
 

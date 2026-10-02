@@ -62,7 +62,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isPublicRoute(pathname)) {
-    return NextResponse.next();
+    // No session was checked here, so a client-supplied x-user-id is untrusted
+    // (the AI cost log reads it). Drop it rather than let it through.
+    const headers = new Headers(request.headers);
+    headers.delete('x-user-id');
+    return NextResponse.next({ request: { headers } });
   }
 
   const token = request.cookies.get('pathfinder-token')?.value;
