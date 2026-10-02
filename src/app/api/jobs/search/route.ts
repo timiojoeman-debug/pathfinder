@@ -5,7 +5,9 @@ import { logger } from "@/lib/logger";
 import {
   computeMatchScore,
   dedupeListings,
+  expandRoleQuery,
   filterListings,
+  safeHttpUrl,
   sortByFit,
   type JobListing,
 } from "@/lib/jobs/types";
@@ -75,7 +77,7 @@ type AdzunaResult = {
 
 function mapAdzunaResult(r: AdzunaResult, cvSummary: string): JobListing | null {
   const title = r.title?.trim();
-  const url = r.redirect_url?.trim();
+  const url = safeHttpUrl(r.redirect_url);
   if (!title || !url) return null;
 
   const description = r.description?.trim() ?? "";
@@ -137,11 +139,17 @@ export async function POST(req: Request) {
   const cvSummary = body.cvSummary ?? "";
   const creds = adzunaCredentials();
   const workModeTerm = body.workMode ? WORK_MODE_TERMS[body.workMode.trim().toLowerCase()] : undefined;
-  const what = [body.roleType, body.industry, workModeTerm].filter(Boolean).join(" ").trim() || "intern";
+  const what = [body.roleType && expandRoleQuery(body.roleType), body.industry, workModeTerm].filter(Boolean).join(" ").trim() || "intern";
 
-  // GitHub lists are always available and free; filtered locally by role/location.
+  // GitHub lists are always available and free; filtered locally by every filter
+  // the student set, so the UI's "filters apply" holds for both sources.
   const githubAll = await fetchGithubListings();
-  const github = filterListings(githubAll, { roleType: body.roleType, location: body.location });
+  const github = filterListings(githubAll, {
+    roleType: body.roleType,
+    location: body.location,
+    industry: body.industry,
+    workMode: workModeTerm,
+  });
 
   // Adzuna is pre-filtered by its own query, so it isn't re-filtered locally.
   let adzuna: JobListing[] = [];

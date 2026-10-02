@@ -150,6 +150,47 @@ describe('POST /api/jobs/search', () => {
     expectNothingInvented(body);
   });
 
+  it('sends Adzuna the expanded role, not the abbreviation', async () => {
+    process.env.ADZUNA_APP_ID = 'id';
+    process.env.ADZUNA_APP_KEY = 'key';
+    const fn = stubFetch({ github: [], adzuna: [] });
+    await POST(post({ roleType: 'SWE intern', industry: 'fintech', workMode: 'remote' }));
+    const adzunaUrl = fn.mock.calls.map((c) => String(c[0])).find((u) => u.includes('adzuna'))!;
+    expect(new URL(adzunaUrl).searchParams.get('what')).toBe('software engineer intern fintech remote');
+  });
+
+  it('drops listings whose link is not http(s), from both sources', async () => {
+    process.env.ADZUNA_APP_ID = 'id';
+    process.env.ADZUNA_APP_KEY = 'key';
+    stubFetch({
+      github: [
+        GH({ id: 'ok', url: 'https://careers.example.org/ok' }),
+        GH({ id: 'js', url: 'javascript:alert(document.cookie)' }),
+        GH({ id: 'data', url: 'data:text/html,<script>1</script>' }),
+      ],
+      adzuna: [
+        { title: 'Software Engineer Intern', redirect_url: 'JavaScript:alert(1)', company: { display_name: 'Bad Co' } },
+        { title: 'Software Engineer Intern', redirect_url: 'https://www.adzuna.co.uk/jobs/details/7', company: { display_name: 'Good Co' } },
+      ],
+    });
+    const body = await (await POST(post({ roleType: 'software' }))).json();
+    const urls = body.jobs.map((j: { url: string }) => j.url).sort();
+    expect(urls).toEqual(['https://careers.example.org/ok', 'https://www.adzuna.co.uk/jobs/details/7']);
+  });
+
+  it('applies industry and work mode to GitHub listings too', async () => {
+    stubFetch({
+      github: [
+        GH({ id: 'a', url: 'https://x/a', locations: ['Remote, UK'] }),
+        GH({ id: 'b', url: 'https://x/b', company_name: 'Acme Fintech', locations: ['London, UK'] }),
+      ],
+    });
+    const remote = await (await POST(post({ roleType: 'software', workMode: 'remote' }))).json();
+    expect(remote.jobs.map((j: { url: string }) => j.url)).toEqual(['https://x/a']);
+    const fintech = await (await POST(post({ roleType: 'software', industry: 'fintech' }))).json();
+    expect(fintech.jobs.map((j: { url: string }) => j.url)).toEqual(['https://x/b']);
+  });
+
   it('sorts scored (Adzuna) listings above unscored (GitHub) ones', async () => {
     process.env.ADZUNA_APP_ID = 'id';
     process.env.ADZUNA_APP_KEY = 'key';

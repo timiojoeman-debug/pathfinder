@@ -8,9 +8,11 @@
  */
 
 import { useRef, useState } from "react";
-import { usePfStore } from "@/lib/pf/store";
+import { usePfStore, type CvAiRead } from "@/lib/pf/store";
 import { analyzeCvText } from "@/lib/pf/logic";
-import { Kicker, PageHeader, Reveal } from "@/components/pf/ui";
+import { useAiTask } from "@/lib/pf/use-ai";
+import { PageHeader, Reveal } from "@/components/pf/ui";
+import { AiCaveat, AiError, AiList, AiSection, AiTag, GenerateButton } from "@/components/pf/ai-panel";
 import { NextStep } from "@/components/pf/next-step";
 import { TailorPanel } from "@/components/pf/cv/tailor-panel";
 import { ProjectsPanel } from "@/components/pf/cv/projects-panel";
@@ -18,97 +20,103 @@ import { LinkedInPanel } from "@/components/pf/cv/linkedin-panel";
 import { PortfolioPanel } from "@/components/pf/cv/portfolio-panel";
 
 const mono = "'JetBrains Mono',monospace";
+const MIN_CV = 60;
 
-/** AI-backed analysis from /api/cv/analyze — optional enrichment layer. */
-interface AiCvRead {
-  skills: string[];
-  bulletPoints: string[];
-  keywords: string[];
-  formatting: string[];
-  extraQualifications: string[];
+/** /api/cv/analyze: the extracted text, plus the methodology envelope from
+ *  buildCVAnalysisPrompt (feedback/strengths/nextSteps at the root, skills
+ *  under `data`), or `aiUnavailable` when the AI read failed. */
+interface CvAnalyzeResponse {
+  rawText?: string;
+  aiUnavailable?: boolean;
+  aiMessage?: string;
+  feedback?: { issue?: string; suggestedFix?: string }[];
+  strengths?: string[];
+  nextSteps?: string[];
+  data?: { skills?: string[] };
 }
 
-function parseAiRead(json: unknown): AiCvRead | null {
-  if (!json || typeof json !== "object") return null;
-  const j = json as {
-    skills?: unknown;
-    suggestions?: { bulletPoints?: unknown; keywords?: unknown; formatting?: unknown; extraQualifications?: unknown };
+function toAiRead(r: CvAnalyzeResponse): CvAiRead | null {
+  if (r.aiUnavailable) return null;
+  const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && !!x.trim()) : []);
+  const read: CvAiRead = {
+    skills: strs(r.data?.skills),
+    strengths: strs(r.strengths),
+    nextSteps: strs(r.nextSteps),
+    feedback: (r.feedback ?? [])
+      .map((f) => ({ issue: f.issue?.trim() ?? "", suggestedFix: f.suggestedFix?.trim() ?? "" }))
+      .filter((f) => f.issue),
   };
-  const arr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
-  const read: AiCvRead = {
-    skills: arr(j.skills),
-    bulletPoints: arr(j.suggestions?.bulletPoints),
-    keywords: arr(j.suggestions?.keywords),
-    formatting: arr(j.suggestions?.formatting),
-    extraQualifications: arr(j.suggestions?.extraQualifications),
-  };
-  const hasContent = read.bulletPoints.length + read.keywords.length + read.formatting.length + read.extraQualifications.length > 0;
-  return hasContent ? read : null;
+  return read.skills.length + read.strengths.length + read.nextSteps.length + read.feedback.length ? read : null;
 }
 
 export default function CvPage() {
   const cvText = usePfStore((s) => s.cvText);
-  const cvAnalyzingRaw = usePfStore((s) => s.cvAnalyzing);
-  const cvAnalyzedRaw = usePfStore((s) => s.cvAnalyzed);
+  const cvAnalyzed = usePfStore((s) => s.cvAnalyzed);
   const cvLinkedIn = usePfStore((s) => s.cvLinkedIn);
+  const aiRead = usePfStore((s) => s.cvAiRead);
   const dirStack = usePfStore((s) => s.dirStack);
   const set = usePfStore((s) => s.set);
+  const emit = usePfStore((s) => s.emit);
+  const keepCvAiRead = usePfStore((s) => s.keepCvAiRead);
   const analyzeCv = usePfStore((s) => s.analyzeCv);
   const reAnalyzeCv = usePfStore((s) => s.reAnalyzeCv);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [aiRead, setAiRead] = useState<AiCvRead | null>(null);
+  const upload = useAiTask<CvAnalyzeResponse>("/api/cv/analyze");
+  const reader = useAiTask<CvAnalyzeResponse>("/api/cv/analyze");
+  const [uploadNote, setUploadNote] = useState<string | null>(null);
+  const [aiNote, setAiNote] = useState<string | null>(null);
 
-  // PDF/DOCX upload — the active site's parser (pdf-parse / mammoth) lives
-  // behind /api/cv/analyze; the extracted text lands in the editor and the
-  // AI suggestions (when the key is configured) feed the "AI mentor read".
-  const handleUpload = async (file: File) => {
-    setUploading(true);
-    setUploadError(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/cv/analyze", { method: "POST", body: fd });
-      const json: unknown = await res.json();
-      if (!res.ok) {
-        const err = (json as { error?: string }).error;
-        setUploadError(err || "Could not read that file — paste the text instead.");
-        return;
-      }
-      const rawText = (json as { rawText?: string }).rawText;
-      if (rawText && rawText.trim().length >= 50) {
-        set({ cvText: rawText.trim(), cvAnalyzed: false });
-        setAiRead(parseAiRead(json));
-      } else {
-        setUploadError("Could not extract text — paste your CV instead.");
-      }
-    } catch {
-      setUploadError("Upload failed — paste your CV text instead.");
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
+  /** Keep a real read of `forText`; say so plainly when the route reports it failed.
+   *  A read that lands after the CV was edited is dropped by the store. */
+  const keepRead = (json: CvAnalyzeResponse, forText: string) => {
+    const read = toAiRead(json);
+    if (read) {
+      if (!keepCvAiRead(read, forText)) return;
+      setAiNote(null);
+      emit("AiConsulted", "cv", "AI mentor read of the CV");
+    } else {
+      setAiNote(json.aiMessage ?? "The AI read came back empty. Try again in a minute.");
     }
   };
 
-  // AI analysis runs alongside the local scan; silent fallback when offline.
-  const handleAnalyze = () => {
-    if (cvText.trim().length < 60) return;
-    analyzeCv();
+  // PDF/DOCX upload: the parser (pdf-parse / mammoth) lives behind
+  // /api/cv/analyze, and the same call returns the AI read of the text.
+  const handleUpload = async (file: File) => {
+    setUploadNote(null);
     const fd = new FormData();
-    fd.append("text", cvText);
-    fetch("/api/cv/analyze", { method: "POST", body: fd })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json: unknown) => { if (json) setAiRead(parseAiRead(json)); })
-      .catch(() => { /* deterministic analysis still renders */ });
+    fd.append("file", file);
+    const json = await upload.run(fd);
+    if (fileRef.current) fileRef.current.value = "";
+    if (!json) return;
+    const rawText = json.rawText?.trim() ?? "";
+    if (rawText.length < 50) {
+      setUploadNote("Could not extract text. Paste your CV instead.");
+      return;
+    }
+    set({ cvText: rawText, cvAnalyzed: false, cvAiRead: null });
+    keepRead(json, rawText);
   };
 
-  const cvAnalyzing = cvAnalyzingRaw;
-  const cvAnalyzed = cvAnalyzedRaw && !cvAnalyzingRaw;
-  const cvNotAnalyzed = !cvAnalyzedRaw && !cvAnalyzingRaw;
+  // The ATS read is local and instant; the AI read is a server call that needs
+  // an account, so it can fail on its own without taking the local read with it.
+  const runAiRead = async () => {
+    const forText = usePfStore.getState().cvText;
+    const fd = new FormData();
+    fd.append("text", forText);
+    const json = await reader.run(fd);
+    if (json) keepRead(json, forText);
+  };
 
-  const cvCanAnalyze = cvText.trim().length >= 60;
+  const handleAnalyze = () => {
+    if (cvText.trim().length < MIN_CV) return;
+    analyzeCv();
+    // An upload already read this exact text; editing it clears the read.
+    if (!aiRead) void runAiRead();
+  };
+
+  const cvNotAnalyzed = !cvAnalyzed;
+  const cvCanAnalyze = cvText.trim().length >= MIN_CV;
   const cvBtnBg = cvCanAnalyze ? "var(--accent)" : "var(--panel3)";
 
   const analysis = analyzeCvText(cvText, dirStack);
@@ -144,47 +152,38 @@ export default function CvPage() {
             />
             <button
               onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              style={{ cursor: uploading ? "default" : "pointer", marginLeft: "auto", height: 34, padding: "0 14px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13, fontWeight: 600 }}
+              disabled={upload.loading}
+              style={{ cursor: upload.loading ? "default" : "pointer", marginLeft: "auto", height: 34, padding: "0 14px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13, fontWeight: 600 }}
             >
-              {uploading ? "Reading…" : "Upload PDF/DOCX"}
+              {upload.loading ? "Reading…" : "Upload PDF/DOCX"}
             </button>
           </div>
-          {uploadError && (
-            <div style={{ fontSize: 12, color: "var(--risk)", marginBottom: 10 }}>{uploadError}</div>
-          )}
+          {/* Reading a file happens on the server, so it needs an account; pasting doesn't. */}
+          <AiError
+            message={upload.needsAuth ? "Reading a file needs an account. Sign in, or paste your CV text below: the local read works without one." : upload.error ?? uploadNote}
+            needsAuth={upload.needsAuth}
+          />
           <textarea
             value={cvText}
-            onChange={(e) => set({ cvText: e.target.value, cvAnalyzed: false })}
-            placeholder="Paste the full text of your CV here (60+ characters to analyze)…"
-            style={{ width: "100%", minHeight: 180, padding: 16, borderRadius: 13, border: "1px dashed var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13.5, lineHeight: 1.6, fontFamily: "'Manrope',sans-serif", outline: "none", resize: "vertical" }}
+            onChange={(e) => set({ cvText: e.target.value, cvAnalyzed: false, cvAiRead: null })}
+            placeholder="Paste the full text of your CV here (60+ characters to analyse)…"
+            style={{ width: "100%", minHeight: 180, marginTop: 10, padding: 16, borderRadius: 13, border: "1px dashed var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13.5, lineHeight: 1.6, fontFamily: "'Manrope',sans-serif", outline: "none", resize: "vertical" }}
           />
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 14, flexWrap: "wrap" }}>
             <button
               onClick={handleAnalyze}
-              style={{ cursor: "pointer", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: cvBtnBg, color: "#F7F1E4", fontSize: 14, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}
+              disabled={!cvCanAnalyze}
+              style={{ cursor: cvCanAnalyze ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: cvBtnBg, color: cvCanAnalyze ? "#F7F1E4" : "var(--faint)", fontSize: 14, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}
             >
-              Analyze CV →
+              Analyse CV →
             </button>
-            <span style={{ fontSize: 12, color: "var(--faint)" }}>
-              Analysed locally against your direction — nothing leaves this page.
+            <span style={{ fontSize: 12, color: "var(--faint)", lineHeight: 1.5, flex: "1 1 260px" }}>
+              {cvCanAnalyze
+                ? "The ATS read runs in your browser. The AI mentor read sends your CV text to PathFinder's server and OpenAI, and needs you signed in."
+                : `Add ${MIN_CV - cvText.trim().length} more characters to analyse.`}
             </span>
           </div>
         </Reveal>
-      )}
-
-      {/* ── Scanning state ── */}
-      {cvAnalyzing && (
-        <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "46px 30px", textAlign: "center" }}>
-          <div className="pf-anim-spin" style={{ width: 40, height: 40, borderRadius: "50%", border: "3px solid var(--panel3)", borderTopColor: "var(--accent)", margin: "0 auto 18px" }} />
-          <div style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 5 }}>Scanning your CV…</div>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 18 }}>
-            ATS structure · vague terms · keyword coverage vs your target stack
-          </div>
-          <div style={{ height: 5, width: 220, margin: "0 auto", borderRadius: 3, background: "var(--panel3)", overflow: "hidden" }}>
-            <div className="pf-anim-scan" style={{ height: "100%", background: "var(--accent)" }} />
-          </div>
-        </div>
       )}
 
       {/* ── Analyzed report ── */}
@@ -237,38 +236,51 @@ export default function CvPage() {
             </Reveal>
           </div>
 
-          {/* AI mentor read — only when the OpenAI-backed route returned data */}
-          {aiRead && (
-            <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>AI mentor read</h2>
-                <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--accent)" }}>from your full CV text</span>
+          {/* AI mentor read: a real read of this text, or a plain note saying why there isn't one */}
+          <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>AI mentor read</h2>
+              <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--accent)" }}>
+                {aiRead ? "from your full CV text" : "sends your CV text to the server"}
+              </span>
+            </div>
+            {aiRead ? (
+              <>
+                {aiRead.skills.length > 0 && (
+                  <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 14 }}>
+                    {aiRead.skills.slice(0, 12).map((s) => <AiTag key={s} tone="var(--muted)">{s}</AiTag>)}
+                  </div>
+                )}
+                {aiRead.feedback.length > 0 && (
+                  <AiSection title="Fix first">
+                    <AiList items={aiRead.feedback.slice(0, 5).map((f) => (f.suggestedFix ? `${f.issue}: ${f.suggestedFix}` : f.issue))} />
+                  </AiSection>
+                )}
+                {aiRead.strengths.length > 0 && (
+                  <AiSection title="Already working"><AiList items={aiRead.strengths.slice(0, 4)} /></AiSection>
+                )}
+                {aiRead.nextSteps.length > 0 && (
+                  <AiSection title="Next steps"><AiList items={aiRead.nextSteps.slice(0, 4)} /></AiSection>
+                )}
+                <AiCaveat>
+                  One model&apos;s read of your CV text, as a first draft. Only skills your CV actually
+                  names count towards your profile.
+                </AiCaveat>
+              </>
+            ) : (
+              <div style={{ marginTop: 12 }}>
+                {aiNote && !reader.loading && (
+                  <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: "0 0 12px" }}>
+                    AI read unavailable. {aiNote}
+                  </p>
+                )}
+                <GenerateButton onClick={() => void runAiRead()} loading={reader.loading} loadingLabel="Reading your CV…">
+                  {aiNote ? "Try the AI read again" : "Get the AI mentor read"}
+                </GenerateButton>
+                <AiError message={reader.error} needsAuth={reader.needsAuth} />
               </div>
-              {aiRead.skills.length > 0 && (
-                <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
-                  {aiRead.skills.slice(0, 10).map((s) => (
-                    <span key={s} style={{ fontFamily: mono, fontSize: 10.5, fontWeight: 600, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel2)", borderRadius: 6, padding: "4px 9px" }}>{s}</span>
-                  ))}
-                </div>
-              )}
-              {([
-                ["Bullet points", aiRead.bulletPoints],
-                ["Keywords to add", aiRead.keywords],
-                ["Formatting", aiRead.formatting],
-                ["Worth adding", aiRead.extraQualifications],
-              ] as [string, string[]][]).filter(([, items]) => items.length > 0).map(([label, items]) => (
-                <div key={label} style={{ marginBottom: 10 }}>
-                  <Kicker style={{ fontSize: 9.5, marginBottom: 6 }}>{label}</Kicker>
-                  {items.slice(0, 4).map((t) => (
-                    <div key={t.slice(0, 60)} style={{ display: "flex", gap: 9, padding: "4px 0" }}>
-                      <span style={{ color: "var(--accent)" }}>·</span>
-                      <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)" }}>{t}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </Reveal>
-          )}
+            )}
+          </Reveal>
 
           {/* Vague terms + missing keywords */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>

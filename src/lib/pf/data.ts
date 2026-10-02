@@ -54,13 +54,6 @@ export interface BoardColumn {
   cards: BoardCard[];
 }
 
-export interface JobDetail {
-  chips: [string, string][];
-  desc: string[];
-  resp: string[];
-  reqs: [string, boolean][];
-}
-
 /* ── Tracker board ─────────────────────────────────────────────────── */
 
 /** The five tracker columns. A new user starts with every one empty; cards
@@ -179,48 +172,6 @@ export const OPPORTUNITY_MATRIX = [
   { company: "Ledgerline", role: "SWE Intern", fit: 58, fitpct: "58%", tone: "var(--warn)", sigarrow: "→", sigcolor: "var(--muted)", trend: "steady", warmText: "—", warmColor: "var(--faint)", move: "Tailor CV hard" },
   { company: "Lakemont Data", role: "SWE Intern", fit: 34, fitpct: "34%", tone: "var(--risk)", sigarrow: "→", sigcolor: "var(--muted)", trend: "steady", warmText: "—", warmColor: "var(--faint)", move: "Build prereq" },
 ];
-
-/* ── Jobs ──────────────────────────────────────────────────────────── */
-
-
-export const JOB_DETAILS: Record<string, JobDetail> = {
-  "Northwind Travel": {
-    chips: [["NEW this week", "var(--accent)"], ["Apply by 28 Jul", "var(--warn)"], ["Visa sponsorship", "var(--active)"], ["Yr 2–3", "var(--muted)"], ["Company careers · 3d ago", "var(--faint)"]],
-    desc: ["Build features on the flights-search web app used by 100M+ travellers a month. You will ship production React and TypeScript inside a product squad, pairing with senior engineers from day one.", "Twelve weeks, paid, based in the Edinburgh office — with a real ownership area and an intern demo day at the end."],
-    resp: ["Ship user-facing features in React/TypeScript on the flights web app", "Write and maintain tests (Jest, Playwright) for everything you ship", "Take part in code review, standups and sprint planning", "Present your ownership area at intern demo day"],
-    reqs: [["React + TypeScript project experience", true], ["JavaScript fundamentals & the event loop", true], ["Testing experience (Jest or similar)", true], ["CI/CD familiarity", false]],
-  },
-  "Fairway Sports": {
-    chips: [["Apply by 15 Aug", "var(--warn)"], ["No sponsorship", "var(--muted)"], ["Yr 2–4", "var(--muted)"], ["Grad board · 1w ago", "var(--faint)"]],
-    desc: ["Join the betting-platform backend group in Edinburgh, building the services that settle millions of wagers a day. Interns own a service improvement end-to-end.", "Twelve weeks, paid, with a dedicated mentor and a rotation through incident response."],
-    resp: ["Build and ship an improvement to a production Node or Go service", "Instrument your service with metrics and alerts", "Shadow an on-call rotation with your mentor", "Write a design doc and defend it in review"],
-    reqs: [["Node.js and REST API experience", true], ["SQL / PostgreSQL", true], ["Go (any exposure)", false], ["Distributed-systems basics", false]],
-  },
-  "Edgeline": {
-    chips: [["NEW this week", "var(--accent)"], ["Rolling deadline", "var(--strong)"], ["Remote — UK eligible", "var(--active)"], ["Company careers · 2d ago", "var(--faint)"]],
-    desc: ["Work on the framework-and-dashboard experience used by millions of developers. The intern project ships to production — previous interns built features still in the product today.", "Fully remote with a London meetup cadence; strong async writing culture."],
-    resp: ["Ship a dashboard feature in Next.js + React end-to-end", "Contribute to an open-source repo maintained by the team", "Write public-facing docs for what you build", "Demo at the all-hands"],
-    reqs: [["Next.js / React depth", true], ["TypeScript", true], ["Open-source contributions", false], ["Edge/CDN concepts", false]],
-  },
-  "Kestrel Bank": {
-    chips: [["Apply by 01 Aug", "var(--warn)"], ["Visa sponsorship", "var(--active)"], ["Yr 2–3", "var(--muted)"], ["Grad board · 5d ago", "var(--faint)"]],
-    desc: ["Backend engineering on the core banking platform — 3,000+ microservices in Go. Interns join a squad and ship to production in their first fortnight.", "Twelve weeks in London, paid, with a £1k learning budget."],
-    resp: ["Ship changes to production Go microservices", "Work with gRPC service contracts and Cassandra", "Participate in squad rituals and weekly demos", "Complete the backend engineering bootcamp week 1"],
-    reqs: [["Go", false], ["gRPC / service architecture", false], ["SQL and data modelling", true], ["Linux / CLI comfort", true]],
-  },
-  "Ledgerline": {
-    chips: [["Closing soon — 22 Jul", "var(--risk)"], ["Visa sponsorship", "var(--active)"], ["Yr 2–4", "var(--muted)"], ["Company careers · 2w ago", "var(--faint)"]],
-    desc: ["Work on the APIs that move money for millions of businesses. Intern projects are scoped to ship — payments infrastructure, developer tooling, or dashboard surfaces.", "Twelve weeks in London with a dedicated intern manager and a published intern-project blog."],
-    resp: ["Ship a scoped project on a production API surface", "Write API design docs reviewed by senior engineers", "Build with Ruby and TypeScript in a large codebase", "Present your project at the end-of-summer review"],
-    reqs: [["API design instincts", true], ["TypeScript", true], ["Ruby", false], ["Working at scale (large codebase)", false]],
-  },
-  "Lakemont Data": {
-    chips: [["Opens Sep 2026", "var(--muted)"], ["Visa sponsorship", "var(--active)"], ["Penultimate yr", "var(--muted)"], ["Company careers", "var(--faint)"]],
-    desc: ["Distributed-data infrastructure at serious scale — Spark, Delta Lake, and the lakehouse platform. One of the hardest internships to land; prerequisites matter.", "Remote-friendly with a Amsterdam/London hub option. Applications open in September for Summer 2027."],
-    resp: ["Contribute to a distributed-systems component", "Benchmark and optimise a data-path hot spot", "Work in Scala/JVM internals with a mentor", "Write up findings as an internal tech note"],
-    reqs: [["Distributed systems coursework or project", false], ["Scala or JVM depth", false], ["Spark / data engineering", false], ["Strong algorithms", true]],
-  },
-};
 
 /* ── Networking ────────────────────────────────────────────────────── */
 

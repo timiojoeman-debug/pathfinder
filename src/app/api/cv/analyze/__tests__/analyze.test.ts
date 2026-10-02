@@ -32,12 +32,18 @@ function mockOpenAI(payload: unknown, status = 200) {
 }
 
 const CV_TEXT = "Experienced backend engineer with five years building Go and Postgres services in fintech.";
+// The envelope buildCVAnalysisPrompt asks for: feedback at the root, the parsed CV under `data`.
 const ANALYSIS = {
-  education: [{ institution: "Edinburgh", degree: "BSc CS", period: "2023-2026" }],
-  experience: [],
-  projects: [],
-  skills: ["Go", "Postgres"],
-  suggestions: { bulletPoints: [], keywords: [], formatting: [], extraQualifications: [] },
+  inputQuality: "decent_attempt",
+  feedback: [{ issue: "Bullets lack numbers", severity: "important", suggestedFix: "Quantify the Go service work" }],
+  strengths: ["Clear backend focus"],
+  nextSteps: ["Add one measurable outcome per role"],
+  data: {
+    education: [{ institution: "Edinburgh", degree: "BSc CS", period: "2023-2026" }],
+    experience: [],
+    projects: [],
+    skills: ["Go", "Postgres"],
+  },
 };
 
 describe("POST /api/cv/analyze", () => {
@@ -72,8 +78,10 @@ describe("POST /api/cv/analyze", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.fileName).toBe("pasted-cv.txt");
-    expect(json.skills).toContain("Go");
+    expect(json.data.skills).toContain("Go");
+    expect(json.feedback[0].issue).toContain("numbers");
     expect(json.rawText).toContain("backend engineer");
+    expect(json.aiUnavailable).toBeUndefined();
   });
 
   it("reads text from an uploaded .txt file", async () => {
@@ -92,19 +100,29 @@ describe("POST /api/cv/analyze", () => {
     expect((await res.json()).fileName).toBe("resume.docx");
   });
 
-  it("serves the structured fallback when the AI call fails transiently", async () => {
+  it("flags the AI read as unavailable on failure, never a canned read", async () => {
     mockOpenAI(null, 500);
     const res = await POST(form({ text: CV_TEXT }));
     expect(res.status).toBe(200);
     const json = await res.json();
-    // The generateWithAI fallback ships a usable skeleton rather than an error.
-    expect(json.skills).toContain("Python");
-    expect(json.education[0].institution).toBe("Your University");
+    expect(json.aiUnavailable).toBe(true);
+    expect(typeof json.aiMessage).toBe("string");
+    // The extracted text survives, so an upload is not lost with the AI read.
+    expect(json.rawText).toContain("backend engineer");
+    expect(json.data).toBeUndefined();
+    expect(JSON.stringify(json)).not.toContain("Your University");
   });
 
-  it("503s when no API key is configured (fallback must not hide a misconfig)", async () => {
+  it("flags an empty read as unavailable rather than showing nothing as a result", async () => {
+    mockOpenAI({ feedback: [], strengths: [], nextSteps: [], data: { skills: [] } });
+    const json = await (await POST(form({ text: CV_TEXT }))).json();
+    expect(json.aiUnavailable).toBe(true);
+  });
+
+  it("says when no API key is configured instead of hiding the misconfig", async () => {
     delete process.env.OPENAI_API_KEY;
-    const res = await POST(form({ text: CV_TEXT }));
-    expect(res.status).toBe(503);
+    const json = await (await POST(form({ text: CV_TEXT }))).json();
+    expect(json.aiUnavailable).toBe(true);
+    expect(json.aiMessage).toMatch(/isn't set up/);
   });
 });
