@@ -216,8 +216,8 @@ export const DIAG_TIMINGS = ["Within hours", "2+ days", "1–2 weeks", "Never"];
 /** Where each diagnosis is fixed. Fast rejections are a CV problem; slow ones and
  *  silence are "not a CV signal", so they point at a warm path, not the CV page. */
 export const DIAG_FIX: Record<string, { href: string; label: string }> = {
-  "Within hours": { href: "/cv", label: "Fix keywords" },
-  "2+ days": { href: "/cv", label: "Sharpen your CV" },
+  "Within hours": { href: "/cv", label: "Check the keywords" },
+  "2+ days": { href: "/cv", label: "Check your positioning" },
   "1–2 weeks": { href: "/networking", label: "Find a warm path" },
   "Never": { href: "/networking", label: "Open a warm path" },
 };
