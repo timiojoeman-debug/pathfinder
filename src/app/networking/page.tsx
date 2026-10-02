@@ -134,8 +134,9 @@ export default function NetworkingPage() {
     <div>
       <PageHeader label="Phase 04 · Connections" title="Networking">
         <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "58ch" }}>
-          70–80% of roles are filled before they&apos;re posted. Referred candidates get{" "}
-          <span style={{ color: "var(--fg)", fontWeight: 600 }}>~4× the interview rate</span> — this is where 70% of your effort goes.
+          Many roles are filled before they&apos;re ever posted, and a{" "}
+          <span style={{ color: "var(--fg)", fontWeight: 600 }}>referral</span> is one of the strongest routes to an interview.
+          That is why most of your effort goes here.
         </p>
       </PageHeader>
 
@@ -165,7 +166,7 @@ export default function NetworkingPage() {
       {/* Who to reach, what they're called, and how to research them */}
       <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Who to reach — and what they&apos;re called</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Who to reach, and what they&apos;re called</h2>
           <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>the titles to search on LinkedIn / Glassdoor</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginBottom: 16 }}>
@@ -193,10 +194,10 @@ export default function NetworkingPage() {
 
       <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Coffee chat playbook</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Coffee chat playbook</h2>
           <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>The four-part framework · 20–30 min</span>
           <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "var(--accent)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", borderRadius: 6, padding: "3px 9px", whiteSpace: "nowrap" }}>
-            never ask for a job — the referral follows
+            never ask for a job; the referral follows
           </span>
         </div>
         <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, marginBottom: 14 }}>
@@ -220,7 +221,7 @@ export default function NetworkingPage() {
           {COFFEE_CHAT_FRAMEWORK.map((c) => (
             <div key={c.n} style={{ border: "1px solid var(--line2)", borderRadius: 12, background: "var(--panel2)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="pf-mono" style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 700, flexShrink: 0 }}>{c.n}</span>
+                <span className="pf-mono" style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 700, flexShrink: 0 }}>{c.n}</span>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>{c.label}</span>
                 <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 9.5, color: "var(--faint)", whiteSpace: "nowrap" }}>{c.time}</span>
               </div>
@@ -235,7 +236,7 @@ export default function NetworkingPage() {
         <Reveal style={{ border: "1px solid var(--lineStrong)", borderRadius: 18, background: "var(--panelSolid)", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 22px", borderBottom: "1px dashed var(--lineStrong)", background: "var(--accentSoft)" }}>
             <span style={{ display: "flex", width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: 7, background: "var(--accent)" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#F7F1E4"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--onAccent)"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
             </span>
             <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>AI outreach · tailored to {recipientLabel}</span>
             {/* Only claimed once a message has actually been scored — the
@@ -290,11 +291,11 @@ export default function NetworkingPage() {
             ) : research ? (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--strong)", lineHeight: 1.5 }}>
                 ✓ Personalising on your research of {contact.name.trim() || "this contact"}
-                {researchBits.length ? ` — ${researchBits.length} connection point${researchBits.length > 1 ? "s" : ""} to draw on` : ""}.
+                {researchBits.length ? `, with ${researchBits.length} connection point${researchBits.length > 1 ? "s" : ""} to draw on` : ""}.
               </div>
             ) : (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5 }}>
-                Paste their profile in &ldquo;Research a contact&rdquo; above to personalise this — otherwise the AI writes from your target role alone.
+                Paste their profile in &ldquo;Research a contact&rdquo; above to personalise this. Otherwise the AI writes from your target role alone.
               </div>
             )}
           </div>
@@ -313,7 +314,7 @@ export default function NetworkingPage() {
             ) : (
               <>
                 <div className="pf-mono" style={{ fontSize: 9.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 8 }}>
-                  Structural template — fill the bracketed parts, or generate a tailored version
+                  Structural template: fill the bracketed parts, or generate a tailored version
                 </div>
                 {templateParas.map((p, i) => (
                   <p key={i} style={{ fontSize: 13.5, lineHeight: 1.7, color: i === templateParas.length - 1 ? "var(--muted)" : "var(--fg)", margin: i === templateParas.length - 1 ? "0 0 16px" : "0 0 12px" }}>{p}</p>
@@ -326,7 +327,7 @@ export default function NetworkingPage() {
                 onClick={() => s.generateOutreach({ name: contact.name, company: contact.company, message: (aiMsg ? aiMsg.paras : templateParas).join(" ") })}
                 disabled={!contact.name.trim()}
                 title={contact.name.trim() ? undefined : "Add who you're writing to first"}
-                style={{ cursor: contact.name.trim() ? "pointer" : "default", height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: contact.name.trim() ? "var(--accent)" : "var(--panel3)", color: contact.name.trim() ? "#F7F1E4" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
+                style={{ cursor: contact.name.trim() ? "pointer" : "default", height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: contact.name.trim() ? "var(--accent)" : "var(--panel3)", color: contact.name.trim() ? "var(--onAccent)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
               >
                 Mark as sent &amp; log it →
               </button>
@@ -359,7 +360,7 @@ export default function NetworkingPage() {
         </Reveal>
 
         <Panel style={{ padding: "20px 22px" }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 3px" }}>Follow-up cadence</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: "0 0 3px" }}>Follow-up cadence</h2>
           <span style={{ fontSize: 12, color: "var(--muted)" }}>The 4-step sequence</span>
           <div style={{ marginTop: 14 }}>
             {FOLLOW_UP_CADENCE.map((c) => (

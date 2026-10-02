@@ -29,7 +29,7 @@ const btn = (variant: "solid" | "outline" | "danger"): React.CSSProperties => ({
   cursor: "pointer", height: 38, padding: "0 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
   border: variant === "outline" ? "1px solid var(--lineStrong)" : variant === "danger" ? "1px solid color-mix(in srgb,var(--risk) 40%,transparent)" : "none",
   background: variant === "solid" ? "var(--accent)" : variant === "danger" ? "color-mix(in srgb,var(--risk) 10%,transparent)" : "var(--panel)",
-  color: variant === "solid" ? "#F7F1E4" : variant === "danger" ? "var(--risk)" : "var(--fg)",
+  color: variant === "solid" ? "var(--onAccent)" : variant === "danger" ? "var(--risk)" : "var(--fg)",
 });
 
 export default function SettingsPage() {
@@ -50,7 +50,7 @@ export default function SettingsPage() {
     setMsg(null);
     try {
       const res = await fetch("/api/account/export");
-      if (!res.ok) { setMsg("Export failed — please try again."); return; }
+      if (!res.ok) { setMsg("Export failed. Please try again."); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -59,7 +59,7 @@ export default function SettingsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setMsg("Export failed — please try again.");
+      setMsg("Export failed. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -80,11 +80,11 @@ export default function SettingsPage() {
       if (res.ok) {
         router.push("/");
       } else {
-        setMsg("Deletion failed — please try again.");
+        setMsg("Deletion failed. Please try again.");
         setDeleting(false);
       }
     } catch {
-      setMsg("Deletion failed — please try again.");
+      setMsg("Deletion failed. Please try again.");
       setDeleting(false);
     }
   };
@@ -149,7 +149,7 @@ export default function SettingsPage() {
         <>
           <div onClick={() => setConfirmOpen(false)} className="pf-anim-fade" style={{ position: "fixed", inset: 0, background: "var(--scrim)", zIndex: 80 }} />
           <div className="pf-anim-up" style={{ position: "fixed", top: "26vh", left: "50%", transform: "translateX(-50%)", width: "min(440px,92vw)", zIndex: 81, background: "var(--panelSolid)", border: "1px solid var(--lineStrong)", borderRadius: 16, padding: "24px 26px", boxShadow: "0 30px 70px rgba(30,22,12,.35)" }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>Delete your account?</h2>
+            <h2 className="pf-display-sm" style={{ fontSize: 24, margin: "0 0 8px" }}>Delete your account?</h2>
             <p style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.6, margin: "0 0 16px" }}>
               This permanently deletes your account and every application, contact, CV analysis, and interview log tied to it. There is no undo. Type <strong style={{ color: "var(--fg)" }}>DELETE</strong> to confirm.
             </p>

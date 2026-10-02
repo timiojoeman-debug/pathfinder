@@ -7,14 +7,11 @@
 .pf {
   --bg: #EBE2D1;
   --bg2: #E3D8C3;
-  /* Translucent, to match how the dark theme builds panels. Over the flat page
-     background this composites to the #F4EEE0 it replaces, so panels look as
-     they always did; what shows through is the faint contour background behind
-     the app (Contours in ui.tsx, 7% ink), which reads as texture rather than
-     competing with the text. At .86 the contours contribute about 1% ink under
-     a panel, so --muted body copy keeps its contrast. (This alpha was first
-     tuned for the old landing's fixed terrain canvas, since removed.) */
-  --panel: rgba(245, 240, 226, .86);
+  /* Near-opaque. This was .86, tuned for the old landing's terrain canvas;
+     over paper plus the Contours background that let the contour lines show
+     through cards. .97 of the same composite (#F4EEE0 over --bg) keeps cards
+     looking as they did while the contours stay behind them. */
+  --panel: rgba(244, 238, 224, .97);
   --panelSolid: #F7F1E4;
   --panel2: #EEE6D5;
   --panel3: #E7DCC8;
@@ -35,6 +32,11 @@
      carries --accentSoft, tinting it twice. */
   --accentText: #854826;
   --accentSoft: rgba(176, 103, 60, .12);
+  /* Text and icons drawn on a saturated fill (--accent, --risk, --strong).
+     Cream on paper; at night the fills are lighter, so it flips to ink: cream
+     on the night accent measured about 2.5:1, ink is about 6:1. */
+  --onAccent: #F7F1E4;
+  color-scheme: light;
   --strong: #6E7B3F;
   --warn: #B0862A;
   /* Text variants of the two status tones, following the --accent/--accentText
@@ -64,7 +66,11 @@
 [data-theme="dark"] .pf {
   --bg: #221A12;
   --bg2: #191209;
-  --panel: rgba(240, 230, 210, .04);
+  /* Near-opaque, for the same reason as the light theme: this is the
+     composite the old .04 tint produced over --bg (#2A221A), so cards keep
+     their tone and stop showing the contours. --panel2/--panel3 stay
+     translucent tints because they are drawn on top of a panel. */
+  --panel: rgba(42, 34, 26, .97);
   --panelSolid: #2B2115;
   --panel2: rgba(240, 230, 210, .06);
   --panel3: rgba(240, 230, 210, .09);
@@ -83,6 +89,9 @@
   --accent: #D2894C;
   --accentText: #E3A469;
   --accentSoft: rgba(210, 137, 76, .15);
+  --onAccent: #221A12;
+  /* Native controls (date picker icon, select menus, scrollbars) follow. */
+  color-scheme: dark;
   --strong: #A7BE73;
   --warn: #D6A94A;
   /* Light tones on a dark ground already clear the floor comfortably, so these
@@ -95,54 +104,6 @@
   --rim: inset 0 1px 0 rgba(255, 255, 255, .06);
   --scrim: rgba(10, 7, 3, .6);
   --sheen: rgba(34, 26, 18, .3);
-}
-
-/* ── Landing-only tokens (dot grid, grain, globe and terrain blending) ──
-   --haze and --snow are read by the terrain canvas, not by any CSS rule. They
-   have to be plain hex: the canvas parses them itself to interpolate per ridge
-   (see hexRGB in page.tsx), and it has no CSS engine to resolve rgba() or
-   color-mix() for it. */
-.pf-landing {
-  --dot: rgba(56, 44, 32, .22);
-  --accentGlow: rgba(176, 103, 60, .22);
-  --grainOpacity: .06;
-  /* The terrain's tonal range. Every ridge used to fill with flat --bg, which
-     is also the sky, so the ground had no tone at all and read purely as
-     contour lines. --terrainNear is the closest ridge and --haze is what
-     distance fades toward; the gap between them is what makes depth visible.
-     --haze sits a shade above --bg so the farthest ridges lift very slightly
-     off the sky rather than vanishing into it. */
-  /* Deep enough for the receding ridges to separate. Earlier attempts at this
-     depth measured a body paragraph at 4.45:1, under the 4.5 floor — but that
-     was before the terrain grew a ceiling below the hero copy and before every
-     row started carrying the centred column toward the sky. With those two in
-     place the tone is free to do its job. Re-measure if either is touched. */
-  --terrainNear: #CBB99A;
-  --haze: #F7F2E7;
-  --snow: #FBF7EE;
-  /* The two ends of the hillshade. A slope's tone comes from the angle between
-     its surface normal and the sun, lerped between these — which is the cue
-     that was missing entirely: without it every ridge filled with one flat
-     tone decided only by distance, so the range read as stacked paper cutouts
-     rather than as anything with volume. */
-  --terrainShadow: #9A8158;
-  /* Under the sky, not over it. At #FCF8ED the lit faces sat at 0.939
-     luminance against a page background of 0.767 — the ground was brighter
-     than the sky above it, which is why the light theme washed out while the
-     dark one, whose lit tone is well below its own background, read fine.
-     Diffuse light does not do that. 0.604 keeps the highlight well under the
-     horizon it is lit by. */
-  --terrainLit: #D9CBAB;
-}
-[data-theme="dark"] .pf-landing {
-  --dot: rgba(236, 226, 207, .16);
-  --accentGlow: rgba(210, 137, 76, .3);
-  --grainOpacity: .05;
-  --terrainNear: #150F09;
-  --haze: #36291B;
-  --snow: #E8DCC6;
-  --terrainShadow: #060402;
-  --terrainLit: #6E5836;
 }
 
 /* ── Motion ── */
@@ -193,6 +154,21 @@
   outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 10px;
+}
+
+/* ── Touch targets ──
+   44px is the accessible minimum on a touch screen. Scoped to coarse pointers
+   so desktop keeps its density; inline-flex so min-height applies to spans. */
+@media (pointer: coarse) {
+  .pf-tap { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
+}
+
+/* ── Recommended next step banner ──
+   Inline-styled in next-step.tsx; on a phone the CTA drops below the text and
+   takes the full width instead of squeezing the copy into a narrow column. */
+@media (max-width: 600px) {
+  .pf-nextstep { flex-wrap: wrap; }
+  .pf-nextstep-cta { flex-basis: 100%; justify-content: center; align-self: stretch !important; }
 }
 
 /* ── Base ── */
@@ -338,21 +314,6 @@
 @keyframes pfRise {
   from { opacity: 0; transform: translateY(112%) rotate(2.5deg); }
   to   { opacity: 1; transform: none; }
-}
-
-/* ── Scroll-linked journey rail ───────────────────────────────────
-   The page is a route through seven stations; the header carries how far
-   along it you are. --pf-progress is written by one scroll handler. */
-.pf-rail {
-  position: absolute;
-  left: 0; bottom: -1px;
-  height: 2px;
-  width: 100%;
-  transform-origin: left;
-  transform: scaleX(var(--pf-progress, 0));
-  background: linear-gradient(90deg, var(--accent), var(--strong));
-  box-shadow: 0 0 12px var(--accentGlow);
-  pointer-events: none;
 }
 
 /* ── Nav: underline growing from the centre, plus the active section ── */
@@ -540,27 +501,6 @@
 }
 .pf-breathe { animation: pfBreathe 3.4s ease-in-out infinite; }
 
-/* Focus ring — one definition for the whole landing, because most of its
-   interactive surfaces are <a> with no default outline against paper. */
-.pf-landing a:focus-visible,
-.pf-landing button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-  border-radius: 10px;
-}
-
-/* Once the report panel stacks on a phone the left rail is a strip above the
-   body, not a 230px column beside it — so its divider has to move with it.
-   The stacking itself is already handled by the responsive tiers in
-   globals.css; this is only the seam that rule leaves behind. */
-@media (max-width: 860px) {
-  .pf-landing [data-tilt] [style*="230px 1fr"] > div:first-child {
-    border-right: none !important;
-    border-bottom: 1px dashed var(--lineStrong);
-  }
-}
-
-
 /* Reduced motion is handled globally: globals.css zeroes every animation and
    transition duration under `prefers-reduced-motion: reduce`, which resolves
    each entrance above to its final keyframe and stops every ambient loop. The
@@ -579,7 +519,20 @@
   line-height: 1.02;
   text-wrap: balance;
 }
+/* Section and panel h2s: the same serif at panel scale. Instrument Serif ships
+   one weight, so no bold here; size does the work, and call sites keep it well
+   under the 44px page h1. Card titles (h3) stay in the sans. */
+.pf-display-sm {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -.005em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
 .pf-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); font-family: var(--font-serif), Georgia, serif; font-weight: 400; line-height: 1; }
 /* Behind the content: the .pf root isolates, so -1 sits above its background and below everything in it. */
 .pf-contours { position: fixed; inset: -10%; z-index: -1; pointer-events: none; opacity: .07; color: var(--fg); }
 .pf-contours svg { width: 100%; height: 100%; }
+/* A .pf page rendered inside the app chrome (error.tsx on an app route) would
+   stack a second fixed contour layer at double the ink. One is enough. */
+.pf .pf .pf-contours { display: none; }

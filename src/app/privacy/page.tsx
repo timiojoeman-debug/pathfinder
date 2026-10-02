@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, LegalH2 } from "@/components/pf/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — PathFinder",
+  title: "Privacy Policy · PathFinder",
   description: "How PathFinder collects, uses, and protects your data.",
 };
 
@@ -21,14 +21,14 @@ export default function PrivacyPage() {
 
       <LegalH2>What we collect</LegalH2>
       <ul>
-        <li><strong>Account data</strong> — your email address and a securely hashed password.</li>
-        <li><strong>Career data you enter</strong> — CV text, target roles, applications, networking contacts, interview notes, and progress. Your CV may contain personal data; you choose what to paste or upload.</li>
-        <li><strong>Usage data</strong> — basic technical information (e.g. approximate request timing) needed to operate and secure the service.</li>
+        <li><strong>Account data</strong>: your email address and a securely hashed password.</li>
+        <li><strong>Career data you enter</strong>: CV text, target roles, applications, networking contacts, interview notes, and progress. Your CV may contain personal data; you choose what to paste or upload.</li>
+        <li><strong>Usage data</strong>: basic technical information (e.g. approximate request timing) needed to operate and secure the service.</li>
       </ul>
 
       <LegalH2>How we use it</LegalH2>
       <ul>
-        <li>To provide the product — analysing your CV, matching opportunities, generating outreach and interview prep.</li>
+        <li>To provide the product: analysing your CV, matching opportunities, generating outreach and interview prep.</li>
         <li>To personalise recommendations across the six phases (your profile improves as you use it).</li>
         <li>To secure the service (authentication, rate limiting, abuse prevention).</li>
       </ul>
@@ -44,14 +44,14 @@ export default function PrivacyPage() {
       <p>
         Some features send the text you provide (e.g. CV or job-description content) to a third-party AI
         provider (OpenAI) to generate analysis. We do not send your email or password. AI output is a draft
-        for you to review — it is not advice, and you are responsible for what you submit to employers.
+        for you to review. It is not advice, and you are responsible for what you submit to employers.
       </p>
 
       <LegalH2>Third parties we rely on</LegalH2>
       <ul>
-        <li><strong>Supabase</strong> — database and storage hosting.</li>
-        <li><strong>OpenAI</strong> — AI text generation for the features above.</li>
-        <li><strong>Job data providers</strong> — when you search for live opportunities, PathFinder queries
+        <li><strong>Supabase</strong>: database and storage hosting.</li>
+        <li><strong>OpenAI</strong>: AI text generation for the features above.</li>
+        <li><strong>Job data providers</strong>: when you search for live opportunities, PathFinder queries
           <strong> Adzuna</strong> (a job-search API) and pulls from open, community-maintained internship lists
           published on <strong>GitHub</strong> (e.g. the Summer-internship repos). We only send your search terms
           (role, location) to these sources; every listing links out to the original posting, and we do not

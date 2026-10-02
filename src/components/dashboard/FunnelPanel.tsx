@@ -66,7 +66,7 @@ export function FunnelPanel({ data }: { data: FunnelData }) {
 
       {/* Calibration */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "12px 18px", background: "var(--c-50)" }}>
-        <span style={{ fontSize: "11.5px", color: "var(--c-400)" }}>Projected vs actual interview rate — your forecast, calibrating on real outcomes.</span>
+        <span style={{ fontSize: "11.5px", color: "var(--c-400)" }}>Projected vs actual interview rate: your forecast, calibrating on real outcomes.</span>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", fontWeight: 700, color: "var(--c-700)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
           {projectedRate ?? "—"} <span style={{ color: "var(--c-300)" }}>·</span> {submitted > 0 ? `${interviewRate}%` : "—"}
         </span>

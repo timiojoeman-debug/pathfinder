@@ -49,15 +49,15 @@ export function LeetTab() {
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", maxWidth: 720 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "20px 24px 6px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>LeetCode patterns · Blind 75</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>LeetCode patterns · Blind 75</h2>
         <span className="pf-mono" style={{ fontSize: 10.5, color: "var(--muted)", fontFamily: mono }}>
           {solvedSum} / {LEETCODE_TOTAL} solved
         </span>
       </div>
 
       <p style={{ padding: "0 24px 12px", margin: 0, fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, maxWidth: "62ch" }}>
-        The Blind 75 is the standard shortlist for CS interviews: master these patterns — not 500 random
-        problems — and most technical rounds become recognisable. Depth over volume is the whole point:
+        The Blind 75 is the standard shortlist for CS interviews: master these patterns (not 500 random
+        problems) and most technical rounds become recognisable. Depth over volume is the whole point:
         interviewers test whether you can spot the pattern and reason out loud, so understanding one
         problem per pattern deeply beats grinding dozens shallowly.
       </p>
@@ -135,7 +135,7 @@ export function LeetTab() {
       })}
 
       <div style={{ padding: "12px 24px", fontSize: 11.5, color: "var(--faint)", lineHeight: 1.6, borderTop: "1px solid var(--line2)" }}>
-        Tick a problem once you have solved it — the title links to LeetCode, and progress persists
+        Tick a problem once you have solved it. The title links to LeetCode, and progress persists
         between sessions. Category sizes are uneven because the list is: Trees has 11, Stack and
         Advanced Graphs have 1.{" "}
         <a

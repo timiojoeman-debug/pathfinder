@@ -89,7 +89,7 @@ export function ProfileNarration() {
         </GenerateButton>
         {!hasSubstance && (
           <span style={{ fontSize: 11.5, color: "var(--faint)" }}>
-            Not enough here to narrate yet — set your direction first.
+            Not enough here to narrate yet. Set your direction first.
           </span>
         )}
       </div>
@@ -121,7 +121,7 @@ export function ProfileNarration() {
 
           <div style={{ fontSize: 11.5, color: "var(--faint)", lineHeight: 1.55, fontStyle: "italic" }}>
             A retelling of the panel above, not a separate assessment. Every figure it quotes is
-            computed from your logged work — the wording is the only part the model chose.
+            computed from your logged work; the wording is the only part the model chose.
           </div>
         </div>
       )}

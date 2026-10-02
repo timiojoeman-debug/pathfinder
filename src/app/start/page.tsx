@@ -32,7 +32,7 @@ function OnbChip({ label, on, onClick }: { label: string; on: boolean; onClick: 
         cursor: "pointer", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600, padding: "9px 15px", borderRadius: 10,
         border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
         background: on ? "var(--accent)" : "var(--panel2)",
-        color: on ? "#F7F1E4" : "var(--muted)",
+        color: on ? "var(--onAccent)" : "var(--muted)",
         transition: "all .18s var(--ease)", userSelect: "none",
       }}
     >
@@ -57,7 +57,7 @@ export default function StartPage() {
 
   const statement =
     onb.role && onb.industry && onb.stage
-      ? `${onb.role} internships in ${onb.industry} — ${onb.stage}.`
+      ? `${onb.role} internships in ${onb.industry}, ${onb.stage}.`
       : "Choose a role, industry and stage above to build your statement.";
   const step1Ready = !!(onb.role && onb.industry && onb.stage);
   const step2Ready = !!(onb.cv && onb.projects && onb.outreach && onb.cadence);
@@ -104,7 +104,7 @@ export default function StartPage() {
         <span className="pf-mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--accent)" }}>Stage 00 · Onboarding</span>
         <h1 className="pf-display" style={{ fontSize: 44, margin: "10px 0 8px" }}>Let&apos;s find your starting point.</h1>
         <p style={{ fontSize: 15, color: "var(--muted)", margin: "0 0 16px", maxWidth: "56ch" }}>
-          Three minutes to set your direction and measure your baseline. Nothing here is graded — it just tells the AI where to point you first.
+          Three minutes to set your direction and measure your baseline. Nothing here is graded; it just tells the AI where to point you first.
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ height: 5, flex: 1, borderRadius: 3, background: stepBg(1) }} />
@@ -141,7 +141,7 @@ export default function StartPage() {
           <button
             onClick={() => { if (step1Ready) s.setOnb({ step: 2 }); }}
             disabled={!step1Ready}
-            style={{ cursor: step1Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step1Ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 14.5, fontWeight: 600 }}
+            style={{ cursor: step1Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step1Ready ? "var(--accent)" : "var(--panel3)", color: step1Ready ? "var(--onAccent)" : "var(--faint)", fontSize: 14.5, fontWeight: 600 }}
           >
             Continue →
           </button>
@@ -183,7 +183,7 @@ export default function StartPage() {
             <button
               onClick={s.startOnbScan}
               disabled={!step2Ready}
-              style={{ cursor: step2Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step2Ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 14.5, fontWeight: 600 }}
+              style={{ cursor: step2Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step2Ready ? "var(--accent)" : "var(--panel3)", color: step2Ready ? "var(--onAccent)" : "var(--faint)", fontSize: 14.5, fontWeight: 600 }}
             >
               Calculate my readiness →
             </button>
@@ -209,7 +209,7 @@ export default function StartPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 18 }}>
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "20px 24px" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 14px" }}>Your pillars</h2>
+              <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 14px" }}>Your pillars</h2>
               {pillars.map((p) => (
                 <div key={p.label} style={{ marginBottom: 13 }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
@@ -227,8 +227,8 @@ export default function StartPage() {
             </Reveal>
 
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "20px 24px" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Close these first</h2>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>Worst gap first — biggest leverage</span>
+              <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>Close these first</h2>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>Worst gap first: biggest leverage</span>
               <div style={{ marginTop: 14 }}>
                 {gaps.map((g) => (
                   <Link key={g.label} href={g.href} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderTop: "1px solid var(--line2)", cursor: "pointer", textDecoration: "none", color: "var(--fg)" }}>
@@ -238,7 +238,7 @@ export default function StartPage() {
                   </Link>
                 ))}
                 {gaps.length === 0 && (
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "8px 0" }}>No pillar below 60 — nice work. Keep the cadence up.</div>
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "8px 0" }}>No pillar below 60. Nice work. Keep the cadence up.</div>
                 )}
               </div>
             </Reveal>

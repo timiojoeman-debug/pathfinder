@@ -77,7 +77,7 @@ export function PracticePanel() {
   return (
     <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginTop: 14, maxWidth: 720 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Practice &amp; rate</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>Practice &amp; rate</h2>
         <span className="pf-mono" style={{ fontSize: 10.5, color: "var(--faint)", fontFamily: mono }}>
           a random problem from the list
         </span>

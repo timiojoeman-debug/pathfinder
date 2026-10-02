@@ -98,7 +98,7 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
     recs.push({
       id: "set-direction",
       title: "Set your career direction first",
-      why: "Everything downstream — CV keywords, job matching, outreach — is tuned to your target role. Two minutes here focuses the whole system.",
+      why: "Everything downstream (CV keywords, job matching, outreach) is tuned to your target role. Two minutes here focuses the whole system.",
       href: "/direction",
       phase: "direction",
       impact: "unlocks all",
@@ -111,8 +111,8 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
   if (p.directionSet && !p.cvAnalyzed) {
     recs.push({
       id: "analyze-cv",
-      title: "Analyze your CV against your direction",
-      why: `85% of employers screen with ATS. Score your CV for ${p.targetRole ?? "your target role"} before applying anywhere.`,
+      title: "Analyse your CV against your direction",
+      why: `Most employers screen applications with an ATS. Score your CV for ${p.targetRole ?? "your target role"} before applying anywhere.`,
       href: "/cv",
       phase: "cv",
       impact: "gate to apply",
@@ -127,8 +127,8 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
       id: "raise-ats",
       title: `Raise your ATS score from ${p.atsScore} before applying`,
       why: p.missingSkills.length
-        ? `Your CV is missing ${p.missingSkills.slice(0, 3).join(", ")} — target keywords you'll be filtered on.`
-        : "Sharpen the top third and quantify every bullet — you're being filtered before a human reads it.",
+        ? `Your CV is missing ${p.missingSkills.slice(0, 3).join(", ")}: target keywords you'll be filtered on.`
+        : "Sharpen the top third and quantify every bullet: you're being filtered before a human reads it.",
       href: "/cv",
       phase: "cv",
       impact: "+odds",
@@ -157,10 +157,10 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
     recs.push({
       id: "start-networking",
       title: "Get a referral into a target company",
-      why: "A referral converts ~4× a cold application — it's the highest-leverage move in the whole search, and the one thing no tool can automate. You don't need a perfect CV to start a coffee chat.",
+      why: "A referral is one of the strongest routes to an interview: the highest-leverage move in the whole search, and the one thing no tool can automate. You don't need a perfect CV to start a coffee chat.",
       href: "/networking",
       phase: "networking",
-      impact: "4× odds",
+      impact: "+odds",
       impactTone: "var(--strong)",
       priority: 90,
     });
@@ -170,7 +170,7 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
   if (p.directionSet && p.applicationsSubmitted >= 2 && p.leetSolved < Math.round(LEET_ON_TRACK * 2 / 3) && p.interviewsLanded === 0) {
     recs.push({
       id: "build-interview-readiness",
-      title: "Start interview prep now — before the first callback",
+      title: "Start interview prep now, before the first callback",
       why: "Interview readiness is built over weeks, not the days between a callback and the round. Begin STAR stories and pattern drills in parallel with applying, so you're ready when it lands.",
       href: "/interview",
       phase: "interview",
@@ -198,7 +198,7 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
   if ((p.atsScore ?? 0) >= 65 && p.applicationsSubmitted < 3) {
     recs.push({
       id: "start-applying",
-      title: "Start applying — your CV clears the bar",
+      title: "Start applying: your CV clears the bar",
       why: `ATS ${p.atsScore} is high enough to apply. Tailor to your strongest matches (${p.targetCompanies.slice(0, 2).map((c) => c.company).join(", ")}) and get 3 out this week.`,
       href: "/jobs",
       phase: "jobs",
@@ -212,7 +212,7 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
   if (p.applicationsSubmitted > 5 && p.outreachSent <= 10) {
     recs.push({
       id: "rebalance",
-      title: "You've applied enough — network before sending more",
+      title: "You've applied enough. Network before sending more",
       why: `${p.applicationsSubmitted} applications out but little networking. Cold volume has diminishing returns; a single referral beats ten more cold applications.`,
       href: "/networking",
       phase: "networking",

@@ -30,5 +30,5 @@ export function LegalPage({ title, updated, children }: { title: string; updated
 }
 
 export function LegalH2({ children }: { children: ReactNode }) {
-  return <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--fg)", letterSpacing: "-.01em", margin: "32px 0 10px" }}>{children}</h2>;
+  return <h2 className="pf-display-sm" style={{ fontSize: 24, color: "var(--fg)", margin: "36px 0 10px" }}>{children}</h2>;
 }

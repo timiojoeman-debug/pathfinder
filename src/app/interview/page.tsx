@@ -25,8 +25,8 @@ function FeedbackTab() {
   return (
     <Reveal style={{ maxWidth: 720 }}>
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 16 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Log a post-interview reflection</h2>
-        <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Captured while it&apos;s fresh — patterns emerge after 3+ entries</span>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>Log a post-interview reflection</h2>
+        <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Captured while it&apos;s fresh. Patterns emerge after 3+ entries</span>
         {interviewCards.length > 0 && (
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 14 }}>
             {interviewCards.map((c) => {
@@ -82,7 +82,7 @@ function FeedbackTab() {
         <button
           onClick={s.saveFeedback}
           disabled={!canSave}
-          style={{ cursor: canSave ? "pointer" : "default", marginTop: 12, height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: canSave ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+          style={{ cursor: canSave ? "pointer" : "default", marginTop: 12, height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: canSave ? "var(--accent)" : "var(--panel3)", color: canSave ? "var(--onAccent)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
         >
           Save reflection
         </button>
@@ -92,7 +92,7 @@ function FeedbackTab() {
 
       {s.ivFeedback.length === 0 && (
         <div style={{ border: "1px dashed var(--lineStrong)", borderRadius: 14, padding: "18px 20px", fontSize: 13, color: "var(--muted)" }}>
-          No reflections yet. Your first interview is data — log it here within 24 hours while the questions are fresh.
+          No reflections yet. Your first interview is data: log it here within 24 hours while the questions are fresh.
         </div>
       )}
       {s.ivFeedback.map((f, i) => (
@@ -136,7 +136,7 @@ export default function InterviewPage() {
                 cursor: "pointer", height: 38, padding: "0 18px", borderRadius: 10,
                 border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
                 background: on ? "var(--accent)" : "var(--panel)",
-                color: on ? "#F7F1E4" : "var(--muted)",
+                color: on ? "var(--onAccent)" : "var(--muted)",
                 fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
               }}
             >

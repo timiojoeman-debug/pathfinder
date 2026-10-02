@@ -61,12 +61,12 @@ function AddApplication() {
         <button
           type="submit"
           disabled={!ready}
-          style={{ cursor: ready ? "pointer" : "default", height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+          style={{ cursor: ready ? "pointer" : "default", height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: ready ? "var(--onAccent)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
         >
           Add
         </button>
       </form>
-      {msg && <div role="status" style={{ fontSize: 12, color: "var(--warn)", marginTop: 8 }}>{msg}</div>}
+      {msg && <div role="status" style={{ fontSize: 12, color: "var(--warnText)", marginTop: 8 }}>{msg}</div>}
     </Reveal>
   );
 }
@@ -94,7 +94,7 @@ export default function TrackerPage() {
     <div>
       <PageHeader label="Phase 06 · Momentum" title="Application Tracking">
         <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "56ch" }}>
-          One calm board so nothing slips. Rejection timing is <span style={{ color: "var(--fg)", fontWeight: 600 }}>diagnostic data</span> — minutes mean ATS, days mean positioning.
+          One calm board so nothing slips. Rejection timing is <span style={{ color: "var(--fg)", fontWeight: 600 }}>diagnostic data</span>: minutes mean ATS, days mean positioning.
         </p>
       </PageHeader>
 
@@ -129,7 +129,7 @@ export default function TrackerPage() {
 
       <Reveal style={{ border: "1px solid var(--line)", borderRadius: 16, background: "var(--panel)", padding: "20px 24px", marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Conversion funnel</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Conversion funnel</h2>
           <Link href={d.leakHref} className="pf-mono" style={{ fontSize: 10.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
             {d.leakLabel} →
           </Link>
@@ -162,7 +162,7 @@ export default function TrackerPage() {
       <AddApplication />
 
       <div style={{ fontSize: 11.5, color: "var(--faint)", marginBottom: 10 }}>
-        Drag cards between stages — moving to Applied stamps the date that drives your weekly counter.
+        Drag cards between stages. Moving to Applied stamps the date that drives your weekly counter.
       </div>
 
       <Reveal style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, alignItems: "start" }}>

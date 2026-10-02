@@ -58,9 +58,9 @@ export function StartupPanel() {
 
   return (
     <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 3px" }}>Startup outreach</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 21, margin: "0 0 3px" }}>Startup outreach</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "58ch" }}>
-        Small companies have no recruiter to route around — you email someone who can actually decide.
+        Small companies have no recruiter to route around: you email someone who can actually decide.
         That only works if you have read something they made.
       </span>
 
@@ -75,7 +75,7 @@ export function StartupPanel() {
       <textarea
         value={detail}
         onChange={(e) => setDetail(e.target.value)}
-        placeholder="One specific thing about them — a blog post, a repo, a product decision you have an opinion on…"
+        placeholder="One specific thing about them: a blog post, a repo, a product decision you have an opinion on…"
         style={{
           width: "100%", minHeight: 90, marginTop: 10, padding: 13, borderRadius: 13,
           border: `1px dashed ${detailShort ? "var(--warn)" : "var(--lineStrong)"}`,
@@ -91,7 +91,7 @@ export function StartupPanel() {
         {!ready && (
           <span style={{ fontSize: 11.5, color: detailShort ? "var(--warn)" : "var(--faint)", maxWidth: "44ch", lineHeight: 1.5 }}>
             {companyName
-              ? "The specific detail is not optional — a generic email to fifty startups gets zero replies. Ten minutes on their site is the whole trick."
+              ? "The specific detail is not optional: a generic email to fifty startups gets zero replies. Ten minutes on their site is the whole trick."
               : "Company name first."}
           </span>
         )}
@@ -120,7 +120,7 @@ export function StartupPanel() {
 
           <AiCaveat>
             {out.editReminder ||
-              "Edit this before sending. The detail you supplied is the only part that makes it yours — the rest is scaffolding."}
+              "Edit this before sending. The detail you supplied is the only part that makes it yours. The rest is scaffolding."}
           </AiCaveat>
         </div>
       )}

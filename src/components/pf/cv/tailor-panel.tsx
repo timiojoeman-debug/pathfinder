@@ -117,7 +117,7 @@ export function TailorPanel() {
 
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>Tailor to a specific job</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>Tailor to a specific job</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "54ch" }}>
         Paste the advert. The ATS audit finds the keywords their filter is looking for; the match
         score tells you whether the role is worth the hour it takes to apply properly.
@@ -183,7 +183,7 @@ export function TailorPanel() {
                           ? `Already in your ${k.cvSection}.`
                           : "Already in your CV."
                         : k.suggestedPlacement
-                          ? `Missing — add it to your ${k.suggestedPlacement}.`
+                          ? `Missing: add it to your ${k.suggestedPlacement}.`
                           : "Missing from your CV."}
                     </span>
                   </div>
@@ -202,7 +202,7 @@ export function TailorPanel() {
                     </span>
                     <span style={{ color: "var(--muted)" }}>
                       {c.item}
-                      {!c.passed && c.fix ? ` — ${c.fix}` : ""}
+                      {!c.passed && c.fix ? `: ${c.fix}` : ""}
                     </span>
                   </div>
                 ))}
@@ -216,7 +216,7 @@ export function TailorPanel() {
 
           <AiCaveat>
             Keyword advice is a first draft against this one advert. Only add a keyword you can
-            evidence in a bullet — an ATS match you cannot talk about in the interview costs you more
+            evidence in a bullet. An ATS match you cannot talk about in the interview costs you more
             than the filter did.
           </AiCaveat>
         </div>
@@ -251,7 +251,7 @@ export function TailorPanel() {
                   <div key={n.requirement} style={{ display: "flex", gap: 9, alignItems: "flex-start", flexWrap: "wrap" }}>
                     <AiTag tone="var(--risk)">{n.category}</AiTag>
                     <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, flex: "1 1 220px" }}>
-                      <strong style={{ color: "var(--fg)", fontWeight: 600 }}>{n.requirement}</strong> — {n.explanation}
+                      <strong style={{ color: "var(--fg)", fontWeight: 600 }}>{n.requirement}</strong>: {n.explanation}
                     </span>
                   </div>
                 ))}

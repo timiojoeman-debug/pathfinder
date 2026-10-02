@@ -65,11 +65,11 @@ export function QuestionsTab() {
   return (
     <Reveal style={{ maxWidth: 720 }}>
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>Likely questions</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>Likely questions</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "52ch" }}>
           {targetRole
             ? <>Behavioural, technical, situational and CV-specific questions for <strong style={{ color: "var(--fg)" }}>{targetRole}</strong>.</>
-            : <>Set a career direction first and these sharpen to your target role — until then they assume a software engineering internship.</>}
+            : <>Set a career direction first and these sharpen to your target role. Until then they assume a software engineering internship.</>}
           {cvText.trim()
             ? " Your uploaded CV is used, so the CV-specific ones quote your actual projects."
             : " Upload a CV in Phase 02 and the CV-specific questions will quote your real projects instead of generic ones."}
@@ -114,7 +114,7 @@ export function QuestionsTab() {
 
       {questions.length > 0 && !degraded && (
         <AiCaveat>
-          A first draft of what they are likely to ask — not the actual paper. Practise the shape of the answer, not the wording.
+          A first draft of what they are likely to ask, not the actual paper. Practise the shape of the answer, not the wording.
         </AiCaveat>
       )}
     </Reveal>

@@ -55,18 +55,18 @@ const PROBLEMS = [
   },
   {
     t: "Students are drowning in the AI-apply flood",
-    d: "Auto-apply tools fire off hundreds of generic, AI-written applications. Employers pattern-match them to the bin — and your students blend into the noise.",
+    d: "Auto-apply tools fire off hundreds of generic, AI-written applications. Employers pattern-match them to the bin, and your students blend into the noise.",
   },
   {
     t: "You’re judged on outcomes, not activity",
-    d: "Placement and interview rates are what matter. But you can’t see which students are actually ready — or which need a nudge — until it’s too late to help.",
+    d: "Placement and interview rates are what matter. But you can’t see which students are actually ready, or which need a nudge, until it’s too late to help.",
   },
 ];
 
 const GETS = [
   {
     t: "Coaching at scale",
-    d: "Every student gets direction-setting, CV/ATS feedback, referral coaching, and interview prep on demand — the 1:1 experience, without the 1:1 staffing.",
+    d: "Every student gets direction-setting, CV/ATS feedback, referral coaching, and interview prep on demand: the 1:1 experience, without the 1:1 staffing.",
   },
   {
     t: "A cohort readiness view",
@@ -74,24 +74,24 @@ const GETS = [
   },
   {
     t: "Outcomes you can report",
-    d: "Track interview and placement rates over the term, by programme — the numbers your leadership and your rankings actually care about.",
+    d: "Track interview and placement rates over the term, by programme: the numbers your leadership and your rankings actually care about.",
   },
   {
     t: "Your brand, your students",
-    d: "White-labelled to your institution. Students never pay. The relationship — and the data policy — stays yours.",
+    d: "White-labelled to your institution. Students never pay. The relationship, and the data policy, stay yours.",
   },
 ];
 
 const STEPS = [
-  { n: "01", t: "Scope", d: "A 30-minute call to pick a pilot cohort — one department or one graduating year is plenty." },
+  { n: "01", t: "Scope", d: "A 30-minute call to pick a pilot cohort. One department or one graduating year is plenty." },
   { n: "02", t: "Launch", d: "Students onboard in minutes. Your careers team gets the cohort dashboard the same day." },
-  { n: "03", t: "Measure", d: "At the end of the pilot we review the readiness lift and interview-rate change together — the pilot fee credits toward a licence." },
+  { n: "03", t: "Measure", d: "At the end of the pilot we review the readiness lift and interview-rate change together, and the pilot fee credits toward a licence." },
 ];
 
 const FAQS = [
   {
     q: "Does this replace Handshake or our careers service?",
-    a: "No — it complements them. PathFinder is the coaching layer, not a job board or a CRM. Students still apply where they apply; PathFinder makes them ready to.",
+    a: "No, it complements them. PathFinder is the coaching layer, not a job board or a CRM. Students still apply where they apply; PathFinder makes them ready to.",
   },
   {
     q: "Who owns the student data?",
@@ -99,7 +99,7 @@ const FAQS = [
   },
   {
     q: "How much does it cost students?",
-    a: "Nothing, ever. It’s an institutional licence — priced per student or as a site licence — so cost never sits with the people you’re trying to help.",
+    a: "Nothing, ever. It’s an institutional licence (priced per student or as a site licence), so cost never sits with the people you’re trying to help.",
   },
 ];
 
@@ -129,7 +129,7 @@ function CohortPreview() {
   return (
         <div style={{ border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", overflow: "hidden", boxShadow: "var(--rim)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--line)", background: "var(--panel2)" }}>
-            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Cohort readiness — CS, Year 2</span>
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Cohort readiness · CS, Year 2</span>
             <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--warn)", border: "1px solid color-mix(in srgb,var(--warn) 34%,transparent)", background: "color-mix(in srgb,var(--warn) 10%,transparent)", borderRadius: 6, padding: "3px 9px" }}>Illustrative · sample data</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18, padding: "24px 22px" }}>
@@ -150,7 +150,7 @@ function CohortPreview() {
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ border: "1px solid var(--line)", borderRadius: 13, padding: "16px 18px", background: "var(--panel2)" }}>
                 <div style={{ fontFamily: mono, fontSize: 26, fontWeight: 700, letterSpacing: "-.03em", color: "var(--risk)" }}>66%</div>
-                <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>have opened <b style={{ color: "var(--fg)" }}>zero referrals</b> — the biggest lever, untouched.</div>
+                <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>have opened <b style={{ color: "var(--fg)" }}>zero referrals</b>: the biggest lever, untouched.</div>
               </div>
               <div style={{ border: "1px solid color-mix(in srgb,var(--accent) 26%,transparent)", borderRadius: 13, padding: "16px 18px", background: "var(--accentSoft)" }}>
                 <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--accentText)", marginBottom: 6 }}>Suggested outreach</div>
@@ -226,10 +226,10 @@ export default function UniversitiesPage() {
           <div>
             <span style={{ ...kicker, display: "inline-block", marginBottom: 18 }}>For universities &amp; career services</span>
             <h1 className="pf-display" style={{ fontSize: "clamp(44px,5.6vw,72px)", margin: "0 0 22px", maxWidth: "16ch" }}>
-              Give every student a coach — not just a <span style={serifItalic}>job board.</span>
+              Give every student a coach, not just a <span style={serifItalic}>job board.</span>
             </h1>
             <p style={{ ...lead, margin: "0 0 30px", fontSize: "clamp(16px,1.5vw,18.5px)" }}>
-              Your team can’t run 1:1 readiness coaching for thousands of students. PathFinder is the AI layer that does — referrals, interviews, CVs — with a staff view of exactly who’s ready and who needs a nudge.
+              Your team can’t run 1:1 readiness coaching for thousands of students. PathFinder is the AI layer that does (referrals, interviews, CVs), with a staff view of exactly who’s ready and who needs a nudge.
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <a href="#how" style={primaryBtn}>See how it works →</a>
@@ -266,7 +266,7 @@ export default function UniversitiesPage() {
         <div style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 20, background: "var(--accentSoft)", padding: "clamp(26px,4vw,42px)" }}>
           <span style={kicker}>What PathFinder is</span>
           <p style={{ fontSize: "clamp(19px,2.6vw,27px)", lineHeight: 1.4, fontWeight: 500, letterSpacing: "-.02em", margin: "14px 0 0", maxWidth: "44ch", textWrap: "balance" as CSSProperties["textWrap"] }}>
-            An AI readiness coach you hand to every student. It coaches the two things that actually convert — <span style={serifItalic}>referrals</span> and <span style={serifItalic}>interviews</span> — and keeps students genuinely ready, not just busy.
+            An AI readiness coach you hand to every student. It coaches the two things that actually convert, <span style={serifItalic}>referrals</span> and <span style={serifItalic}>interviews</span>, and keeps students genuinely ready, not just busy.
           </p>
         </div>
       </section>
@@ -316,10 +316,10 @@ export default function UniversitiesPage() {
       {/* ── Pricing / model ── */}
       <section id="pricing" style={{ padding: `0 clamp(20px,5vw,56px) ${sectionPad.split(" ")[0]}`, maxWidth: 1140, margin: "0 auto" }}>
         <Reveal>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 20, alignItems: "center", border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", padding: "clamp(26px,4vw,40px)", boxShadow: "var(--rim)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,300px),1fr))", gap: 20, alignItems: "center", border: "1px solid var(--line)", borderRadius: 20, background: "var(--panel)", padding: "clamp(26px,4vw,40px)", boxShadow: "var(--rim)" }}>
             <div>
               <span style={kicker}>Pricing</span>
-              <h2 style={{ ...h2, fontSize: "clamp(30px,4vw,46px)", margin: "12px 0 12px" }}>An institutional licence — <span style={serifItalic}>never</span> a student cost.</h2>
+              <h2 style={{ ...h2, fontSize: "clamp(30px,4vw,46px)", margin: "12px 0 12px" }}>An institutional licence, <span style={serifItalic}>never</span> a student cost.</h2>
               <p style={{ ...lead, fontSize: 15.5 }}>
                 Priced per student or as a site licence, so the cost sits with the institution, not the people you’re trying to help. Pilots are scoped per cohort and the pilot fee credits toward the licence.
               </p>

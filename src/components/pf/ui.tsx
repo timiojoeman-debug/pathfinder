@@ -201,6 +201,7 @@ export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent
     <span
       onClick={onClick}
       role="button"
+      className="pf-tap"
       aria-pressed={on}
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
@@ -209,7 +210,7 @@ export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent
         borderRadius: size === "sm" ? 9 : 10,
         border: `1px solid ${on ? activeBg : "var(--line)"}`,
         background: on ? activeBg : "var(--panel2)",
-        color: on ? "#F7F1E4" : "var(--muted)",
+        color: on ? "var(--onAccent)" : "var(--muted)",
         transition: "all .18s var(--ease)",
         userSelect: "none",
       }}

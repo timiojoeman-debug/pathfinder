@@ -81,9 +81,9 @@ export function ProfileResearch({ contact, onContactChange, onResult }: ProfileR
 
   return (
     <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 3px" }}>Research a contact</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 21, margin: "0 0 3px" }}>Research a contact</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "58ch" }}>
-        Paste what you can see on their profile — the real common ground you find is what turns a cold
+        Paste what you can see on their profile. The real common ground you find is what turns a cold
         message into a reply.
       </span>
 
@@ -107,14 +107,14 @@ export function ProfileResearch({ contact, onContactChange, onResult }: ProfileR
       <textarea
         value={c.about}
         onChange={(e) => update({ about: e.target.value })}
-        placeholder="Their About / bio — include their school, degree, and current role if you can see them…"
+        placeholder="Their About / bio: include their school, degree, and current role if you can see them…"
         className="pf-input"
         style={{ width: "100%", minHeight: 80, marginTop: 10, padding: "12px 15px", fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
       />
       <textarea
         value={c.experience}
         onChange={(e) => update({ experience: e.target.value })}
-        placeholder="Their experience / recent roles — past companies, projects, anything you could genuinely connect on…"
+        placeholder="Their experience / recent roles: past companies, projects, anything you could genuinely connect on…"
         className="pf-input"
         style={{ width: "100%", minHeight: 80, marginTop: 10, padding: "12px 15px", fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
       />
@@ -149,7 +149,7 @@ export function ProfileResearch({ contact, onContactChange, onResult }: ProfileR
 
           <AiCaveat>
             Drawn only from what you pasted, so check every &quot;shared&quot; point is real before you
-            lean on it — nothing lands worse than a connection you invented.
+            lean on it. Nothing lands worse than a connection you invented.
           </AiCaveat>
         </div>
       )}

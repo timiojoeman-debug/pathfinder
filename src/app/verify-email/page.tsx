@@ -26,7 +26,7 @@ function Verify() {
         if (ok && j.verified) setState("ok");
         else { setState("fail"); setError(j.error || "This link is invalid or has expired."); }
       })
-      .catch(() => { if (!cancelled) { setState("fail"); setError("Verification failed — please try again."); } });
+      .catch(() => { if (!cancelled) { setState("fail"); setError("Verification failed. Please try again."); } });
     return () => { cancelled = true; };
   }, [token]);
 

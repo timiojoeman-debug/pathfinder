@@ -98,7 +98,7 @@ export function PilotForm() {
             other end of this is automated, and a promise nobody scheduled is
             the kind of small dishonesty this page exists to avoid. */}
         <p style={{ fontSize: 15, color: "var(--muted)", lineHeight: 1.6, margin: 0, maxWidth: "34rem", marginInline: "auto" }}>
-          Your details are on the pilot list. Pilots are not open yet — when they are, institutions on this list are the ones we scope with first.
+          Your details are on the pilot list. Pilots are not open yet. When they are, institutions on this list are the ones we scope with first.
         </p>
       </div>
     );

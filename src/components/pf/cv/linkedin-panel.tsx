@@ -150,7 +150,7 @@ export function LinkedInPanel() {
             <AiSection title="What to change">
               <AiList
                 items={data.feedback
-                  .map((f) => [f.issue, f.suggestedFix].filter(Boolean).join(" — "))
+                  .map((f) => [f.issue, f.suggestedFix].filter(Boolean).join(": "))
                   .filter((s) => s.length > 0)}
               />
             </AiSection>
@@ -186,7 +186,7 @@ export function LinkedInPanel() {
 
           <AiCaveat>
             Keyword lists are inferred from the role you typed, not from LinkedIn&apos;s search index.
-            Rewrite the suggestions in your own voice — a profile that does not sound like you falls
+            Rewrite the suggestions in your own voice: a profile that does not sound like you falls
             apart in the first conversation.
           </AiCaveat>
         </div>

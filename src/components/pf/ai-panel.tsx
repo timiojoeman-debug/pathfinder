@@ -42,7 +42,7 @@ export function GenerateButton({
         borderRadius: 11,
         border: ghost ? "1px solid var(--line)" : "none",
         background: off ? "var(--panel3)" : ghost ? "transparent" : "var(--accent)",
-        color: off ? "var(--faint)" : ghost ? "var(--fg)" : "#F7F1E4",
+        color: off ? "var(--faint)" : ghost ? "var(--fg)" : "var(--onAccent)",
         fontSize: 13,
         fontWeight: 600,
         transition: "all .2s var(--ease)",

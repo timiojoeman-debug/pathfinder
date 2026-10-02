@@ -32,10 +32,10 @@ const CATEGORIES = [
 ] as const;
 
 const BEATS = [
-  { k: "situation", mark: "S", label: "Situation", prompt: "Set the scene in one sentence — where were you and what was at stake?" },
+  { k: "situation", mark: "S", label: "Situation", prompt: "Set the scene in one sentence: where were you and what was at stake?" },
   { k: "task", mark: "T", label: "Task", prompt: "What was your specific responsibility or goal?" },
   { k: "action", mark: "A", label: "Action", prompt: 'What did you do? Lead with "I…" verbs and be concrete.' },
-  { k: "result", mark: "R", label: "Result", prompt: "The measurable outcome — a number, or what changed because of you." },
+  { k: "result", mark: "R", label: "Result", prompt: "The measurable outcome: a number, or what changed because of you." },
 ] as const;
 
 type BeatKey = (typeof BEATS)[number]["k"];
@@ -98,7 +98,7 @@ function SavedStories() {
           {confirmId === st.id ? (
             <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
               Delete this story?
-              <button onClick={() => deleteStory(st.id)} style={{ cursor: "pointer", border: "none", background: "var(--risk)", color: "#F7F1E4", borderRadius: 8, height: 28, padding: "0 11px", fontSize: 12, fontWeight: 600 }}>Delete</button>
+              <button onClick={() => deleteStory(st.id)} style={{ cursor: "pointer", border: "none", background: "var(--risk)", color: "var(--onAccent)", borderRadius: 8, height: 28, padding: "0 11px", fontSize: 12, fontWeight: 600 }}>Delete</button>
               <button onClick={() => setConfirmId(null)} style={{ cursor: "pointer", border: "1px solid var(--line)", background: "var(--panel)", color: "var(--fg)", borderRadius: 8, height: 28, padding: "0 11px", fontSize: 12, fontWeight: 600 }}>Keep</button>
             </span>
           ) : (
@@ -140,16 +140,16 @@ export function StarTab() {
     const result = await run({ rawStory: story, category });
     if (result?.data?.situation) {
       const name = CATEGORIES.find((c) => c.id === category)?.name ?? category;
-      emit("AiConsulted", "interview", `Structured a STAR story — ${name}`);
+      emit("AiConsulted", "interview", `Structured a STAR story: ${name}`);
     }
   };
 
   return (
     <Reveal style={{ maxWidth: 720 }}>
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>STAR story builder</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>STAR story builder</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "52ch" }}>
-          Draft each beat roughly — messy is fine. The builder tightens it to 60–90 seconds and tells you which questions it answers.
+          Draft each beat roughly; messy is fine. The builder tightens it to 60–90 seconds and tells you which questions it answers.
         </span>
 
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap", margin: "15px 0 4px" }}>
@@ -180,7 +180,7 @@ export function StarTab() {
               <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7 }}>
                 <span
                   className="pf-mono"
-                  style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}
+                  style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}
                 >
                   {b.mark}
                 </span>
@@ -214,7 +214,7 @@ export function StarTab() {
             <span style={{ fontSize: 12, color: "var(--faint)" }}>Sketch the situation and what you did, and this unlocks.</span>
           )}
           {hasEnough && !story.result.trim() && (
-            <span style={{ fontSize: 12, color: "var(--warn)" }}>No result yet — that&apos;s the beat interviewers remember.</span>
+            <span style={{ fontSize: 12, color: "var(--warn)" }}>No result yet, and that&apos;s the beat interviewers remember.</span>
           )}
           <button
             onClick={() => save(story, "your draft")}
@@ -250,7 +250,7 @@ export function StarTab() {
                   <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5 }}>
                     <span
                       className="pf-mono"
-                      style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}
+                      style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}
                     >
                       {b.mark}
                     </span>
@@ -284,14 +284,14 @@ export function StarTab() {
           {complete(built) && (
             <button
               onClick={() => save({ situation: built.situation!, task: built.task!, action: built.action!, result: built.result! }, "the tightened version")}
-              style={{ cursor: "pointer", marginTop: 14, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+              style={{ cursor: "pointer", marginTop: 14, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13, fontWeight: 600 }}
             >
               Save the tightened version
             </button>
           )}
 
           <AiCaveat>
-            Say it out loud once before you accept it — if a phrase isn&apos;t yours, it will sound like it isn&apos;t yours.
+            Say it out loud once before you accept it. If a phrase isn&apos;t yours, it will sound like it isn&apos;t yours.
           </AiCaveat>
         </div>
       )}

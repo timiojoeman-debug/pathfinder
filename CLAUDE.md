@@ -112,8 +112,11 @@ login — do **not** widen `isGuestAllowed` to an OpenAI route without a matchin
   listings** — it previously shipped three invented companies with
   `example.com` apply links. Tests in `__tests__/search.test.ts` enforce that.
   Filters: `location` maps to Adzuna's `where`; `roleType`, `industry` and
-  `workMode` are concatenated into `what`. Work mode is a **keyword narrowing,
-  not a hard filter** (no job board exposes it as a field), and the UI says so.
+  `workMode` are concatenated into `what`. Industry and work mode also narrow the
+  GitHub internship lists, by whole-word keyword match against title, company and
+  location (those lists carry no advert text, so this drops most of them). Work
+  mode is a **keyword narrowing, not a hard filter** (no job board exposes it as a
+  field), and the UI says so.
   `companySize` was removed rather than left validated-and-ignored — Adzuna has
   no company-size data, so any control for it would be decorative.
 - `/intel/analyze` — opportunity/priority-move analysis for the command centre
@@ -143,11 +146,12 @@ The spine of the app. Nothing derived is stored twice:
 - `recommendations.ts` — ranks the single next action
 - `store.ts` — the Zustand store (persisted, `skipHydration`)
 - `logic.ts`, `data.ts`, `orchestrator.ts` — pure derivation helpers, static content, AI orchestration
-- `leetcode.ts` — the NeetCode list: 18 categories, 100 real problems with verified
-  LeetCode numbers and links. Progress is keyed by problem `slug`, and `ivSolved`
-  (per-category counts) is a **projection** of `ivProblems`, recomputed on every
-  toggle — never incremented, so the counts cannot drift from the ticked problems.
-  `LEETCODE_TOTAL` and `LEET_ON_TRACK` are derived; do not hardcode 75 or 45 again.
+- `leetcode.ts` — the Blind 75: 18 categories, 75 real problems with verified
+  LeetCode numbers and links (category sizes are deliberately uneven). Progress is
+  keyed by problem `slug`, and `ivSolved` (per-category counts) is a **projection**
+  of `ivProblems`, recomputed on every toggle — never incremented, so the counts
+  cannot drift from the ticked problems. `LEETCODE_TOTAL` and `LEET_ON_TRACK` are
+  derived from the list; do not hardcode them.
 
 **Progress must stay evidence-derived.** Self-reported input (e.g. the Stage-00 sliders) never feeds the CV/networking/interview pillars — showing "CV 45%" before a CV exists is fabricated progress. Onboarding hands over its *target* (which is real input) and logs baseline events; the pillars stay at zero until real work exists.
 
@@ -195,9 +199,9 @@ RAG is seeded: `methodology_chunks` holds embedded chunks (1536-dim, text-embedd
 
 ## Testing
 
-90 test files / 603 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the LeetCode data and `toggleProblem` projection, the assistant slice's advisory boundary, the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search / rate-solution route handlers.
+94 test files / 711 tests. Covered: `auth.ts`, the AI validation layer (including `envelopeMessage`), the db layer, pure Career-OS derivation (`profile`, `logic`, onboarding handoff, `ai-context`), the LeetCode data and `toggleProblem` projection, the assistant slice's advisory boundary, the `useAiTask` client hook, `CountUp`, `NaturalnessNote`, email link resolution, and the health / outreach / jobs-search / rate-solution route handlers.
 
-`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈58.7% lines / 47.7% branches against thresholds of 54 and 45), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
+`npm run test:coverage` reports coverage and enforces a **ratchet** — thresholds in `vitest.config.ts` sit just below current coverage (currently ≈61.9% lines / 52.1% branches against thresholds of 54 and 45), so the build fails if coverage goes backwards but is not permanently red against the 80% target. Raise them as tests land. `all: true` is set, so untested files count as 0 rather than vanishing from the report.
 
 Still thin: most route handlers, and the phase pages themselves.
 
@@ -217,8 +221,8 @@ See `.env.example`. Required: `OPENAI_API_KEY`, `JWT_SECRET` (auth throws at sta
     (tightened beats + tips, no feedback/questions/quality). The STAR tab already
     covers it; wiring it adds a button with no new capability.
   - `/interview/random-problem` — asks the model to invent a problem **and its
-    LeetCode URL**. A hallucinated link is exactly the fabrication the 100-problem
-    `leetcode.ts` list was built to remove, so the "surprise me" use case is served
+    LeetCode URL**. A hallucinated link is exactly the fabrication the Blind 75
+    list in `leetcode.ts` was built to remove, so the "surprise me" use case is served
     client-side from the real list in `components/pf/interview/practice-panel.tsx`
     instead, and this route stays dark.
   - `/analytics/dashboard` — a stub `GET` returning `{message: …}`. Analytics are
@@ -244,5 +248,4 @@ See `.env.example`. Required: `OPENAI_API_KEY`, `JWT_SECRET` (auth throws at sta
   access would let a misread question manufacture the progress every number in
   the product is derived from — if that changes, every write needs explicit
   confirmation and the tests should be updated deliberately, not deleted.
-- `universities/` still points at a placeholder `partnerships@pathfinder.app` mailbox
 - `NEXT_PUBLIC_APP_URL` is unset in production, so absolute links fall back to relative

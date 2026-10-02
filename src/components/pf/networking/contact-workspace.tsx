@@ -170,9 +170,9 @@ export function ContactWorkspace({ contact, onContactChange }: ContactWorkspaceP
 
   return (
     <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 3px" }}>Contact workspace</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 21, margin: "0 0 3px" }}>Contact workspace</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "58ch" }}>
-        One person, start to finish — prep the chat, write the follow-up from what they actually said,
+        One person, start to finish: prep the chat, write the follow-up from what they actually said,
         then make the referral easy for them to act on.
       </span>
 
@@ -243,7 +243,7 @@ export function ContactWorkspace({ contact, onContactChange }: ContactWorkspaceP
               </AiSection>
             )}
             <AiCaveat>
-              Prep, not a script. Read it once, then have the conversation — reciting these lines is
+              Prep, not a script. Read it once, then have the conversation. Reciting these lines is
               more obvious on a call than being unprepared.
             </AiCaveat>
           </div>
@@ -316,7 +316,7 @@ export function ContactWorkspace({ contact, onContactChange }: ContactWorkspaceP
           </GenerateButton>
           {!canFollow && (
             <span style={{ fontSize: 11.5, color: "var(--faint)", maxWidth: "38ch", lineHeight: 1.5 }}>
-              {contactName ? "A thank-you needs your notes — it has to reference what they said." : "Add the contact name first."}
+              {contactName ? "A thank-you needs your notes: it has to reference what they said." : "Add the contact name first."}
             </span>
           )}
         </div>

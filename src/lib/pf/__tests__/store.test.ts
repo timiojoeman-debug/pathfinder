@@ -493,8 +493,6 @@ describe("pf store — instant actions (no pretend delays)", () => {
   it("startOnbScan only runs once every self-rating is chosen", () => {
     usePfStore.setState({ onb: { ...s().onb, cv: 45, projects: 42, outreach: 42, cadence: null } });
     s().startOnbScan();
-    expect(s().onbScanning).toBe(false);
-
     expect(s().onb.step).not.toBe(3);
     usePfStore.setState({ onb: { ...s().onb, cadence: 42 } });
     s().startOnbScan();

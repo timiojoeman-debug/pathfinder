@@ -21,7 +21,7 @@ export function ProgressLadder() {
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Journey progress</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>Journey progress</h2>
         <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)" }}>{progress.overall}% overall</span>
       </div>
       {progress.phases.map((ph) => (
@@ -50,9 +50,9 @@ export function RecommendationStack() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ display: "flex", width: 26, height: 26, alignItems: "center", justifyContent: "center", borderRadius: 8, background: "var(--accent)" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="#F7F1E4"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--onAccent)"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
           </span>
-          <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Do next</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 23, margin: 0 }}>Do next</h2>
         </div>
         <span style={{ fontFamily: mono, fontSize: 10, color: "var(--faint)" }}>ranked from your profile</span>
       </div>
@@ -86,12 +86,12 @@ export function MemoryFeed() {
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>What changed</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>What changed</h2>
         <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)" }}>your AI remembers</span>
       </div>
       {changes.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
-          Nothing logged yet. As you work through the phases, every action lands here — and the AI mentor references it next time you ask.
+          Nothing logged yet. As you work through the phases, every action lands here, and the AI mentor references it next time you ask.
         </div>
       ) : (
         [...profile.events]
@@ -120,8 +120,8 @@ export function ProfileSummary() {
           entirely computed. The strengths, gaps and skills below are derived
           from logged work; the mentor's retelling is the block at the end, and
           is labelled where it starts. */}
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Your profile</h2>
-      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Derived from every phase — it&apos;s what the mentor reads before it answers.</span>
+      <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>Your profile</h2>
+      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Derived from every phase: it&apos;s what the mentor reads before it answers.</span>
 
       {profile.directionStatement && (
         <p style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5, margin: "14px 0 4px" }}>{profile.directionStatement}</p>
@@ -132,13 +132,13 @@ export function ProfileSummary() {
           <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--strong)", marginBottom: 8 }}>Strengths</div>
           {profile.strengths.length ? profile.strengths.map((s) => (
             <div key={s} style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 4 }}>· {s}</div>
-          )) : <div style={{ fontSize: 12.5, color: "var(--faint)" }}>Build some — start with direction.</div>}
+          )) : <div style={{ fontSize: 12.5, color: "var(--faint)" }}>Build some. Start with direction.</div>}
         </div>
         <div>
           <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--risk)", marginBottom: 8 }}>Gaps to close</div>
           {profile.weaknesses.length ? profile.weaknesses.map((w) => (
             <div key={w} style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 4 }}>· {w}</div>
-          )) : <div style={{ fontSize: 12.5, color: "var(--faint)" }}>None flagged — nice work.</div>}
+          )) : <div style={{ fontSize: 12.5, color: "var(--faint)" }}>None flagged. Nice work.</div>}
         </div>
       </div>
 

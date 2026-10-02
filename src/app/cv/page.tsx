@@ -128,8 +128,9 @@ export default function CvPage() {
     <div>
       <PageHeader label="Phase 02 · Precision" title="CV Optimisation">
         <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "56ch" }}>
-          85% of employers screen with ATS, then a recruiter scans the top half of page one in{" "}
-          <span style={{ color: "var(--fg)", fontWeight: 600 }}>6–8 seconds</span>. Every line is
+          Most employers filter applications through an ATS before a person reads them, and then a
+          recruiter skims the top half of page one in{" "}
+          <span style={{ color: "var(--fg)", fontWeight: 600 }}>a few seconds</span>. Every line is
           scored against the role.
         </p>
       </PageHeader>
@@ -141,7 +142,7 @@ export default function CvPage() {
         <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "26px 28px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)" }}>
-              Paste your CV text — PDF/DOCX upload works the same way
+              Paste your CV text (PDF and DOCX upload work the same way)
             </div>
             <input
               ref={fileRef}
@@ -173,7 +174,7 @@ export default function CvPage() {
             <button
               onClick={handleAnalyze}
               disabled={!cvCanAnalyze}
-              style={{ cursor: cvCanAnalyze ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: cvBtnBg, color: cvCanAnalyze ? "#F7F1E4" : "var(--faint)", fontSize: 14, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}
+              style={{ cursor: cvCanAnalyze ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: cvBtnBg, color: cvCanAnalyze ? "var(--onAccent)" : "var(--faint)", fontSize: 14, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}
             >
               Analyse CV →
             </button>
@@ -191,7 +192,7 @@ export default function CvPage() {
         <div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
             <a onClick={reAnalyzeCv} style={{ cursor: "pointer", fontFamily: mono, fontSize: 11, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
-              ← Edit & re-analyze
+              ← Edit & re-analyse
             </a>
           </div>
 
@@ -215,7 +216,7 @@ export default function CvPage() {
             {/* Score breakdown — derived from the analysis, not preset */}
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "20px 24px 12px" }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>What&apos;s affecting your score</h2>
+                <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>What&apos;s affecting your score</h2>
                 <span style={{ fontFamily: mono, fontSize: 10.5, color: (hasVague || hasMissing) ? "var(--warn)" : "var(--strong)" }}>
                   {analysis.vague.length + analysis.missing.length} to fix
                 </span>
@@ -231,7 +232,7 @@ export default function CvPage() {
                 <span style={{ fontFamily: mono, fontSize: 10, color: hasMissing ? "var(--warn)" : "var(--strong)" }}>{analysis.missing.length} missing</span>
               </div>
               <div style={{ padding: "12px 24px", borderTop: "1px solid var(--line2)", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
-                {analysis.verdict} — {analysis.sub}
+                {analysis.verdict}: {analysis.sub}
               </div>
             </Reveal>
           </div>
@@ -239,7 +240,7 @@ export default function CvPage() {
           {/* AI mentor read: a real read of this text, or a plain note saying why there isn't one */}
           <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>AI mentor read</h2>
+              <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>AI mentor read</h2>
               <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--accent)" }}>
                 {aiRead ? "from your full CV text" : "sends your CV text to the server"}
               </span>
@@ -286,7 +287,7 @@ export default function CvPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "20px 24px 12px" }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Vague terms detected</h2>
+                <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>Vague terms detected</h2>
                 <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--risk)" }}>weaken every bullet</span>
               </div>
               {hasVague ? (
@@ -298,14 +299,14 @@ export default function CvPage() {
                 ))
               ) : (
                 <div style={{ padding: "14px 24px", fontSize: 12.5, color: "var(--muted)", borderTop: "1px solid var(--line2)" }}>
-                  None found — every bullet owns its verb. Rare and good.
+                  None found. Every bullet owns its verb: rare, and good.
                 </div>
               )}
             </Reveal>
 
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "20px 24px" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Missing keywords</h2>
+                <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>Missing keywords</h2>
                 <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--warn)" }}>vs your target stack</span>
               </div>
               {hasMissing && (
@@ -332,7 +333,7 @@ export default function CvPage() {
             <a onClick={() => set({ cvLinkedIn: !cvLinkedIn })} style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", textDecoration: "none", color: "var(--fg)" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 11 }}>
                 <span style={{ fontSize: 16, fontWeight: 700 }}>{linkedinChevron}</span>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>LinkedIn quick check</h2>
+                <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>LinkedIn quick check</h2>
               </span>
               <span style={{ fontFamily: mono, fontSize: 11, color: "var(--faint)" }}>paste yours to review</span>
             </a>

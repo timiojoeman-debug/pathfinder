@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, LegalH2 } from "@/components/pf/legal-page";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — PathFinder",
+  title: "Terms of Service · PathFinder",
   description: "The terms under which you use PathFinder.",
 };
 
@@ -26,14 +26,14 @@ export default function TermsPage() {
 
       <LegalH2>Acceptable use</LegalH2>
       <ul>
-        <li>Don&apos;t misuse the service — no scraping, abuse of AI features to generate bulk or deceptive content, attempts to break authentication or rate limits, or uploading unlawful content.</li>
+        <li>Don&apos;t misuse the service: no scraping, abuse of AI features to generate bulk or deceptive content, attempts to break authentication or rate limits, or uploading unlawful content.</li>
         <li>Don&apos;t submit other people&apos;s personal data without a lawful basis.</li>
         <li>We may suspend accounts that abuse the platform or threaten its stability.</li>
       </ul>
 
       <LegalH2>AI-generated content</LegalH2>
       <p>
-        PathFinder produces drafts — CV rewrites, cover letters, outreach, interview answers — using automated
+        PathFinder produces drafts (CV rewrites, cover letters, outreach, interview answers) using automated
         systems. Output can be inaccurate or generic. <strong>You must review and edit everything before you
         send it to an employer.</strong> The service does not provide legal, financial, or professional career
         advice, and outcomes (interviews, offers) are not guaranteed.

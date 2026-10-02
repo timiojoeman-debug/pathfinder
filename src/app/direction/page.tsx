@@ -68,7 +68,7 @@ function ModeToggle() {
   const set = usePfStore((s) => s.set);
   const btn = (on: boolean): CSSProperties => ({
     cursor: "pointer", height: 38, padding: "0 18px", borderRadius: 10, border: "1px solid var(--line)",
-    background: on ? "var(--accent)" : "var(--panel)", color: on ? "#F7F1E4" : "var(--muted)",
+    background: on ? "var(--accent)" : "var(--panel)", color: on ? "var(--onAccent)" : "var(--muted)",
     fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
   });
   return (
@@ -97,7 +97,7 @@ function Wizard({ onGenerate, generating }: { onGenerate: () => void; generating
 
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 9 }}>
-          Tech stack <span style={{ fontWeight: 500, color: "var(--faint)" }}>(pick 3+ — these become your ATS keywords)</span>
+          Tech stack <span style={{ fontWeight: 500, color: "var(--faint)" }}>(pick 3+: these become your ATS keywords)</span>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {DIR_STACK_OPTS.map((l) => (
@@ -136,7 +136,7 @@ function Wizard({ onGenerate, generating }: { onGenerate: () => void; generating
       <button
         onClick={onGenerate}
         disabled={!ready}
-        style={{ cursor: ready ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 14, fontWeight: 600 }}
+        style={{ cursor: ready ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: ready ? "var(--onAccent)" : "var(--faint)", fontSize: 14, fontWeight: 600 }}
       >
         Generate statement →
       </button>
@@ -218,11 +218,11 @@ function Explore() {
 
   return (
     <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
-      <Kicker style={{ marginBottom: 14 }}>Not sure yet? Talk it out — the AI extracts your preferences as you go</Kicker>
+      <Kicker style={{ marginBottom: 14 }}>Not sure yet? Talk it out, and the AI picks up your preferences as you go</Kicker>
 
       {s.chat.length === 0 && (
         <div style={{ fontSize: 13.5, color: "var(--muted)", border: "1px dashed var(--lineStrong)", borderRadius: 12, padding: "16px 18px", marginBottom: 14 }}>
-          Try: <span style={{ color: "var(--fg)", fontStyle: "italic" }}>&quot;I like building interfaces but fintech sounds interesting too — and I think I&apos;d prefer a small startup.&quot;</span>
+          Try: <span style={{ color: "var(--fg)", fontStyle: "italic" }}>&quot;I like building interfaces but fintech sounds interesting too, and I think I&apos;d prefer a small startup.&quot;</span>
         </div>
       )}
 
@@ -391,7 +391,7 @@ function GeneratedStatement({ task, onSharpen }: { task: AiTask<DirectionResult>
         </div>
       ))}
 
-      <Kicker style={{ fontSize: 9.5, margin: "16px 0 10px" }}>Search with these titles — the same role hides under different names</Kicker>
+      <Kicker style={{ fontSize: 9.5, margin: "16px 0 10px" }}>Search with these titles: the same role hides under different names</Kicker>
       {starter.length > 0 && (
         <>
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Starter list: common titles for {s.dirRole}, not generated for you.</div>
@@ -432,7 +432,7 @@ function TargetRoles() {
   return (
     <Panel style={{ overflow: "hidden" }}>
       <div style={{ padding: "20px 24px 12px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Target roles</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>Target roles</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
           Tick up to three titles to search under ({picked.length}/3). &quot;Find more titles with AI&quot; above covers the ones you tick.{full ? " Untick one to swap it." : ""}
         </span>
@@ -536,7 +536,7 @@ export default function DirectionPage() {
         <TargetRoles />
 
         <Panel style={{ padding: "20px 24px" }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>The HIRE framework</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>The HIRE framework</h2>
           <span style={{ fontSize: 12.5, color: "var(--muted)" }}>The arc every phase maps to</span>
           <div style={{ marginTop: 16 }}>
             {HIRE_FRAMEWORK.map((h) => (

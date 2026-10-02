@@ -74,8 +74,8 @@ function toSavedJob(j: { title?: string; company?: string; location?: string; so
     tone: fitKnown ? fitTone(fit) : "var(--faint)",
     tags: j.atsKeywords && j.atsKeywords.length ? j.atsKeywords.slice(0, 3) : ["Not scored"],
     verdict: fitKnown
-      ? (fit >= 70 ? "Strong match" : fit >= 55 ? "Reach — tailor hard" : "Long shot")
-      : "Fit unknown — paste the full JD below to score it",
+      ? (fit >= 70 ? "Strong match" : fit >= 55 ? "Reach: tailor hard" : "Long shot")
+      : "Fit unknown: paste the full JD below to score it",
     action: "+ Save",
     jdText: (j.description ?? "").slice(0, MAX_JD_CHARS),
     ...(safeHttpUrl(j.url) ? { url: safeHttpUrl(j.url) as string } : {}),
@@ -108,7 +108,7 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
       const json = (res.ok ? await res.json() : await res.json().catch(() => null)) as { text?: string; error?: string } | null;
       if (res.ok && typeof json?.text === "string" && json.text.length >= 120) {
         s.set({ jfJD: json.text, jfResult: null, jfLetter: false });
-        setFetchNote("Pulled the description from the link — review it, then analyze.");
+        setFetchNote("Pulled the description from the link. Review it, then analyse.");
       } else {
         setFetchNote(json?.error ?? "Couldn't read that link. Paste the description below instead.");
       }
@@ -121,12 +121,12 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
 
   return (
     <Panel style={{ padding: "24px 26px", marginBottom: 18 }}>
-      <Kicker style={{ marginBottom: 14 }}>Add a role you found — save it, or analyze it against your CV</Kicker>
+      <Kicker style={{ marginBottom: 14 }}>Add a role you found: save it, or analyse it against your CV</Kicker>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
         <input
           value={s.jfTitle}
           onChange={(e) => s.set({ jfTitle: e.target.value })}
-          placeholder="Job title — e.g. Software Engineer Intern"
+          placeholder="Job title, e.g. Software Engineer Intern"
           className="pf-input"
           style={{ height: 44, padding: "0 15px" }}
         />
@@ -143,7 +143,7 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
           value={jdUrl}
           onChange={(e) => setJdUrl(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") void fetchJd(); }}
-          placeholder="Job posting URL (optional) — paste a link to pull the description"
+          placeholder="Job posting URL (optional): paste a link to pull the description"
           className="pf-input"
           style={{ flex: "1 1 260px", minWidth: 0, height: 44, padding: "0 15px", fontSize: 13 }}
         />
@@ -176,9 +176,9 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
         <button
           onClick={onAnalyze}
           disabled={!canAnalyze}
-          style={{ cursor: canAnalyze ? "pointer" : "default", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: canAnalyze ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 13.5, fontWeight: 600 }}
+          style={{ cursor: canAnalyze ? "pointer" : "default", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: canAnalyze ? "var(--accent)" : "var(--panel3)", color: canAnalyze ? "var(--onAccent)" : "var(--faint)", fontSize: 13.5, fontWeight: 600 }}
         >
-          Analyze &amp; get ATS keywords →
+          Analyse &amp; get ATS keywords →
         </button>
       </div>
     </Panel>
@@ -256,7 +256,7 @@ function AnalysisResult({ aiRead, read }: { aiRead: AiJdRead | null; read: AiTas
 
       {r.noBlockers && (
         <div style={{ padding: "11px 24px", borderBottom: "1px solid var(--line2)", fontSize: 12.5, color: "var(--muted)" }}>
-          No dealbreakers detected — no clearance, sponsorship or experience walls in this posting.
+          No dealbreakers detected: no clearance, sponsorship or experience walls in this posting.
         </div>
       )}
       {r.blockers.map((b) => (
@@ -437,7 +437,7 @@ export default function JobsPage() {
         setSearchNote(
           json?.message ??
             (json?.configured === false
-              ? "Live job search isn't connected yet — add roles manually below."
+              ? "Live job search isn't connected yet. Add roles manually below."
               : `No live results for "${q}". Try a broader title, or add the role manually below.`),
         );
       }
@@ -492,7 +492,7 @@ export default function JobsPage() {
           style={{
             cursor: !query.trim() || searching ? "default" : "pointer", height: 46, padding: "0 22px", borderRadius: 12,
             border: "none", background: !query.trim() || searching ? "var(--panel3)" : "var(--accent)",
-            color: !query.trim() || searching ? "var(--faint)" : "#F7F1E4", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap",
+            color: !query.trim() || searching ? "var(--faint)" : "var(--onAccent)", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap",
           }}
         >
           {searching ? "Searching…" : "Search"}
@@ -508,7 +508,7 @@ export default function JobsPage() {
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
-          placeholder="Location — e.g. London"
+          placeholder="Location, e.g. London"
           className="pf-input"
           style={{ height: 42, padding: "0 14px", flex: "1 1 170px", minWidth: 0, fontSize: 13 }}
         />
@@ -516,7 +516,7 @@ export default function JobsPage() {
           value={industry}
           onChange={(e) => setIndustry(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
-          placeholder="Industry — e.g. fintech"
+          placeholder="Industry, e.g. fintech"
           className="pf-input"
           style={{ height: 42, padding: "0 14px", flex: "1 1 170px", minWidth: 0, fontSize: 13 }}
         />
@@ -546,7 +546,7 @@ export default function JobsPage() {
             <Chip key={value} size="sm" label={label} on={minFit === value} onClick={() => setMinFit(value)} />
           ))}
           <span style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.45, flex: "1 1 220px" }}>
-            Filters what&apos;s shown below by score. Company size isn&apos;t filterable — no job board exposes it.
+            Filters what&apos;s shown below by score. Company size isn&apos;t filterable, because no job board exposes it.
           </span>
         </Reveal>
       )}
@@ -565,11 +565,18 @@ export default function JobsPage() {
                 style={{ cursor: "pointer", border: "1px solid color-mix(in srgb,var(--accent) 24%,transparent)", borderRadius: 16, background: "var(--panel)", padding: "22px 24px", transition: "transform .3s var(--ease),border-color .3s var(--ease)" }}
               >
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 14 }}>
-                  <div style={{ minWidth: 0 }}>
+                  {/* The card's open action, as a real button so it is keyboard
+                      reachable. The card itself keeps its click for the mouse. */}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); saveLiveJob(j, true); }}
+                    aria-label={`Save and open ${j.role} at ${j.company}`}
+                    style={{ minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, color: "inherit", font: "inherit", cursor: "pointer" }}
+                  >
                     <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.01em" }}>{j.company}</div>
                     <div style={{ fontSize: 13, color: "var(--muted)" }}>{j.role}</div>
                     <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 5 }}>{j.meta}</div>
-                  </div>
+                  </button>
                   <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
                     <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>
                       <circle cx="28" cy="28" r="23" fill="none" stroke="var(--panel3)" strokeWidth="5" />
@@ -585,13 +592,15 @@ export default function JobsPage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--line2)", paddingTop: 12 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: j.tone }}>{j.verdict}</span>
-                  <span
+                  <button
+                    type="button"
                     onClick={(e) => { e.stopPropagation(); saveLiveJob(j, false); }}
-                    className="pf-mono"
-                    style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", cursor: "pointer" }}
+                    aria-label={`Save ${j.role} at ${j.company}`}
+                    className="pf-mono pf-tap"
+                    style={{ fontSize: 11, fontWeight: 600, color: "var(--accentText)", cursor: "pointer", background: "none", border: "none", padding: "4px 0" }}
                   >
                     + Save →
-                  </span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -629,6 +638,10 @@ export default function JobsPage() {
           <Reveal key={`${j.company}-${j.role}-${i}`} style={{}}>
             <div
               onClick={() => s.openJob(j.company, j.role)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${j.role} at ${j.company}`}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); s.openJob(j.company, j.role); } }}
               className="pf-hover-border"
               style={{ cursor: "pointer", border: "1px solid var(--line)", borderRadius: 16, background: "var(--panel)", padding: "22px 24px", transition: "transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s var(--ease)" }}
             >

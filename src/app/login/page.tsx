@@ -33,13 +33,13 @@ export default function LoginPage() {
       });
       const json: { error?: string } = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error || "Something went wrong — try again.");
+        setError(json.error || "Something went wrong. Try again.");
         return;
       }
       await checkAuth();
       router.push("/intel");
     } catch {
-      setError("Could not reach the server — try again.");
+      setError("Could not reach the server. Try again.");
     } finally {
       setBusy(false);
     }
@@ -47,7 +47,7 @@ export default function LoginPage() {
 
   const tab = (on: boolean): React.CSSProperties => ({
     cursor: "pointer", flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--line)",
-    background: on ? "var(--accent)" : "var(--panel)", color: on ? "#F7F1E4" : "var(--muted)",
+    background: on ? "var(--accent)" : "var(--panel)", color: on ? "var(--onAccent)" : "var(--muted)",
     fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
   });
 
@@ -106,7 +106,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={busy}
-              style={{ cursor: busy ? "default" : "pointer", width: "100%", height: 46, borderRadius: 12, border: "none", background: busy ? "var(--panel3)" : "var(--accent)", color: "#F7F1E4", fontSize: 14, fontWeight: 600 }}
+              style={{ cursor: busy ? "default" : "pointer", width: "100%", height: 46, borderRadius: 12, border: "none", background: busy ? "var(--panel3)" : "var(--accent)", color: busy ? "var(--faint)" : "var(--onAccent)", fontSize: 14, fontWeight: 600 }}
             >
               {busy ? "One moment…" : mode === "login" ? "Sign in →" : "Create account →"}
             </button>

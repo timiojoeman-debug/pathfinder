@@ -43,8 +43,8 @@ const SITE_URL =
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "PathFinder — AI Career Mentor for Internships",
-  description: "AI-powered internship navigation platform. From direction to offer — step by step.",
+  title: "PathFinder · AI Career Mentor for Internships",
+  description: "AI-powered internship navigation platform. From direction to offer, step by step.",
 };
 
 export default function RootLayout({

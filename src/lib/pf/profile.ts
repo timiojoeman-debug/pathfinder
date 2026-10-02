@@ -207,6 +207,10 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
     const weak = total < MIN_WEAK_SIZE ? cur === 0 : cur / total < 0.5;
     if (weak) weakPatterns.push(name);
   });
+  // With nothing solved there is no evidence about any pattern, so none is
+  // "weak": listing all eighteen flooded the Command Centre's gaps with names
+  // that only meant "not started". That is one gap, stated once, below.
+  if (leetSolved === 0) weakPatterns.length = 0;
 
   const targetCompanies = gatherTargetCompanies(s.board, s.savedJobs);
 
@@ -222,7 +226,8 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
   if (s.netSent > 8) strengths.push("Actively networking");
   else weaknesses.push("Little networking activity");
   if (leetSolved >= LEET_ON_TRACK) strengths.push("Technical prep on track");
-  if (weakPatterns.length) weaknesses.push(`Weak LeetCode patterns: ${weakPatterns.join(", ")}`);
+  if (leetSolved === 0) weaknesses.push("LeetCode practice not started");
+  else if (weakPatterns.length) weaknesses.push(`Weak LeetCode patterns: ${weakPatterns.join(", ")}`);
   if (derived.offers > 0) strengths.push("Offer in hand");
 
   // Current phase = first incomplete phase in the journey order.

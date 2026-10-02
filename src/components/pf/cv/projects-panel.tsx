@@ -67,7 +67,7 @@ export function ProjectsPanel() {
 
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>Project ideas that close your gaps</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>Project ideas that close your gaps</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "54ch" }}>
         Three projects built around the keywords your CV is missing, each with a four-week plan and
         the points worth raising in an interview.
@@ -85,7 +85,7 @@ export function ProjectsPanel() {
         </GenerateButton>
         {!hasGaps && (
           <span style={{ fontSize: 11.5, color: "var(--faint)", maxWidth: "40ch", lineHeight: 1.5 }}>
-            No skill gaps recorded yet. Set your direction and analyse your CV first — without gaps
+            No skill gaps recorded yet. Set your direction and analyse your CV first. Without gaps
             this returns generic ideas.
           </span>
         )}
@@ -159,7 +159,7 @@ export function ProjectsPanel() {
 
                     {p.qualityChecklist?.length ? (
                       <AiSection title="What makes it stand out">
-                        <AiList items={p.qualityChecklist.map((q) => `${q.quality} — ${q.howToMeet}`)} />
+                        <AiList items={p.qualityChecklist.map((q) => `${q.quality}: ${q.howToMeet}`)} />
                       </AiSection>
                     ) : null}
 
@@ -174,7 +174,7 @@ export function ProjectsPanel() {
 
           <AiCaveat>
             These are starting points, not specifications. Scope each one down to what you can
-            actually finish — a small project you built and can explain beats an ambitious one you
+            actually finish. A small project you built and can explain beats an ambitious one you
             abandoned.
           </AiCaveat>
         </div>
