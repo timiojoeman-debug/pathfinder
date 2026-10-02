@@ -251,7 +251,7 @@ describe('POST /api/jobs/search', () => {
     });
 
     it('dedupes a role present in the cache and on GitHub', async () => {
-      getActiveListings.mockResolvedValue([CACHED({ company: 'Skyscanner', url: 'https://careers.skyscanner.net/1' })]);
+      getActiveListings.mockResolvedValue([CACHED({ company: 'Skyscanner', location: 'Edinburgh, UK', url: 'https://careers.skyscanner.net/1' })]);
       stubFetch({ github: [GH()] });
       const body = await (await POST(post({ roleType: 'software engineer intern' }))).json();
       expect(body.jobs.filter((j: { url: string }) => j.url === 'https://careers.skyscanner.net/1')).toHaveLength(1);

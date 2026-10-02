@@ -74,17 +74,30 @@ describe('dedupeListings', () => {
     expect(dedupeListings(dupes)).toHaveLength(1);
   });
 
-  it('ignores tracking params and a trailing slash in the URL', () => {
+  it('collapses one role listed under two links (Workday-style, differing requisitions)', () => {
     const out = dedupeListings([
-      job({ url: 'https://boards.example/acme/jobs/1' }),
-      job({ url: 'https://boards.example/acme/jobs/1/?utm_source=x&gh_src=y&source=Simplify&ref=r&lever-source=l' }),
+      job({ company: 'Hewlett Packard (HP)', title: 'Browser Software Engineer Intern', location: 'Cambridge, UK', url: 'https://hp.wd5.myworkdayjobs.com/EXTEU-AC-CareerSite/job/x_3160410' }),
+      job({ company: 'Hewlett Packard (HP)', title: ' browser software  engineer intern', location: 'Cambridge,  UK', url: 'https://hp.wd5.myworkdayjobs.com/externalcareersite/job/x_3160410-1' }),
     ]);
     expect(out).toHaveLength(1);
   });
 
-  it('keeps URLs that differ in a meaningful param', () => {
-    const out = dedupeListings([job({ url: 'https://x/apply?id=1' }), job({ url: 'https://x/apply?id=2' })]);
+  it('keeps the same title in a different location', () => {
+    const out = dedupeListings([job({ location: 'London' }), job({ location: 'Edinburgh' })]);
     expect(out).toHaveLength(2);
+  });
+
+  it('prefers a dated row, then an employer-feed row, then the first seen', () => {
+    const plain = job({ id: 'a' });
+    const dated = job({ id: 'b', postedAt: '2026-09-01T00:00:00Z' });
+    const employer = job({ id: 'c', source: 'Acme careers' });
+    const datedEmployer = job({ id: 'd', source: 'Acme careers', postedAt: '2026-09-02T00:00:00Z' });
+    const ids = (l: JobListing[]) => dedupeListings(l).map((j) => j.id);
+    expect(ids([plain, dated])).toEqual(['b']);
+    expect(ids([employer, dated])).toEqual(['b']);
+    expect(ids([plain, employer])).toEqual(['c']);
+    expect(ids([plain, employer, datedEmployer])).toEqual(['d']);
+    expect(ids([plain, job({ id: 'e' })])).toEqual(['a']);
   });
 
   it('keeps distinct roles at the same company', () => {

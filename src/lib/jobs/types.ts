@@ -6,6 +6,7 @@
  * each came from. Everything here is deterministic and side-effect free.
  */
 
+
 export interface JobListing {
   id: string;
   title: string;
@@ -68,31 +69,32 @@ export function computeMatchScore(cv: string, jobDescription: string): { score: 
   return { score, keywords: keywords.slice(0, 5) };
 }
 
-const TRACKING_PARAMS = new Set(["gh_src", "source", "ref", "lever-source"]);
+const flat = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
-/** A posting URL without tracking params or a trailing slash, so the same role linked from two sources compares equal. */
-function canonicalUrl(raw: string): string {
-  try {
-    const u = new URL(raw);
-    for (const k of [...u.searchParams.keys()]) {
-      if (k.startsWith("utm_") || TRACKING_PARAMS.has(k)) u.searchParams.delete(k);
-    }
-    u.pathname = u.pathname.replace(/\/+$/, "") || "/";
-    return u.href;
-  } catch {
-    return raw;
-  }
-}
+/** Employer feeds label their rows "{Employer} careers" (see ats.ts). */
+const isEmployerFeed = (j: JobListing) => j.source.endsWith(" careers");
 
-/** Drop duplicate listings that appear in more than one source. */
+/** Higher is the better row to keep when two collide: dated first, then employer-feed. */
+const rank = (j: JobListing) => (j.postedAt ? 2 : 0) + (isEmployerFeed(j) ? 1 : 0);
+
+/**
+ * One card per role. Keyed on company + title + location, not the URL: one list
+ * can carry the same requisition under two links (Workday /EXTEU-AC-CareerSite/
+ * vs /externalcareersite/, or a TikTok role under two requisition IDs). On a
+ * collision the row with a posted date wins, then an employer-feed row, then the
+ * first seen; the survivor keeps the first row's position.
+ */
 export function dedupeListings(listings: JobListing[]): JobListing[] {
-  const seen = new Set<string>();
+  const at = new Map<string, number>();
   const out: JobListing[] = [];
   for (const j of listings) {
-    const key = `${j.company.toLowerCase()}|${j.title.toLowerCase()}|${canonicalUrl(j.url)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(j);
+    const key = `${flat(j.company)}|${flat(j.title)}|${flat(j.location)}`;
+    const i = at.get(key);
+    if (i === undefined) {
+      at.set(key, out.push(j) - 1);
+    } else if (rank(j) > rank(out[i])) {
+      out[i] = j;
+    }
   }
   return out;
 }
