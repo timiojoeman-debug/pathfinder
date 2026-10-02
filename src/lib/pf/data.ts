@@ -45,6 +45,8 @@ export interface BoardCard {
    *  company's own careers page. Never seeded: an invented deadline is worse than none. */
   opens?: string; // yyyy-mm-dd
   deadline?: string; // yyyy-mm-dd
+  /** The posting, when the student added the card by hand with a link. http(s) only. */
+  link?: string;
 }
 
 export interface BoardColumn {
@@ -255,25 +257,6 @@ export const IV_TABS: [string, string][] = [["leetcode", "LeetCode"], ["star", "
 // The LeetCode list lives in `./leetcode.ts` — 18 real categories and 100 real
 // problems, replacing the five invented patterns that used to sit here.
 
-export const INTERVIEW_QUESTIONS = [
-  { type: "BEHAVIOURAL", tone: "var(--accent)", q: "Tell me about a time you disagreed with a teammate.", a: "Use your PR-review STAR story — conflict, the process you proposed, and the measurable calm that followed." },
-  { type: "TECHNICAL", tone: "var(--active)", q: "Walk me through the JavaScript event loop.", a: "Call stack → microtask queue → macrotasks. Tie it to the real render bug you fixed with queueMicrotask." },
-  { type: "ROLE", tone: "var(--strong)", q: "Why this company?", a: "Reference their edge-rendering blog post and your deployed project — the overlap is your answer." },
-];
-
-export const STAR_STORY = [
-  { k: "S", label: "Situation", text: "Group project; a teammate kept pushing untested code that broke our build." },
-  { k: "T", label: "Task", text: "Keep the team shipping without escalating into conflict." },
-  { k: "A", label: "Action", text: "Proposed a lightweight PR review + CI check; paired with them on the first two." },
-  { k: "R", label: "Result", text: "Build breakages dropped to near-zero; we shipped on time and they adopted the flow." },
-];
-
-export const COMPANY_BRIEFING = [
-  { label: "What they do", text: "Travel metasearch; heavy React front end, microservices moving to edge rendering." },
-  { label: "Likely questions", text: "JS event loop, a medium array/string problem, a \"why Northwind Travel\" behavioural." },
-  { label: "Your angle", text: "Lead with your deployed full-stack project; mention their edge-rendering post." },
-];
-
 /* ── Tracker ───────────────────────────────────────────────────────── */
 
 export const REJECTION_DIAGNOSIS: Record<string, string> = {
@@ -284,6 +267,15 @@ export const REJECTION_DIAGNOSIS: Record<string, string> = {
 };
 
 export const DIAG_TIMINGS = ["Within hours", "1–2 days", "1–2 weeks", "Never"];
+
+/** Where each diagnosis is fixed. Fast rejections are a CV problem; slow ones and
+ *  silence are "not a CV signal", so they point at a warm path, not the CV page. */
+export const DIAG_FIX: Record<string, { href: string; label: string }> = {
+  "Within hours": { href: "/cv", label: "Fix keywords" },
+  "1–2 days": { href: "/cv", label: "Sharpen your CV" },
+  "1–2 weeks": { href: "/networking", label: "Find a warm path" },
+  "Never": { href: "/networking", label: "Open a warm path" },
+};
 
 /* ── Onboarding (Stage 00) ─────────────────────────────────────────── */
 

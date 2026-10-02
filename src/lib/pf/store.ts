@@ -35,7 +35,7 @@ import {
   type OnbState,
 } from "./logic";
 import { categoryOf, LEETCODE_CATEGORIES, LEETCODE_PROBLEMS } from "./leetcode";
-import { makeEvent, type PfEvent, type PfEventType, type PfPhase } from "./events";
+import { makeEvent, nextEventId, type PfEvent, type PfEventType, type PfPhase } from "./events";
 import { deriveProfile, type CareerProfile, type ProfileInput } from "./profile";
 import { computeProgress, type ProgressReport } from "./progress";
 import { recommend, type Recommendation } from "./recommendations";
@@ -121,6 +121,23 @@ export interface CvAiRead {
 export interface JfCoverLetter { key: string; paras: string[]; assumptions: string[]; words: number }
 
 export interface InterviewFeedback { company: string; rating: number; note: string; date: string }
+/** A STAR story the student saved. Its count is the "stories prepared" evidence. */
+export interface SavedStory { id: string; title: string; situation: string; task: string; action: string; result: string; savedAt: number }
+/** The last company briefing generated for a company, kept so it survives a reload. */
+export interface SavedBriefing {
+  company: string;
+  role: string;
+  at: number;
+  data: {
+    companyOverview?: string;
+    techStack?: string[];
+    techStackConfidence?: "high" | "medium" | "low";
+    values?: string[];
+    whyThisCompany?: string[];
+    questionsToAsk?: string[];
+    uncertainties?: string[];
+  };
+}
 
 interface PfState {
   /* shell */
@@ -200,6 +217,11 @@ interface PfState {
   fbRating: number;
   fbNote: string;
   ivFeedback: InterviewFeedback[];
+  savedStories: SavedStory[];
+  /** Last briefing per company, keyed by lower-cased company name. */
+  ivBriefings: Record<string, SavedBriefing>;
+  /** Set by the tracker's "Prep" action; the Briefing tab takes it once and clears it. */
+  ivBriefingFor: { company: string; role: string } | null;
 
   /* tracker */
   board: BoardColumn[];
@@ -260,6 +282,10 @@ interface PfState {
   /** Mark a problem solved, or un-mark it if it already was. */
   toggleProblem: (slug: string) => void;
   saveFeedback: () => void;
+  /** Save a STAR story. Returns false (and saves nothing) unless all four beats are written. */
+  saveStory: (story: Omit<SavedStory, "id" | "savedAt">) => boolean;
+  deleteStory: (id: string) => void;
+  saveBriefing: (briefing: Omit<SavedBriefing, "at">) => void;
 
   moveCard: (key: string, toId: BoardColumn["id"]) => void;
   moveCardBefore: (key: string, targetKey: string) => void;
@@ -269,6 +295,9 @@ interface PfState {
   setCardDate: (key: string, field: "opens" | "deadline", value: string) => void;
   setDiag: (key: string, timing: string) => void;
   trackJob: (job: { company: string; role: string; fit: number | null; tone: string }) => void;
+  /** Add an application by hand. Returns false for a missing field or a card that already exists. */
+  addCard: (card: { company: string; role: string; column: BoardColumn["id"]; link?: string; appliedOn?: string }) => boolean;
+  setCardNote: (key: string, note: string) => void;
 }
 
 /** Stamp a card as it lands in a new column. */
@@ -368,6 +397,9 @@ export const usePfStore = create<PfState>()(
       fbRating: 0,
       fbNote: "",
       ivFeedback: [],
+      savedStories: [],
+      ivBriefings: {},
+      ivBriefingFor: null,
 
       board: EMPTY_BOARD,
       diags: {},
@@ -651,6 +683,20 @@ export const usePfStore = create<PfState>()(
         });
       },
 
+      saveStory: (story) => {
+        const beats = [story.situation, story.task, story.action, story.result].map((b) => b.trim());
+        if (beats.some((b) => !b)) return false;
+        const [situation, task, action, result] = beats;
+        const title = story.title.trim() || situation.slice(0, 60);
+        const saved: SavedStory = { id: nextEventId(), title, situation, task, action, result, savedAt: Date.now() };
+        set((s) => ({ savedStories: [saved, ...s.savedStories] }));
+        get().emit("StoryPrepared", "interview", `Prepared a STAR story · ${title}`, { title });
+        return true;
+      },
+      deleteStory: (id) => set((s) => ({ savedStories: s.savedStories.filter((x) => x.id !== id) })),
+      saveBriefing: (briefing) =>
+        set((s) => ({ ivBriefings: { ...s.ivBriefings, [briefing.company.trim().toLowerCase()]: { ...briefing, at: Date.now() } } })),
+
       moveCard: (key, toId) => {
         const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
         if (columnOf(get().board, key) === toId) return;
@@ -761,6 +807,36 @@ export const usePfStore = create<PfState>()(
         }));
         get().emit("JobSaved", "jobs", `Tracking ${job.role} at ${job.company}${job.fit === null ? "" : ` (fit ${job.fit})`}`, job.fit === null ? { company: job.company } : { company: job.company, fit: job.fit });
       },
+      addCard: ({ company, role, column, link, appliedOn }) => {
+        const co = company.trim();
+        const ro = role.trim();
+        if (!co || !ro) return false;
+        const key = trackCardKey(co, ro);
+        if (get().board.some((col) => col.cards.some((c) => c.key === key || trackCardKey(c.company, c.role) === key))) return false;
+        // Only http(s) links are kept: the drawer renders this as an <a href>.
+        const url = link?.trim() && /^https?:\/\//i.test(link.trim()) ? link.trim() : undefined;
+        const base: BoardCard = { key, company: co, role: ro, tag: "added", tone: "var(--muted)", when: "new", note: "", ...(url ? { link: url } : {}) };
+        let card = column === "saved" ? base : stampCard(base, column);
+        // Anything past Saved was applied to. Back-filled applications keep the date the
+        // student gives, so last month's applications don't count toward this week.
+        if (column !== "saved") {
+          const parsed = appliedOn ? new Date(appliedOn + "T00:00:00").getTime() : NaN;
+          card = { ...card, appliedDate: Number.isFinite(parsed) ? parsed : Date.now() };
+        }
+        set((s) => ({ board: s.board.map((col) => (col.id === column ? { ...col, cards: [card, ...col.cards] } : col)) }));
+        const ev = COLUMN_EVENT[column];
+        if (ev) get().emit(ev.type, "tracker", ev.label(co), { company: co, role: ro, to: column, added: true });
+        else get().emit("JobSaved", "tracker", `Tracking ${ro} at ${co}`, { company: co, role: ro, added: true });
+        return true;
+      },
+      setCardNote: (key, note) => {
+        const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
+        if (!card || card.note === note) return;
+        set((s) => ({
+          board: s.board.map((col) => ({ ...col, cards: col.cards.map((c) => (c.key === key ? { ...c, note } : c)) })),
+        }));
+        get().emit("ApplicationAdvanced", "tracker", `Note updated · ${card.company}`, { company: card.company, note: true });
+      },
     }),
     {
       name: "pathfinder-redesign-v1",
@@ -807,6 +883,8 @@ export const usePfStore = create<PfState>()(
         ivSolved: s.ivSolved,
         ivProblems: s.ivProblems,
         ivFeedback: s.ivFeedback,
+        savedStories: s.savedStories,
+        ivBriefings: s.ivBriefings,
         diags: s.diags,
         board: s.board,
         events: s.events,
@@ -849,7 +927,7 @@ function toProfileInput(s: PfState): ProfileInput {
     cvAiSkills: s.cvAiRead?.skills,
     savedJobs: s.savedJobs,
     netPersona: s.netPersona, netSent: s.netSent, netGenerated: s.netGenerated,
-    ivSolved: s.ivSolved, ivFeedback: s.ivFeedback,
+    ivSolved: s.ivSolved, ivFeedback: s.ivFeedback, savedStories: s.savedStories,
     board: s.board, diags: s.diags, events: s.events,
   };
 }

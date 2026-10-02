@@ -7,18 +7,84 @@
  */
 
 import Link from "next/link";
-import type { DragEvent } from "react";
-import { REJECTION_DIAGNOSIS } from "@/lib/pf/data";
-import { callbackSummary, cardWhen, formatReminder, rejectionInsight, trackerDerived } from "@/lib/pf/logic";
+import { useRouter } from "next/navigation";
+import { useState, type DragEvent, type FormEvent } from "react";
+import { DIAG_FIX, REJECTION_DIAGNOSIS, type BoardColumn } from "@/lib/pf/data";
+import { callbackSummary, cardWhen, dominantRejectionTiming, formatReminder, isoToday, rejectionInsight, trackerDerived } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
 import { PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 
+/** Add an application by hand: one the student found outside Opportunity Discovery. */
+function AddApplication() {
+  const board = usePfStore((s) => s.board);
+  const addCard = usePfStore((s) => s.addCard);
+  const [company, setCompany] = useState("");
+  const [role, setRole] = useState("");
+  const [column, setColumn] = useState<BoardColumn["id"]>("applied");
+  const [link, setLink] = useState("");
+  const [appliedOn, setAppliedOn] = useState(isoToday());
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const ready = company.trim().length > 0 && role.trim().length > 0;
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!ready) return;
+    if (link.trim() && !/^https?:\/\//i.test(link.trim())) {
+      setMsg("The link needs to start with http:// or https://.");
+      return;
+    }
+    if (!addCard({ company, role, column, link, appliedOn: column === "saved" ? undefined : appliedOn })) {
+      setMsg(`${company.trim()} · ${role.trim()} is already on the board.`);
+      return;
+    }
+    setMsg(null);
+    setCompany("");
+    setRole("");
+    setLink("");
+  };
+
+  const field = { height: 40, padding: "0 13px", fontSize: 13, minWidth: 0 } as const;
+  return (
+    <Reveal style={{ border: "1px solid var(--line)", borderRadius: 16, background: "var(--panel)", padding: "16px 20px", marginBottom: 14 }}>
+      <form onSubmit={submit} aria-label="Add an application" style={{ display: "flex", gap: 9, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 13.5, fontWeight: 700, marginRight: 4 }}>Add an application</span>
+        <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" aria-label="Company" className="pf-input" style={{ ...field, flex: "1 1 140px" }} />
+        <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Role" aria-label="Role" className="pf-input" style={{ ...field, flex: "1 1 160px" }} />
+        <select value={column} onChange={(e) => setColumn(e.target.value as BoardColumn["id"])} aria-label="Stage" className="pf-input" style={{ ...field, flex: "0 0 auto" }}>
+          {board.map((col) => <option key={col.id} value={col.id}>{col.title}</option>)}
+        </select>
+        {column !== "saved" && (
+          <input type="date" value={appliedOn} max={isoToday()} onChange={(e) => setAppliedOn(e.target.value)} aria-label="Applied on" title="When you applied" className="pf-input" style={{ ...field, flex: "0 0 auto" }} />
+        )}
+        <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link to the posting (optional)" aria-label="Link" className="pf-input" style={{ ...field, flex: "2 1 200px" }} />
+        <button
+          type="submit"
+          disabled={!ready}
+          style={{ cursor: ready ? "pointer" : "default", height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+        >
+          Add
+        </button>
+      </form>
+      {msg && <div role="status" style={{ fontSize: 12, color: "var(--warn)", marginTop: 8 }}>{msg}</div>}
+    </Reveal>
+  );
+}
+
 export default function TrackerPage() {
   const s = usePfStore();
+  const router = useRouter();
   const d = trackerDerived(s.board, s.netSent);
   const callback = callbackSummary(d.submitted, d.interviews);
   const insight = rejectionInsight(s.diags, REJECTION_DIAGNOSIS);
+  const dominant = dominantRejectionTiming(s.diags);
+  const fix = dominant ? DIAG_FIX[dominant.timing] : undefined;
+
+  /** Open the Briefing tab on the Interview page with this company already picked. */
+  const prep = (company: string, role: string) => {
+    s.set({ ivTab: "briefing", ivBriefingFor: { company, role } });
+    router.push("/interview");
+  };
 
   const onCardDragStart = (e: DragEvent, key: string) => {
     e.dataTransfer.setData("text/plain", key);
@@ -85,11 +151,15 @@ export default function TrackerPage() {
           <span style={{ fontSize: 13, lineHeight: 1.55 }}>
             <span style={{ fontWeight: 700 }}>Pattern detected.</span> {insight}
           </span>
-          <Link href="/cv" className="pf-mono" style={{ fontSize: 10.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none", whiteSpace: "nowrap", marginLeft: "auto" }}>
-            Fix now →
-          </Link>
+          {fix && (
+            <Link href={fix.href} className="pf-mono" style={{ fontSize: 10.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none", whiteSpace: "nowrap", marginLeft: "auto" }}>
+              {fix.label} →
+            </Link>
+          )}
         </Reveal>
       )}
+
+      <AddApplication />
 
       <div style={{ fontSize: 11.5, color: "var(--faint)", marginBottom: 10 }}>
         Drag cards between stages — moving to Applied stamps the date that drives your weekly counter.
@@ -146,6 +216,15 @@ export default function TrackerPage() {
                   )}
                   <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10, color: "var(--faint)" }}>{cardWhen(c)}</span>
                 </div>
+                {col.id === "interview" && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); prep(c.company, c.role); }}
+                    className="pf-mono"
+                    style={{ cursor: "pointer", marginTop: 9, width: "100%", height: 28, borderRadius: 8, border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", background: "var(--accentSoft)", color: "var(--accentText)", fontSize: 10.5, fontWeight: 600 }}
+                  >
+                    Prep for {c.company} →
+                  </button>
+                )}
               </div>
             ))}
           </div>

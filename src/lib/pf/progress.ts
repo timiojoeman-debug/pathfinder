@@ -10,6 +10,9 @@ import { LEETCODE_TOTAL } from "./leetcode";
 import type { CareerProfile } from "./profile";
 import type { PfPhase } from "./events";
 
+/** The prepared-story target the Interview page promises. */
+export const STORY_TARGET = 5;
+
 export interface PhaseProgress {
   phase: PfPhase;
   label: string;
@@ -64,11 +67,13 @@ function networkingPct(p: CareerProfile): number {
   return clamp(volume + warm + chats);
 }
 
-/** Interview readiness: LeetCode coverage blended with reflections logged. */
+/** Interview readiness: LeetCode coverage, reflections logged, and saved STAR stories
+ *  (five is the target the Interview page sets). */
 function interviewPct(p: CareerProfile): number {
-  const leet = (p.leetSolved / LEETCODE_TOTAL) * 70;
-  const reflect = Math.min(1, p.interviewsLogged / 3) * 30;
-  return clamp(leet + reflect);
+  const leet = (p.leetSolved / LEETCODE_TOTAL) * 60;
+  const reflect = Math.min(1, p.interviewsLogged / 3) * 25;
+  const stories = Math.min(1, p.storiesPrepared / STORY_TARGET) * 15;
+  return clamp(leet + reflect + stories);
 }
 
 /** Application pipeline: submissions toward a target + conversion signal. */

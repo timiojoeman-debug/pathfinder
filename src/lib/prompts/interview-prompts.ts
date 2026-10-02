@@ -60,7 +60,11 @@ Respond ONLY with valid JSON:
 }`;
 }
 
-export function buildInterviewQuestionsPrompt(cvData: string, targetRole: string): string {
+export function buildInterviewQuestionsPrompt(
+  cvData: string,
+  targetRole: string,
+  difficulty: "standard" | "harder" = "standard",
+): string {
   const { projectDeepDiveTopics } = INTERVIEW_PREP;
   const topics = projectDeepDiveTopics
     .map((t) => `- ${t.topic}: ${t.prompt}`)
@@ -85,7 +89,12 @@ Generate questions from the student's ACTUAL CV content (not generic):
 - For each experience: behavioural questions drawing on what they actually did
 - Include "Tell me about yourself", "Why this company?", "Walk me through your project"
 - Role-specific technical questions
-
+${difficulty === "harder" ? `
+DIFFICULTY: HARDER. The student has seen a first set and wants a tougher round. Skip warm-up questions
+("Tell me about yourself", "Why this company?"). Ask the follow-ups a sharp interviewer asks second:
+trade-offs and failure modes in their projects, scaling and edge cases, "what would you do differently",
+and behavioural questions that probe conflict, ambiguity and mistakes rather than successes.
+` : ""}
 If the CV is weak (few projects):
 "Your CV doesn't have strong project content yet. Before preparing for project deep-dives, consider building a substantial project first."
 
@@ -156,15 +165,17 @@ export function buildPostInterviewPrompt(
   selfRatings: Record<string, number>,
   wentWell: string,
   wouldChange: string,
-  previousInterviews: string
+  previousInterviews: string,
+  company = ""
 ): string {
   return `You are PathFinder's AI career mentor — Post-Interview Analysis.
 
-INTERVIEW DETAILS:
+INTERVIEW DETAILS (this interview only):
+Company: ${company || "not given — write [Company] in the email rather than guessing a name"}
 Type: ${interviewType}
 Questions asked: ${questionsAsked}
-Self-ratings: ${JSON.stringify(selfRatings)}
-What went well: ${wentWell}
+Student's self-ratings for this interview (1-5): ${Object.keys(selfRatings).length ? JSON.stringify(selfRatings) : "not given"}
+What went well / the student's notes: ${wentWell}
 What would do differently: ${wouldChange}
 
 PREVIOUS INTERVIEWS:

@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const emit = vi.fn();
-vi.mock("@/lib/pf/store", () => ({ usePfStore: (sel: (s: { emit: typeof emit }) => unknown) => sel({ emit }) }));
+const saveStory = vi.fn(() => true);
+const deleteStory = vi.fn();
+const store = { savedStories: [] as { id: string; title: string; situation: string; task: string; action: string; result: string; savedAt: number }[] };
+vi.mock("@/lib/pf/store", () => ({
+  usePfStore: (sel: (s: unknown) => unknown) => sel({ emit, saveStory, deleteStory, savedStories: store.savedStories }),
+}));
 vi.mock("@/lib/pf/use-ai", () => ({ useAiTask: vi.fn() }));
 
 import { StarTab } from "../star-tab";
@@ -22,6 +27,9 @@ function aiTask(over: Partial<Task> = {}): Task {
 
 beforeEach(() => {
   emit.mockClear();
+  saveStory.mockClear();
+  deleteStory.mockClear();
+  store.savedStories = [];
   vi.mocked(useAiTask).mockReturnValue(aiTask());
 });
 
@@ -55,6 +63,29 @@ describe("StarTab", () => {
 
     await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ rawStory: expect.objectContaining({ situation: SIT, action: ACT }), category: expect.any(String) })));
     await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "interview", expect.stringContaining("STAR story")));
+  });
+
+  it("saves the draft only once all four beats are written", () => {
+    render(<StarTab />);
+    const save = screen.getByRole("button", { name: /save my draft/i });
+    fireEvent.change(screen.getByPlaceholderText(/set the scene/i), { target: { value: SIT } });
+    fireEvent.change(screen.getByPlaceholderText(/what did you do/i), { target: { value: ACT } });
+    expect(save).toBeDisabled();
+    fireEvent.change(screen.getByPlaceholderText(/specific responsibility/i), { target: { value: "Keep us shipping." } });
+    fireEvent.change(screen.getByPlaceholderText(/measurable outcome/i), { target: { value: "Breakages hit zero." } });
+    fireEvent.change(screen.getByLabelText(/story title/i), { target: { value: "Broken build" } });
+    fireEvent.click(save);
+    expect(saveStory).toHaveBeenCalledWith({ title: "Broken build", situation: SIT, task: "Keep us shipping.", action: ACT, result: "Breakages hit zero." });
+  });
+
+  it("lists saved stories against the target of five, and confirms before deleting", () => {
+    store.savedStories = [{ id: "s1", title: "Broken build", situation: SIT, task: "t", action: ACT, result: "r", savedAt: 1 }];
+    render(<StarTab />);
+    expect(screen.getByText("1 / 5")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(deleteStory).not.toHaveBeenCalled();
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
+    expect(deleteStory).toHaveBeenCalledWith("s1");
   });
 
   it("renders the tightened story and the questions it answers", () => {
