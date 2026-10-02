@@ -159,6 +159,30 @@ function StackPicker() {
   );
 }
 
+/** The store keeps the trimmed value; a local draft keeps the spaces while the student is still typing. */
+function LocationField() {
+  const stored = usePfStore((s) => s.location);
+  const setLocation = usePfStore((s) => s.setLocation);
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <div style={{ marginBottom: 20, maxWidth: 420 }}>
+      <label htmlFor="dir-location" style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+        Where do you want to work? <span style={{ fontWeight: 500, color: "var(--faint)" }}>(optional: sets your job search default)</span>
+      </label>
+      <input
+        id="dir-location"
+        value={draft ?? stored}
+        onChange={(e) => { setDraft(e.target.value); setLocation(e.target.value); }}
+        onBlur={() => setDraft(null)}
+        maxLength={120}
+        placeholder="e.g. London, UK or Remote (UK)"
+        className="pf-input"
+        style={{ width: "100%", height: 44, padding: "0 14px" }}
+      />
+    </div>
+  );
+}
+
 function Wizard({ onGenerate, generating }: { onGenerate: () => void; generating: boolean }) {
   const s = usePfStore();
   const ready = directionReady(s) && !generating;
@@ -192,6 +216,8 @@ function Wizard({ onGenerate, generating }: { onGenerate: () => void; generating
           </div>
         </div>
       </div>
+
+      <LocationField />
 
       <button className="pf-shine"
         onClick={onGenerate}

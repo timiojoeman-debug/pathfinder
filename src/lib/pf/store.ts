@@ -210,6 +210,8 @@ interface PfState {
   dirStatementAi: DirStatementAi | null;
   /** Titles the student ticked to search under. Capped at three. */
   dirTargetRoles: string[];
+  /** Where the student wants to work, free text and optional. Steers the jobs UK default only. */
+  location: string;
   chat: ChatMsg[];
   chatDraft: string;
   chatN: number;
@@ -304,6 +306,7 @@ interface PfState {
   finishOnb: () => void;
   readiness: () => number;
 
+  setLocation: (value: string) => void;
   pickDirChip: (key: "dirRole" | "dirIndustry" | "dirSize" | "dirSetting", value: string | null) => void;
   /** Append a keyword the student typed to the stack. Returns an error message, or null. */
   addDirStack: (raw: string) => string | null;
@@ -429,6 +432,7 @@ export const usePfStore = create<PfState>()(
       copiedVariant: null,
       dirStatementAi: null,
       dirTargetRoles: [],
+      location: "",
       chat: [],
       chatDraft: "",
       chatN: 0,
@@ -585,6 +589,7 @@ export const usePfStore = create<PfState>()(
         try { void navigator.clipboard.writeText(v); } catch { /* clipboard unavailable */ }
         set({ copiedVariant: v });
       },
+      setLocation: (value) => set({ location: value.trim().slice(0, 120) }),
       toggleDirTargetRole: (title) => {
         const cur = get().dirTargetRoles;
         const on = cur.includes(title);
@@ -1099,6 +1104,7 @@ export const usePfStore = create<PfState>()(
         dirGenerated: s.dirGenerated,
         dirStatementAi: s.dirStatementAi,
         dirTargetRoles: s.dirTargetRoles,
+        location: s.location,
         chat: s.chat,
         chatN: s.chatN,
         asstMsgs: s.asstMsgs,
@@ -1164,7 +1170,7 @@ export const usePfStore = create<PfState>()(
           contacts.unshift({ id: newContactId(), name: working.name.trim(), company: (working.company ?? "").trim(), howWeMet: "other", stage: "researched", notes: "", createdAt: now, updatedAt: now });
         }
         // Direction values saved before the shared taxonomy move onto the current labels.
-        return { ...current, ...p, ...migrateDirection(p), board, ivProblems, ivSolved, diags, contacts, contactsSeeded: true, contactDetail: null, university: typeof p.university === "string" ? p.university.trim().slice(0, 120) : "" };
+        return { ...current, ...p, ...migrateDirection(p), board, ivProblems, ivSolved, diags, contacts, contactsSeeded: true, contactDetail: null, location: typeof p.location === "string" ? p.location : "", university: typeof p.university === "string" ? p.university.trim().slice(0, 120) : "" };
       },
     },
   ),
