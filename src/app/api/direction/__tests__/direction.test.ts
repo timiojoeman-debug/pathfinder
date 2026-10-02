@@ -66,6 +66,13 @@ describe("POST /api/direction", () => {
     expect(json.suggestions).toContain("Name one or two target companies.");
   });
 
+  it("accepts the statement answered at the root as well as under `data`", async () => {
+    mockOpenAI(DIRECTION_ENVELOPE.data);
+    const json = await (await POST(req(INPUT))).json();
+    expect(json.source).toBe("ai");
+    expect(json.statement).toContain("fintech");
+  });
+
   it("serves a locally-derived statement when the model is unreachable", async () => {
     mockOpenAI(null, 500);
     const res = await POST(req(INPUT));

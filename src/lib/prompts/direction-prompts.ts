@@ -87,13 +87,16 @@ Respond ONLY with valid JSON:
 }`;
 }
 
-export function buildTitleVariantPrompt(role: string, techStack: string[], industry: string): string {
+export function buildTitleVariantPrompt(role: string, techStack: string[], industry: string, targetRoles: string[] = []): string {
+  const shortlist = targetRoles.length
+    ? `\nThe student has shortlisted these target titles: ${targetRoles.join(', ')}. Cover the names each of them is also posted under.\n`
+    : '';
   return `You are an expert career adviser specialising in the technology job market.
 
 Generate 5–10 real job title variations that employers actually use for the role of "${role}" in the "${industry}" industry.
 
 The student's tech stack includes: ${techStack.join(', ') || 'not specified'}
-
+${shortlist}
 Rules:
 - Only include titles that real companies post on job boards
 - Consider the tech stack when suggesting variants (a React developer might also appear as "Frontend Engineer" but not "Data Engineer")

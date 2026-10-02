@@ -24,6 +24,7 @@ import {
   analyzeCvText,
   analyzeJobDescription,
   fitTone,
+  pruneTargetRoles,
   readinessFrom,
   roleFit,
   trackCardKey,
@@ -359,7 +360,14 @@ export const usePfStore = create<PfState>()(
       },
       readiness: () => readinessFrom(get().onb),
 
-      pickDirChip: (key, value) => set({ [key]: value, dirGenerated: false, dirStatementAi: null } as Partial<PfState>),
+      pickDirChip: (key, value) =>
+        set((s) => ({
+          [key]: value,
+          dirGenerated: false,
+          dirStatementAi: null,
+          // A role change can retire ticked target roles; never count titles the list no longer shows.
+          ...(key === "dirRole" ? { dirTargetRoles: pruneTargetRoles(s.dirTargetRoles, value) } : {}),
+        }) as Partial<PfState>),
       toggleDirStack: (value) =>
         set((s) => ({
           dirStack: s.dirStack.includes(value) ? s.dirStack.filter((x) => x !== value) : [...s.dirStack, value],

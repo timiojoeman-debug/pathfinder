@@ -17,13 +17,15 @@ const TitleVariantSchema = z.object({
   role: zShort(),
   techStack: z.array(zShort(100)).max(30).optional(),
   industry: zShort().optional(),
+  /** Titles the student shortlisted on the Direction page (at most three). */
+  targetRoles: z.array(zShort(100)).max(3).optional(),
 });
 
 export async function POST(req: Request) {
   try {
     const parsed = await readBody(req, TitleVariantSchema);
     if (!parsed.ok) return parsed.response;
-    const { role, techStack, industry } = parsed.data;
+    const { role, techStack, industry, targetRoles } = parsed.data;
 
     if (!role) {
       return NextResponse.json({ error: 'Missing required field: role' }, { status: 400 });
@@ -32,7 +34,8 @@ export async function POST(req: Request) {
     const systemPrompt = buildTitleVariantPrompt(
       role,
       Array.isArray(techStack) ? techStack : [],
-      industry || 'Technology'
+      industry || 'Technology',
+      targetRoles ?? [],
     );
 
     const result = await callAIValidated(

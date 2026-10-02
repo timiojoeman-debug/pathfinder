@@ -6,7 +6,7 @@
  * target roles and the HIRE framework.
  */
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   DIR_INDUSTRY_OPTS,
   DIR_ROLE_OPTS,
@@ -21,8 +21,9 @@ import {
   directionSpecificity,
   directionStatement,
   directionSuggestions,
-  extractChatPatch,
+  exploreMessages,
   mapExplorePreferences,
+  pruneTargetRoles,
   targetRoleOptions,
   type ExplorePreferences,
 } from "@/lib/pf/logic";
@@ -149,49 +150,62 @@ function Explore() {
   const [noReply, setNoReply] = useState(false);
   const [suggested, setSuggested] = useState<string | null>(null);
 
-  // Only a real model reply goes into the chat. On any failure the message goes
-  // back into the input and the panel says why, rather than a scripted line
-  // standing in for the AI.
+  // A suggested statement describes the chips it was made from; any chip change retires it.
+  useEffect(
+    () => usePfStore.subscribe((st, prev) => { if (dirKey(st) !== dirKey(prev)) setSuggested(null); }),
+    [],
+  );
+
+  // Only the AI's extracted preferences touch the chips, and only on success.
+  // A failed send changes nothing but the chat, and the message returns to the
+  // input unless the student has typed something new while waiting.
   const handleSend = async () => {
     const draft = s.chatDraft.trim();
     if (!draft || task.loading) return;
     const before = s.chat;
     const history: ChatMsg[] = [...before, { who: "you", text: draft }];
-    // Keyword pick-up from the student's own words; the AI refines it below.
-    s.set({ ...extractChatPatch(draft), chat: history, chatDraft: "", dirGenerated: false, dirStatementAi: null });
+    s.set({ chat: history, chatDraft: "" });
     setNoReply(false);
     // AI memory: the mentor sees the full Career Profile, so it never starts
     // from zero and can reference prior phases naturally.
     const context = buildMentorContext(getProfile(), usePfStore.getState().aiLog);
-    const result = await task.run({
-      messages: [
-        { role: "system", content: context },
-        ...history.map((m) => ({ role: m.who === "you" ? "user" : "assistant", content: m.text })),
-      ],
-    });
+    const result = await task.run({ messages: exploreMessages(context, history) });
     const data = result?.data;
     const reply = typeof data?.response === "string" ? data.response.trim() : "";
     const cur = usePfStore.getState();
     if (!reply) {
       if (result) setNoReply(true);
-      cur.set({ chat: before, chatDraft: draft });
+      setSuggested(null);
+      cur.set({ chat: before, ...(cur.chatDraft.trim() ? {} : { chatDraft: draft }) });
       return;
     }
     const patch = mapExplorePreferences(data?.extractedPreferences);
-    const dirStack = patch.dirStack ? [...new Set([...cur.dirStack, ...patch.dirStack])] : cur.dirStack;
+    if (patch.dirStack) patch.dirStack = [...new Set([...cur.dirStack, ...patch.dirStack])];
+    const changed = (Object.keys(patch) as (keyof typeof patch)[]).some((k) => JSON.stringify(patch[k]) !== JSON.stringify(cur[k]));
     cur.set({
-      ...patch,
-      dirStack,
       chat: [...cur.chat, { who: "ai", text: reply }],
       chatN: cur.chatN + 1,
-      dirGenerated: false,
-      dirStatementAi: null,
+      ...(changed
+        ? {
+            ...patch,
+            dirGenerated: false,
+            dirStatementAi: null,
+            ...(patch.dirRole ? { dirTargetRoles: pruneTargetRoles(cur.dirTargetRoles, patch.dirRole) } : {}),
+          }
+        : {}),
     });
     const next = data?.suggestedStatement;
     setSuggested(data?.readyForStatement && typeof next === "string" && next.trim() ? next.trim() : null);
     // Log the AI session so future prompts can reference it ("last time…").
     cur.logAi({ phase: "direction", summary: `Explored direction: "${draft.slice(0, 60)}"`, ts: Date.now() });
     cur.emit("AiConsulted", "direction", "Talked through career direction with the AI");
+  };
+
+  const clearChat = () => {
+    task.reset();
+    setNoReply(false);
+    setSuggested(null);
+    s.set({ chat: [], chatN: 0 });
   };
 
   const missing = [!s.dirRole && "a role", !s.dirIndustry && "an industry"].filter((x): x is string => !!x);
@@ -232,7 +246,7 @@ function Explore() {
         <div style={{ border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)", background: "color-mix(in srgb,var(--strong) 8%,transparent)", borderRadius: 12, padding: "13px 16px", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 13, flex: 1, lineHeight: 1.55 }}>
-              <span style={{ fontWeight: 700 }}>Picked up from this chat:</span> {known.length ? known.join(" · ") : "nothing yet."}
+              <span style={{ fontWeight: 700 }}>Your choices so far:</span> {known.length ? known.join(" · ") : "nothing yet."}
               <br />
               <span style={{ color: "var(--muted)" }}>
                 {missing.length
@@ -279,6 +293,15 @@ function Explore() {
           Send
         </GenerateButton>
       </div>
+      {s.chat.length > 0 && (
+        <button
+          onClick={clearChat}
+          disabled={task.loading}
+          style={{ cursor: task.loading ? "default" : "pointer", marginTop: 10, background: "none", border: "none", padding: 0, fontSize: 12, color: "var(--muted)", textDecoration: "underline" }}
+        >
+          Clear chat
+        </button>
+      )}
     </Panel>
   );
 }
@@ -314,13 +337,18 @@ function GeneratedStatement({ task, onSharpen }: { task: AiTask<DirectionResult>
   // keyed on role, stack and industry, so it goes stale the moment any changes.
   const variantsTask = useAiTask<VariantsResult>("/api/direction/title-variants");
   const [aiVariants, setAiVariants] = useState<{ key: string; titles: string[] } | null>(null);
-  const variantKey = [s.dirRole, s.dirStack.join(","), s.dirIndustry].join("|");
+  const variantKey = [s.dirRole, s.dirStack.join(","), s.dirIndustry, s.dirTargetRoles.join(",")].join("|");
   const freshVariants = aiVariants && aiVariants.key === variantKey ? aiVariants.titles : null;
   const fetchVariants = async () => {
     if (!s.dirRole) return;
     const key = variantKey;
     setAiVariants(null);
-    const result = await variantsTask.run({ role: s.dirRole, techStack: s.dirStack, ...(s.dirIndustry ? { industry: s.dirIndustry } : {}) });
+    const result = await variantsTask.run({
+      role: s.dirRole,
+      techStack: s.dirStack,
+      ...(s.dirIndustry ? { industry: s.dirIndustry } : {}),
+      ...(s.dirTargetRoles.length ? { targetRoles: s.dirTargetRoles } : {}),
+    });
     const titles = [...new Set((result?.variants ?? []).map((v) => (typeof v.title === "string" ? v.title.trim() : "")).filter(Boolean))];
     if (!titles.length) return;
     setAiVariants({ key, titles });
@@ -377,7 +405,7 @@ function GeneratedStatement({ task, onSharpen }: { task: AiTask<DirectionResult>
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <AiTag>AI title variants</AiTag>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>for {s.dirRole}{s.dirIndustry ? ` in ${s.dirIndustry}` : ""}</span>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>for {s.dirRole}{s.dirIndustry ? ` in ${s.dirIndustry}` : ""}{s.dirTargetRoles.length ? ", covering your ticked target roles" : ""}</span>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {freshVariants.map((v) => <VariantChip key={v} title={v} />)}
@@ -406,7 +434,7 @@ function TargetRoles() {
       <div style={{ padding: "20px 24px 12px" }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Target roles</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
-          Tick up to three titles to search under ({picked.length}/3){full ? ". Untick one to swap it." : "."}
+          Tick up to three titles to search under ({picked.length}/3). &quot;Find more titles with AI&quot; above covers the ones you tick.{full ? " Untick one to swap it." : ""}
         </span>
       </div>
       {options.map((r) => {
@@ -434,6 +462,16 @@ export default function DirectionPage() {
   const onbRole = usePfStore((s) => s.onb.role);
   const statementTask = useAiTask<DirectionResult>("/api/direction");
   const { reset: resetStatement, run: runStatement } = statementTask;
+
+  // A chip change, a fresh Generate or an accepted chat starts a new statement:
+  // abort any request still in flight and drop its error or fallback notice, so
+  // nothing stale is shown and Generate is never left disabled.
+  useEffect(
+    () => usePfStore.subscribe((st, prev) => {
+      if (dirKey(st) !== dirKey(prev) || st.dirGenerated !== prev.dirGenerated) resetStatement();
+    }),
+    [resetStatement],
+  );
 
   // The AI statement only counts if the chips it was written from are still the
   // chips on screen; a slow reply to an older selection is dropped.
