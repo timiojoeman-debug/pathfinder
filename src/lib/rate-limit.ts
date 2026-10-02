@@ -212,4 +212,4 @@ export async function hitDaily(key: string, limit: number): Promise<RateLimitRes
 }
 
 /** Free-tier daily AI-call budget per user (override with AI_DAILY_QUOTA). */
-export const AI_DAILY_QUOTA = Number(process.env.AI_DAILY_QUOTA) || 60;
+export const AI_DAILY_QUOTA = Number(process.env.AI_DAILY_QUOTA) || 25;

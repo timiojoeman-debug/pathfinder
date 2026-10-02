@@ -94,7 +94,7 @@ describe('rate limiting', () => {
 
     it('meters guests below the signed-in daily quota to protect provider cost', () => {
       expect(ANON_AI_DAILY_QUOTA).toBeGreaterThan(0);
-      expect(ANON_AI_DAILY_QUOTA).toBeLessThan(Number(process.env.AI_DAILY_QUOTA) || 60);
+      expect(ANON_AI_DAILY_QUOTA).toBeLessThan(Number(process.env.AI_DAILY_QUOTA) || 25);
     });
   });
 
@@ -200,7 +200,7 @@ describe('rate limiting', () => {
       process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
       const fn = mockStore(1);
 
-      await hitDaily('aiq:user-1', 60);
+      await hitDaily('aiq:user-1', 25);
 
       const body = JSON.parse((fn.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
       const today = Math.floor(Date.now() / 86_400_000);

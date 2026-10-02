@@ -29,6 +29,18 @@ function isPublicRoute(pathname: string): boolean {
   return PUBLIC_API_ROUTES.some(route => pathname === route);
 }
 
+/**
+ * Forward a request for which no session was verified (public or guest path).
+ * The identity headers are set only after a valid token, and downstream code
+ * (api-helpers, the AI cost log) trusts them — so a client-supplied copy must
+ * never survive.
+ */
+function nextWithoutIdentity(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  for (const h of ['x-user-id', 'x-user-email', 'x-user-role']) headers.delete(h);
+  return NextResponse.next({ request: { headers } });
+}
+
 /** Best-effort client IP from the standard proxy headers. */
 function clientIp(request: NextRequest): string {
   const fwd = request.headers.get('x-forwarded-for');
@@ -62,7 +74,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isPublicRoute(pathname)) {
-    return NextResponse.next();
+    return nextWithoutIdentity(request);
   }
 
   const token = request.cookies.get('pathfinder-token')?.value;
@@ -136,7 +148,7 @@ export async function middleware(request: NextRequest) {
         );
       }
     }
-    return NextResponse.next();
+    return nextWithoutIdentity(request);
   }
 
   return NextResponse.json(

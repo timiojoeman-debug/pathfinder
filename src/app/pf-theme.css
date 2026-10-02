@@ -165,6 +165,21 @@
   .pf-tap { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
 }
 
+/* Inputs and buttons that are compact on desktop reach 44px on touch. */
+@media (pointer: coarse) {
+  .pf-touch { min-height: 44px; }
+}
+
+/* ── Contacts board ──
+   A column per stage on a wide screen, three across on a tablet, and on a phone
+   grouped stacked lists (empty stages are hidden so nothing scrolls past blanks). */
+.pf-contacts-board { display: grid; gap: 10px; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start; }
+@media (max-width: 1180px) { .pf-contacts-board { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .pf-contacts-board { grid-template-columns: 1fr; }
+  .pf-contacts-col-empty { display: none; }
+}
+
 /* ── Recommended next step banner ──
    Inline-styled in next-step.tsx; on a phone the CTA drops below the text and
    takes the full width instead of squeezing the copy into a narrow column. */

@@ -19,6 +19,10 @@ export type PfEventType =
   | "ApplicationAdvanced"
   | "RecruiterContacted"
   | "CoffeeChatCompleted"
+  /** Self-reported: a student moved a contact to Referred. Feeds no progress number. */
+  | "ReferralReceived"
+  /** A contact moved stage by hand. Bookkeeping, not evidence. */
+  | "ContactStageChanged"
   | "InterviewScheduled"
   | "InterviewCompleted"
   | "OfferReceived"

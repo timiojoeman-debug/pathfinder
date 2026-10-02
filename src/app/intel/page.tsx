@@ -65,7 +65,7 @@ export default function IntelPage() {
   const interviewRatePct = profile.applicationsSubmitted ? Math.round(profile.interviewRate * 100) : null;
   const stats = [
     { label: "Interview rate", value: interviewRatePct !== null ? `${interviewRatePct}%` : "—", note: "the number that matters", color: "var(--accent)" },
-    { label: "Companies reached", value: String(profile.contactedCompanies.length), note: "outreach sent", color: "var(--active)" },
+    { label: "Companies reached", value: String(profile.contactedCompanies.length), note: "outreach sent", color: "var(--active)", extra: `Referrals received: ${profile.referralsReceived}` },
     { label: "Interviews", value: String(profile.interviewsLanded), note: "landed", color: "var(--strong)" },
     { label: "Offers", value: String(profile.offers), note: profile.offers ? "in hand" : "keep going", color: "var(--fg)" },
   ];
@@ -127,6 +127,11 @@ export default function IntelPage() {
               <span style={{ fontFamily: mono, fontSize: 28, fontWeight: 700, letterSpacing: "-.03em", color: s.color }}>{s.value}</span>
               <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{s.note}</span>
             </div>
+            {s.extra && (
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>
+                {s.extra} <span style={{ fontFamily: mono, fontSize: 9.5, color: "var(--faint)" }}>(self-reported)</span>
+              </div>
+            )}
           </Reveal>
         ))}
       </div>

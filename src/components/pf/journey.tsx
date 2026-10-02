@@ -46,6 +46,7 @@ export function ProgressLadder() {
 export function RecommendationStack() {
   const recs = useRecommendations();
   const openApp = usePfStore((s) => s.openApp);
+  const openContact = usePfStore((s) => s.openContact);
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 14px" }}>
@@ -61,7 +62,7 @@ export function RecommendationStack() {
         <Link
           key={m.id}
           href={m.href}
-          onClick={m.cardKey ? () => openApp(m.cardKey!) : undefined}
+          onClick={m.cardKey ? () => openApp(m.cardKey!) : m.contactId ? () => openContact(m.contactId!) : undefined}
           className="pf-hover-row"
           style={{ display: "grid", gridTemplateColumns: "30px 1fr auto", gap: 15, alignItems: "center", padding: "15px 24px", borderTop: "1px solid var(--line2)", textDecoration: "none", color: "var(--fg)" }}
         >

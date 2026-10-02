@@ -77,7 +77,7 @@ See [`.env.example`](.env.example) for the full list. The important ones:
 | `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` | Job search | Adzuna API |
 | `JSEARCH_API_KEY` | Job search | JSearch (RapidAPI) fallback |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Email | Verification / password reset; without a key, links are logged to the server in dev |
-| `AI_DAILY_QUOTA` | AI rate limiting | Per-user daily cap (default 60) |
+| `AI_DAILY_QUOTA` | AI rate limiting | Per-user daily cap (default 25) |
 | `LOG_LEVEL` | Logging | `debug` \| `info` \| `warn` \| `error` |
 
 ## Database
