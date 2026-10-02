@@ -53,7 +53,9 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
   const pct = (phase: PfPhase) => progress.phases.find((x) => x.phase === phase)?.pct ?? 0;
 
   // 0b. Reminders the student set on a card, once their date arrives. Without this
-  // a reminder was only a chip, and nothing ever reminded anyone.
+  // a reminder was only a chip, and nothing ever reminded anyone. Every live column
+  // counts, Offer included: a reminder is a date the student chose (often an offer
+  // deadline), not something inferred.
   const todayMs = new Date(`${today}T00:00:00`).getTime();
   for (const c of p.trackedCards) {
     if (c.remind && c.remind <= today) {
@@ -71,10 +73,11 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
       continue;
     }
     // 0c. An application sitting in Applied for two weeks. One polite follow-up is
-    // the move; after that the energy is better spent elsewhere.
+    // the move; once the student marks it sent, the nudge rests for another two weeks.
     if (c.column === "applied" && c.appliedDate) {
       const days = Math.floor((todayMs - c.appliedDate) / 864e5);
-      if (days >= FOLLOW_UP_DAYS) {
+      const sinceFollowUp = c.followedUpAt ? Math.floor((todayMs - c.followedUpAt) / 864e5) : Infinity;
+      if (days >= FOLLOW_UP_DAYS && sinceFollowUp >= FOLLOW_UP_DAYS) {
         recs.push({
           id: `follow-up-${c.key}`,
           title: `Follow up on ${c.role} at ${c.company}`,

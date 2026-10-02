@@ -3,12 +3,10 @@
 /**
  * "Draft follow-up" for a tracked application, in the application drawer.
  *
- * It reuses `/api/network/follow-up`, which is built around the coffee-chat
- * cadence. Step 4 ("still very interested in the role, here's an update") is
- * the one that fits an application gone quiet, and step 4 is the only step the
- * route does not refuse without chat notes. The notes sent here say plainly that
- * there was no conversation, so the model does not thank anyone for a chat that
- * never happened.
+ * Uses `/api/network/follow-up` with `kind: "application"`, which has its own
+ * prompt: the coffee-chat cadence assumes a conversation already happened, and
+ * an application follow-up must never imply one. Drafting is not sending, so
+ * the nudge only clears when the student marks the follow-up as sent.
  */
 
 import { useState } from "react";
@@ -19,28 +17,15 @@ import { NaturalnessNote, type Naturalness } from "@/components/pf/networking/na
 
 interface FollowUpData {
   message?: string;
-  timing?: string;
-  nextStepReminder?: string;
 }
 
-/** The cadence step for "keep them posted, still interested". */
-const APPLICATION_STEP = 4;
+const fmt = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
 
-export function applicationFollowUpNotes(card: { company: string; role: string; appliedDate?: number; note?: string }): string {
-  const when = card.appliedDate
-    ? ` on ${new Date(card.appliedDate).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}`
-    : "";
-  return [
-    `I applied for the ${card.role} role at ${card.company}${when} and have not heard back.`,
-    "There was no conversation: this is a polite follow-up on a submitted application, not a thank-you for a chat.",
-    card.note?.trim() ? `My notes on this application: ${card.note.trim()}` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
-export function FollowUpDraft({ company, role, appliedDate, note }: { company: string; role: string; appliedDate?: number; note?: string }) {
+export function FollowUpDraft({
+  cardKey, company, role, appliedDate, followedUpAt, note,
+}: { cardKey: string; company: string; role: string; appliedDate?: number; followedUpAt?: number; note: string }) {
   const emit = usePfStore((s) => s.emit);
+  const markFollowedUp = usePfStore((s) => s.markFollowedUp);
   const [contact, setContact] = useState("");
   const { data, loading, error, needsAuth, run } = useAiTask<AiEnvelope<FollowUpData> & { naturalness?: Naturalness }>(
     "/api/network/follow-up",
@@ -49,10 +34,12 @@ export function FollowUpDraft({ company, role, appliedDate, note }: { company: s
 
   const generate = async () => {
     const res = await run({
-      contactName: contact.trim() || `the ${company} recruiting team`,
-      chatNotes: applicationFollowUpNotes({ company, role, appliedDate, note }),
-      cadenceStep: APPLICATION_STEP,
-      contactType: "recruiter",
+      kind: "application",
+      company,
+      role,
+      ...(contact.trim() ? { contactName: contact.trim() } : {}),
+      ...(appliedDate ? { appliedOn: fmt(appliedDate) } : {}),
+      chatNotes: note,
     });
     if (res?.data?.message) emit("AiConsulted", "tracker", `Drafted a follow-up on ${role} at ${company}`);
   };
@@ -89,6 +76,17 @@ export function FollowUpDraft({ company, role, appliedDate, note }: { company: s
           </AiCaveat>
         </div>
       )}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+        <button
+          onClick={() => markFollowedUp(cardKey)}
+          style={{ cursor: "pointer", height: 34, padding: "0 13px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--panel2)", color: "var(--fg)", fontSize: 12.5, fontWeight: 600 }}
+        >
+          Mark follow-up sent
+        </button>
+        <span style={{ fontSize: 11.5, color: "var(--faint)" }}>
+          {followedUpAt ? `Last followed up ${fmt(followedUpAt)}.` : "Clears the follow-up nudge for two weeks."}
+        </span>
+      </div>
     </div>
   );
 }

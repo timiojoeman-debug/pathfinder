@@ -13,7 +13,7 @@ import { usePfStore } from "@/lib/pf/store";
 import { safeHttpUrl } from "@/lib/jobs/types";
 import { Kicker, MarkDot } from "./ui";
 import { FollowUpDraft } from "./tracker/follow-up-draft";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function Scrim({ onClose }: { onClose: () => void }) {
   return (
@@ -184,6 +184,27 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
   const router = useRouter();
   const [confirmRemove, setConfirmRemove] = useState(false);
 
+  // Notes are controlled and saved on a short debounce and on unmount, so an edit
+  // survives Escape, a click on the scrim or a card swap. The draft-follow-up
+  // panel reads this live text, not the last saved copy.
+  const storedNote = board.flatMap((col) => col.cards).find((x) => x.key === cardKey)?.note ?? "";
+  const [noteDraft, setNoteDraft] = useState(storedNote);
+  const pendingNote = useRef<string | null>(null);
+  useEffect(() => {
+    if (pendingNote.current === null) return;
+    const t = setTimeout(() => {
+      if (pendingNote.current !== null) setCardNote(cardKey, pendingNote.current.trim());
+      pendingNote.current = null;
+    }, 600);
+    return () => clearTimeout(t);
+  }, [noteDraft, cardKey, setCardNote]);
+  useEffect(
+    () => () => {
+      if (pendingNote.current !== null) setCardNote(cardKey, pendingNote.current.trim());
+    },
+    [cardKey, setCardNote],
+  );
+
   let colIdx = -1;
   let card = null as (typeof board)[number]["cards"][number] | null;
   board.forEach((col, i) => {
@@ -291,10 +312,12 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
 
         <Kicker style={{ fontSize: 9.5, margin: "18px 0 8px" }}>Notes</Kicker>
         <textarea
-          key={cardKey}
-          defaultValue={c.note}
-          onBlur={(e) => setCardNote(cardKey, e.target.value.trim())}
-          placeholder="Who you spoke to, what they said, what's next. Saves when you click away."
+          value={noteDraft}
+          onChange={(e) => {
+            pendingNote.current = e.target.value;
+            setNoteDraft(e.target.value);
+          }}
+          placeholder="Who you spoke to, what they said, what's next. Saves as you type."
           aria-label="Notes"
           className="pf-input"
           style={{ width: "100%", minHeight: 80, fontSize: 13.5, lineHeight: 1.65, margin: "0 0 18px", padding: "13px 15px", resize: "vertical" }}
@@ -303,7 +326,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
         {colIdx === 1 && (
           <>
             <Kicker style={{ fontSize: 9.5, margin: "0 0 8px" }}>Follow up</Kicker>
-            <FollowUpDraft company={c.company} role={c.role} appliedDate={c.appliedDate} note={c.note} />
+            <FollowUpDraft cardKey={cardKey} company={c.company} role={c.role} appliedDate={c.appliedDate} followedUpAt={c.followedUpAt} note={noteDraft} />
           </>
         )}
 

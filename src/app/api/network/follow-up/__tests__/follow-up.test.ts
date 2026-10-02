@@ -80,3 +80,47 @@ describe("POST /api/network/follow-up", () => {
     expect((await res.json()).error).toBeTruthy();
   });
 });
+
+describe("POST /api/network/follow-up — kind: application", () => {
+  const originalKey = process.env.OPENAI_API_KEY;
+  beforeEach(() => { process.env.OPENAI_API_KEY = "test-key"; });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalKey;
+  });
+
+  const promptSent = () => {
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    return body.messages.map((m: { content: string }) => m.content).join(" ");
+  };
+
+  it("needs a company and role, but no contact name or cadence step", async () => {
+    expect((await POST(req({ kind: "application", company: "Acme" }))).status).toBe(400);
+    mockOpenAI({ data: { message: "Hello, I applied for the Backend Intern role at Acme last month." } });
+    const res = await POST(req({ kind: "application", company: "Acme", role: "Backend Intern" }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).naturalness).toBeTruthy();
+  });
+
+  it("guards against implying a conversation and against unfilled brackets", async () => {
+    mockOpenAI({ data: { message: "Hello, following up on my application." } });
+    await POST(req({ kind: "application", company: "Acme", role: "Backend Intern", appliedOn: "1 September" }));
+    const prompt = promptSent();
+    expect(prompt).toContain("There has been NO prior conversation");
+    expect(prompt).toMatch(/no square brackets/i);
+    expect(prompt).not.toMatch(/reconnect when timing works|full relationship context/i);
+  });
+
+  it("greets generically with no recruiter name, and by name when given", async () => {
+    mockOpenAI({ data: { message: "Hello, following up." } });
+    await POST(req({ kind: "application", company: "Acme", role: "Backend Intern" }));
+    expect(promptSent()).toContain('Open with exactly: "Hello,"');
+    expect(promptSent()).not.toContain("Hi the Acme");
+    vi.unstubAllGlobals();
+
+    mockOpenAI({ data: { message: "Hi Sam, following up." } });
+    await POST(req({ kind: "application", company: "Acme", role: "Backend Intern", contactName: "Sam" }));
+    expect(promptSent()).toContain('Open with exactly: "Hi Sam,"');
+  });
+});

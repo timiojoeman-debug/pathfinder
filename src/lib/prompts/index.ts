@@ -7,6 +7,7 @@ export {
   buildOutreachPrompt,
   buildCoffeeChatPrepPrompt,
   buildFollowUpPrompt,
+  buildApplicationFollowUpPrompt,
   buildStartupOutreachPrompt,
   buildReferralPackagePrompt,
 } from "./networking-prompts";

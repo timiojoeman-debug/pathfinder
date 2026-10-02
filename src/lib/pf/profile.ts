@@ -63,6 +63,7 @@ export interface TrackedCard {
   column: BoardColumn["id"];
   remind?: string; // yyyy-mm-dd
   appliedDate?: number;
+  followedUpAt?: number;
 }
 
 export interface CareerProfile {
@@ -267,7 +268,7 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
       .map(({ company, role, opens, deadline }) => ({ company, role, opens, deadline })),
     trackedCards: s.board
       .filter((col) => col.id !== "rejected")
-      .flatMap((col) => col.cards.map(({ key, company, role, remind, appliedDate }) => ({ key, company, role, column: col.id, remind, appliedDate }))),
+      .flatMap((col) => col.cards.map(({ key, company, role, remind, appliedDate, followedUpAt }) => ({ key, company, role, column: col.id, remind, appliedDate, followedUpAt }))),
 
     outreachSent: s.netSent,
     contactedCompanies,

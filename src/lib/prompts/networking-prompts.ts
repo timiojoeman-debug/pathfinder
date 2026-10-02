@@ -187,6 +187,59 @@ Respond ONLY with valid JSON:
 }`;
 }
 
+/** The guard every application follow-up prompt carries. Tests assert it is present. */
+export const NO_PRIOR_CONVERSATION =
+  "There has been NO prior conversation with this person. Never thank them for a chat, call or meeting, never say \"great to speak with you\", \"as we discussed\" or \"reconnect\", and never imply you have met.";
+
+/**
+ * A follow-up on a submitted application that has gone quiet. Separate from the
+ * coffee-chat cadence, whose templates assume a conversation already happened.
+ */
+export function buildApplicationFollowUpPrompt(p: {
+  company: string;
+  role: string;
+  contactName?: string;
+  appliedOn?: string;
+  notes?: string;
+}): string {
+  const greeting = p.contactName?.trim() ? `Hi ${p.contactName.trim()},` : "Hello,";
+  return `Write a short, polite follow-up on a job application that has had no reply.
+
+${NO_PRIOR_CONVERSATION}
+
+FACTS (use only these; do not invent anything else):
+- Role: ${p.role}
+- Company: ${p.company}
+- Applied: ${p.appliedOn?.trim() || "date not given, so do not state one"}
+- Student's own notes: ${p.notes?.trim() || "none"}
+
+RULES:
+- Open with exactly: "${greeting}"
+- 60 to 110 words. Restate interest in the ${p.role} role at ${p.company}, mention the application was submitted, ask politely whether there is any update on the timeline.
+- Mention something from the student's notes only if the notes say it; never invent a project, a referral or a name.
+- Output finished text: no square brackets, no placeholders like [Name] or [Company], nothing left for the student to fill in.
+- UK spelling. No em dashes. Plain and warm, not grovelling.
+
+Respond ONLY with valid JSON:
+{
+  "inputQuality": string,
+  "inputQualityExplanation": string,
+  "methodologyReference": "Application follow-up",
+  "feedback": [],
+  "strengths": string[],
+  "crossPhaseInsights": string[],
+  "nextSteps": string[],
+  "nextQuestion": string,
+  "shouldRepeatAnalysis": false,
+  "data": {
+    "message": string,
+    "timing": string,
+    "purpose": string,
+    "nextStepReminder": string
+  }
+}`;
+}
+
 export function buildStartupOutreachPrompt(
   studentProfile: string,
   companyName: string,
