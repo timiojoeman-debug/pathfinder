@@ -11,7 +11,7 @@ import { DIAG_TIMINGS, REJECTION_DIAGNOSIS } from "@/lib/pf/data";
 import { cardWhen, formatReminder, trackCardKey } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
 import { safeHttpUrl } from "@/lib/jobs/types";
-import { Kicker, MarkDot } from "./ui";
+import { Kicker } from "./ui";
 import { FollowUpDraft } from "./tracker/follow-up-draft";
 import { useEffect, useRef, useState } from "react";
 
