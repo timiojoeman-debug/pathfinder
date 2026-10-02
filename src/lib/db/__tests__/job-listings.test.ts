@@ -13,6 +13,7 @@ type Row = { source: string; employer: string; url: string; active: boolean; tit
 type ServerDb = ReturnType<typeof getServerDb>;
 
 /** A tiny in-memory job_listings table behind the query-builder calls the layer makes. */
+const orCalls: string[] = [];
 function fakeTable(initial: Row[], fail?: 'upsert') {
   const rows = [...initial];
   const from = () => {
@@ -31,6 +32,10 @@ function fakeTable(initial: Row[], fail?: 'upsert') {
     b.ilike = (col: string, pat: string) => {
       const needle = pat.replace(/^%|%$/g, '').replace(/\\([\\%_])/g, '$1').toLowerCase();
       filters.push((r) => String(r[col] ?? '').toLowerCase().includes(needle));
+      return b;
+    };
+    b.or = (expr: string) => {
+      orCalls.push(expr);
       return b;
     };
     b.in = (col: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[col])), b);
@@ -114,6 +119,25 @@ describe('getActiveListings', () => {
     ]);
     const out = await getActiveListings({ location: 'london' });
     expect(out.map((j) => j.company)).toEqual(['A']);
+  });
+
+  it('ukOnly with no location adds a constant UK pre-filter in SQL, so the row cap keeps UK roles', async () => {
+    orCalls.length = 0;
+    fakeTable([]);
+    await getActiveListings({ ukOnly: true });
+    expect(orCalls).toHaveLength(1);
+    expect(orCalls[0]).toContain('location.ilike.*united kingdom*');
+    expect(orCalls[0]).toContain('location.ilike.*london*');
+    expect(orCalls[0]).toContain('location.ilike.*remote*');
+    // Only constant terms: nothing that is syntax inside or=(...).
+    expect(orCalls[0]).toMatch(/^(location\.ilike\.\*[a-z. ]+\*,?)+$/);
+  });
+
+  it('an explicit location wins over ukOnly', async () => {
+    orCalls.length = 0;
+    fakeTable([]);
+    await getActiveListings({ ukOnly: true, location: 'Leeds' });
+    expect(orCalls).toHaveLength(0);
   });
 
   it('is empty without a database', async () => {

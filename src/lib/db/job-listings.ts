@@ -1,6 +1,14 @@
 import { getServerDb } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
-import type { JobListing } from '@/lib/jobs/types';
+import { UK_CITY_NAMES, UK_COUNTRY_WORDS, type JobListing } from '@/lib/jobs/types';
+
+/**
+ * PostgREST `or` filter for UK-ish locations. In `or=(...)` the characters `,` and `()` are syntax,
+ * so these terms must stay constants: never build this from user input.
+ */
+const UK_SQL_FILTER = [...UK_COUNTRY_WORDS, ...UK_CITY_NAMES, 'remote']
+  .map((t) => `location.ilike.*${t}*`)
+  .join(',');
 
 /**
  * Rows read per search. PostgREST caps a response at 1000 rows by default, so that is the real
@@ -22,7 +30,7 @@ type Row = {
 };
 
 /** Active cached roles, newest first, optionally narrowed to a location substring. Returns [] when Supabase is unconfigured or the read fails. */
-export async function getActiveListings(opts: { location?: string } = {}): Promise<JobListing[]> {
+export async function getActiveListings(opts: { location?: string; ukOnly?: boolean } = {}): Promise<JobListing[]> {
   const db = getServerDb();
   if (!db) return [];
   let q = db
@@ -32,6 +40,10 @@ export async function getActiveListings(opts: { location?: string } = {}): Promi
   const loc = (opts.location ?? '').trim();
   // Escape LIKE wildcards so a typed % or _ is literal, matching filterListings' substring test.
   if (loc) q = q.ilike('location', `%${loc.replace(/[\\%_]/g, '\\$&')}%`);
+  // UK-only with no explicit location: narrow in SQL too, so older UK roles are not cut by the
+  // row cap behind newer non-UK ones. A superset on purpose ("uk" also matches "duke"); the exact
+  // test is isUkLocation, applied afterwards.
+  else if (opts.ukOnly) q = q.or(UK_SQL_FILTER);
   const { data, error } = await q
     .order('posted_at', { ascending: false, nullsFirst: false })
     .limit(READ_LIMIT);

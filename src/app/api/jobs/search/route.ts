@@ -7,6 +7,7 @@ import {
   dedupeListings,
   expandRoleQuery,
   filterListings,
+  isUkLocation,
   safeHttpUrl,
   sortByFit,
   type JobListing,
@@ -40,6 +41,8 @@ const SearchSchema = z.object({
   industry: zShort().optional(),
   workMode: zShort().optional(),
   cvSummary: zText().optional(),
+  /** Keep only UK and remote-UK roles from the employer cache and GitHub lists. Adzuna is already the UK board. */
+  ukOnly: z.boolean().optional(),
 });
 
 /**
@@ -156,6 +159,7 @@ export async function POST(req: Request) {
   // Employer-feed cache and GitHub lists, fetched together. Both are filtered locally by
   // every filter the student set, so the UI's "filters apply" holds for each. An empty or
   // unreachable cache must never fail the search.
+  const ukFilter = (rows: JobListing[]) => (body.ukOnly ? rows.filter((j) => isUkLocation(j.location)) : rows);
   const filters = {
     roleType: body.roleType,
     location: body.location,
@@ -163,15 +167,15 @@ export async function POST(req: Request) {
     workMode: workModeTerm,
   };
   const [employers, github] = await Promise.all([
-    getActiveListings({ location: body.location })
-      .then((rows) => filterListings(rows, filters))
+    getActiveListings({ location: body.location, ukOnly: body.ukOnly })
+      .then((rows) => ukFilter(filterListings(rows, filters)))
       .catch((err: unknown) => {
         logger.error("jobs/search — job cache unreachable", {
           error: err instanceof Error ? err.message : String(err),
         });
         return [] as JobListing[];
       }),
-    fetchGithubListings().then((rows) => filterListings(rows, filters)),
+    fetchGithubListings().then((rows) => ukFilter(filterListings(rows, filters))),
   ]);
 
   // Adzuna is pre-filtered by its own query, so it isn't re-filtered locally.
