@@ -26,6 +26,8 @@ import {
   fitTone,
   pruneTargetRoles,
   readinessFrom,
+  MAX_JD_CHARS,
+  postingKey,
   roleFit,
   trackCardKey,
   targetKeywords,
@@ -38,6 +40,7 @@ import { deriveProfile, type CareerProfile, type ProfileInput } from "./profile"
 import { computeProgress, type ProgressReport } from "./progress";
 import { recommend, type Recommendation } from "./recommendations";
 import type { AiInteraction } from "./orchestrator";
+import type { AtsEnvelope as TailorAts, MatchEnvelope as TailorMatch } from "@/components/pf/cv/tailor-panel";
 
 export interface ChatMsg { who: "you" | "ai"; text: string }
 /** A turn in the cross-page mentor conversation. */
@@ -58,11 +61,26 @@ export interface SavedJob {
   verdict: string;
   action: string;
   jdText?: string;
+  /** The listing's own apply link. Absent for roles the student added by hand. */
+  url?: string;
+  /** The last cover letter generated for this role, so it survives navigation. */
+  coverLetter?: string;
 }
 
 /** The statement `/api/direction` composed. Persisted because the profile shows it on other
  *  pages; cleared whenever a direction chip changes, so it can never describe stale inputs. */
 export interface DirStatementAi { statement: string; specificity: string; suggestions: string[] }
+
+/** The AI mentor read of the CV text (/api/cv/analyze), kept so it survives navigation. */
+export interface CvAiRead {
+  skills: string[];
+  strengths: string[];
+  feedback: { issue: string; suggestedFix: string }[];
+  nextSteps: string[];
+}
+
+/** The last AI cover letter, keyed on the posting it was written for (see `postingKey`). */
+export interface JfCoverLetter { key: string; paras: string[]; assumptions: string[]; words: number }
 
 export interface InterviewFeedback { company: string; rating: number; note: string; date: string }
 
@@ -71,7 +89,7 @@ interface PfState {
   collapsed: boolean;
   paletteOpen: boolean;
   paletteQ: string;
-  jobDetail: string | null; // company name
+  jobDetail: string | null; // trackCardKey(company, role), or a bare company name from older callers
   appDetail: string | null; // board card key
 
   /* onboarding */
@@ -108,6 +126,11 @@ interface PfState {
   cvAnalyzed: boolean;
   cvProjects: boolean;
   cvLinkedIn: boolean;
+  cvAiRead: CvAiRead | null;
+  /** Tailor panel: the last pasted advert and the results run against it. */
+  cvTailorJD: string;
+  cvTailorAts: TailorAts | null;
+  cvTailorMatch: TailorMatch | null;
 
   /* jobs */
   jfTitle: string;
@@ -116,6 +139,7 @@ interface PfState {
   jfAnalyzing: boolean;
   jfResult: JfResult | null;
   jfLetter: boolean;
+  jfCoverLetter: JfCoverLetter | null;
   savedJobs: SavedJob[];
 
   /* networking */
@@ -154,7 +178,8 @@ interface PfState {
   openPalette: () => void;
   closePalette: () => void;
   closeDrawers: () => void;
-  openJob: (company: string) => void;
+  /** With a role, keys the drawer on company + role so two roles at one company don't collide. */
+  openJob: (company: string, role?: string) => void;
   openApp: (key: string) => void;
 
   setOnb: (patch: Partial<OnbState>) => void;
@@ -175,6 +200,16 @@ interface PfState {
 
   saveJfJob: () => void;
   analyzeJf: () => void;
+  /** Save a live search result (deduped on company + role) and log it. */
+  saveListing: (job: SavedJob) => void;
+  /** Keep a generated cover letter, and attach it to the saved role it was written for. */
+  keepCoverLetter: (letter: JfCoverLetter) => void;
+  /** Hand an advert to the CV Tailor panel, clearing results run against the old one. */
+  setTailorJD: (jd: string) => void;
+  /** Keep an AI read of `forText` (length-capped). False, and nothing kept, if the CV changed meanwhile. */
+  keepCvAiRead: (read: CvAiRead, forText: string) => boolean;
+  /** Keep a Tailor result run against `forJD`. False, and nothing kept, if the advert changed meanwhile. */
+  keepTailorResult: (kind: "ats" | "match", result: TailorAts | TailorMatch, forJD: string) => boolean;
 
   /** Log a sent message. Returns false (and logs nothing) without a real recipient and message. */
   generateOutreach: (contact: { name: string; company?: string; message: string }) => boolean;
@@ -261,6 +296,10 @@ export const usePfStore = create<PfState>()(
       cvAnalyzed: false,
       cvProjects: false,
       cvLinkedIn: false,
+      cvAiRead: null,
+      cvTailorJD: "",
+      cvTailorAts: null,
+      cvTailorMatch: null,
 
       jfTitle: "",
       jfCompany: "",
@@ -268,6 +307,7 @@ export const usePfStore = create<PfState>()(
       jfAnalyzing: false,
       jfResult: null,
       jfLetter: false,
+      jfCoverLetter: null,
       savedJobs: [],
 
       netPersona: "Recruiter",
@@ -299,7 +339,7 @@ export const usePfStore = create<PfState>()(
       openPalette: () => set({ paletteOpen: true, paletteQ: "" }),
       closePalette: () => set({ paletteOpen: false }),
       closeDrawers: () => set({ jobDetail: null, appDetail: null }),
-      openJob: (company) => set({ jobDetail: company, appDetail: null }),
+      openJob: (company, role) => set({ jobDetail: role === undefined ? company : trackCardKey(company, role), appDetail: null }),
       openApp: (key) => set({ appDetail: key, jobDetail: null }),
 
       setOnb: (patch) => set((s) => ({ onb: { ...s.onb, ...patch } })),
@@ -420,6 +460,7 @@ export const usePfStore = create<PfState>()(
         if (!(s.jfTitle.trim() && s.jfCompany.trim())) return;
         const scored = roleFit(s.jfJD, s.cvText);
         const fit = scored ?? 0;
+        const letter = s.jfCoverLetter?.key === postingKey(s.jfCompany, s.jfTitle, s.jfJD) ? s.jfCoverLetter : null;
         const jdLower = s.jfJD.toLowerCase();
         const found = ["React", "TypeScript", "JavaScript", "Next.js", "Node", "Express", "Python", "Go", "Java", "C++", "SQL", "PostgreSQL", "MongoDB", "AWS", "Docker", "Kubernetes", "GraphQL", "REST", "CI/CD", "Testing", "Git", "Linux"]
           .filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0)
@@ -436,8 +477,9 @@ export const usePfStore = create<PfState>()(
               tone: scored === null ? "var(--faint)" : fitTone(fit),
               tags: found.length ? found : ["Manual"],
               verdict: scored === null ? (s.cvText.trim() ? "Not scored: the posting names no tech" : "Not scored: add your CV first") : fit >= 70 ? "Strong match" : fit >= 55 ? "Reach, tailor hard" : "Long shot",
-              action: "Analyze",
-              jdText: s.jfJD.trim(),
+              action: "Open",
+              jdText: s.jfJD.trim().slice(0, MAX_JD_CHARS),
+              ...(letter ? { coverLetter: letter.paras.join("\n\n") } : {}),
             },
             ...s.savedJobs,
           ],
@@ -450,6 +492,43 @@ export const usePfStore = create<PfState>()(
         const result = analyzeJobDescription(s.jfJD, s.cvText, targetKeywords(s.dirStack));
         set({ jfResult: result });
         get().emit("JobMatched", "jobs", `Matched ${s.jfCompany.trim() || "a role"}, ${result.compat}% compatible`, { company: s.jfCompany.trim(), compat: result.compat });
+      },
+      saveListing: (job) => {
+        const key = trackCardKey(job.company, job.role);
+        if (get().savedJobs.some((j) => trackCardKey(j.company, j.role) === key)) return;
+        set((s) => ({ savedJobs: [{ ...job, action: "Open", jdText: job.jdText?.slice(0, MAX_JD_CHARS) }, ...s.savedJobs] }));
+        get().emit("JobSaved", "jobs", `Saved ${job.role} at ${job.company}${job.fitKnown === false ? "" : ` (fit ${job.fit})`}`, job.fitKnown === false ? { company: job.company } : { company: job.company, fit: job.fit });
+      },
+      keepCoverLetter: (letter) => {
+        const text = letter.paras.join("\n\n");
+        // Keyed on the posting (role + advert), so a saved role whose JD differs from
+        // the one the letter was written for doesn't get it.
+        set((s) => ({
+          jfCoverLetter: letter,
+          savedJobs: s.savedJobs.map((j) => (postingKey(j.company, j.role, j.jdText ?? "") === letter.key ? { ...j, coverLetter: text } : j)),
+        }));
+      },
+      setTailorJD: (jd) => set({ cvTailorJD: jd, cvTailorAts: null, cvTailorMatch: null }),
+      keepCvAiRead: (read, forText) => {
+        // A read that lands after the CV was edited describes text that no longer
+        // exists, and its skills would feed the profile. Drop it.
+        if (get().cvText !== forText) return false;
+        const cap = (xs: string[], n = 12) => xs.slice(0, n).map((x) => x.slice(0, 300));
+        set({
+          cvAiRead: {
+            skills: read.skills.slice(0, 40).map((x) => x.slice(0, 60)),
+            strengths: cap(read.strengths),
+            nextSteps: cap(read.nextSteps),
+            feedback: read.feedback.slice(0, 12).map((f) => ({ issue: f.issue.slice(0, 300), suggestedFix: f.suggestedFix.slice(0, 500) })),
+          },
+        });
+        return true;
+      },
+      keepTailorResult: (kind, result, forJD) => {
+        // Same guard for the Tailor panel: a result for an advert that has since changed is stale.
+        if (get().cvTailorJD !== forJD) return false;
+        set(kind === "ats" ? { cvTailorAts: result as TailorAts } : { cvTailorMatch: result as TailorMatch });
+        return true;
       },
 
       // Networking progress is counted from this, so it needs a real recipient and a real
@@ -652,6 +731,11 @@ export const usePfStore = create<PfState>()(
         cvAnalyzed: s.cvAnalyzed,
         cvProjects: s.cvProjects,
         cvLinkedIn: s.cvLinkedIn,
+        cvAiRead: s.cvAiRead,
+        cvTailorJD: s.cvTailorJD,
+        cvTailorAts: s.cvTailorAts,
+        cvTailorMatch: s.cvTailorMatch,
+        jfCoverLetter: s.jfCoverLetter,
         jfTitle: s.jfTitle,
         jfCompany: s.jfCompany,
         jfJD: s.jfJD,
@@ -703,6 +787,7 @@ function toProfileInput(s: PfState): ProfileInput {
     dirRole: s.dirRole, dirStack: s.dirStack, dirIndustry: s.dirIndustry, dirSize: s.dirSize, dirSetting: s.dirSetting, dirGenerated: s.dirGenerated, dirStatementAi: s.dirStatementAi,
     chat: s.chat,
     cvText: s.cvText, cvAnalyzed: s.cvAnalyzed, cvProjects: s.cvProjects, cvLinkedIn: s.cvLinkedIn, cvScores: s.cvScores,
+    cvAiSkills: s.cvAiRead?.skills,
     savedJobs: s.savedJobs,
     netPersona: s.netPersona, netSent: s.netSent, netGenerated: s.netGenerated,
     ivSolved: s.ivSolved, ivFeedback: s.ivFeedback,

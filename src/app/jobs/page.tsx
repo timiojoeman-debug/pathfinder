@@ -6,9 +6,12 @@
  * job cards feeding the detail drawer.
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { buildCoverLetter, fitTone, jobPassesFit, targetKeywords } from "@/lib/pf/logic";
-import { usePfStore, type SavedJob } from "@/lib/pf/store";
+import { useState } from "react";
+import { buildCoverLetter, fitTone, jobPassesFit, MAX_JD_CHARS, postingKey, targetKeywords } from "@/lib/pf/logic";
+import { getProfile, usePfStore, type SavedJob } from "@/lib/pf/store";
+import { safeHttpUrl } from "@/lib/jobs/types";
+import { useAiTask, type AiTask } from "@/lib/pf/use-ai";
+import { AiCaveat, AiError } from "@/components/pf/ai-panel";
 import { Chip, Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 import { SchemeWindows } from "@/components/pf/scheme-windows";
@@ -31,11 +34,31 @@ const FIT_FILTERS: [number, string][] = [
   [80, "Fit ≥ 80"],
 ];
 
-interface AiJdRead { score: number | null; checklist: string[]; warning: string | null }
-interface AiLetter { paras: string[]; assumptions: string[]; words: number }
+/** /api/jobs/analyze answers at the root. `source: "heuristic"` means the AI
+ *  failed and the score is keyword overlap, which must never read as AI. */
+interface JdAnalyzeResponse {
+  source?: "ai" | "heuristic";
+  matchScore?: number | null;
+  auditChecklist?: unknown;
+  blockerWarning?: string | null;
+}
+interface AiJdRead { source: "ai" | "heuristic"; score: number | null; checklist: string[]; warning: string | null }
+
+/** /api/cover-letter/generate: the methodology envelope, letter under `data`. */
+interface CoverLetterResponse { data?: { coverLetter?: string; assumptions?: unknown } }
+
+function toJdRead(j: JdAnalyzeResponse): AiJdRead {
+  const checklist = Array.isArray(j.auditChecklist) ? j.auditChecklist.filter((x): x is string => typeof x === "string").slice(0, 5) : [];
+  return {
+    source: j.source === "ai" ? "ai" : "heuristic",
+    score: typeof j.matchScore === "number" ? j.matchScore : null,
+    checklist,
+    warning: j.blockerWarning ?? null,
+  };
+}
 
 /** Map a /api/jobs/search listing onto the design's job-card shape. */
-function toSavedJob(j: { title?: string; company?: string; location?: string; source?: string; description?: string; matchScore?: number | null; atsKeywords?: string[] }): SavedJob {
+function toSavedJob(j: { title?: string; company?: string; location?: string; source?: string; description?: string; url?: string; matchScore?: number | null; atsKeywords?: string[] }): SavedJob {
   // A job-board snippet often names no requirements at all, so there is nothing
   // to score against. Defaulting to a number labelled genuine roles "Long shot"
   // and talked students out of applying — confidence derived from nothing.
@@ -54,11 +77,12 @@ function toSavedJob(j: { title?: string; company?: string; location?: string; so
       ? (fit >= 70 ? "Strong match" : fit >= 55 ? "Reach — tailor hard" : "Long shot")
       : "Fit unknown — paste the full JD below to score it",
     action: "+ Save",
-    jdText: j.description ?? "",
+    jdText: (j.description ?? "").slice(0, MAX_JD_CHARS),
+    ...(safeHttpUrl(j.url) ? { url: safeHttpUrl(j.url) as string } : {}),
   };
 }
 
-function AddRolePanel() {
+function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
   const s = usePfStore();
   const canSave = !!(s.jfTitle.trim() && s.jfCompany.trim());
   const canAnalyze = s.jfJD.trim().length >= 80;
@@ -150,7 +174,7 @@ function AddRolePanel() {
           Save to my list
         </button>
         <button
-          onClick={s.analyzeJf}
+          onClick={onAnalyze}
           disabled={!canAnalyze}
           style={{ cursor: canAnalyze ? "pointer" : "default", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: canAnalyze ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 13.5, fontWeight: 600 }}
         >
@@ -161,81 +185,38 @@ function AddRolePanel() {
   );
 }
 
-function AnalysisResult() {
+function AnalysisResult({ aiRead, read }: { aiRead: AiJdRead | null; read: AiTask<JdAnalyzeResponse> }) {
   const s = usePfStore();
   const r = s.jfResult;
-  // Each AI result is tagged with the input it was computed for, and the
-  // visible value is derived from that tag. The alternative — resetting to null
-  // at the top of the effect — is a synchronous setState in an effect, and it
-  // shows the previous job's answer for one frame before clearing it.
-  const [readFor, setReadFor] = useState<{ key: unknown; value: AiJdRead } | null>(null);
-  const [letterFor, setLetterFor] = useState<{ key: unknown; value: AiLetter } | null>(null);
-  const aiRead = readFor && readFor.key === r ? readFor.value : null;
-  const aiLetter = letterFor && letterFor.key === s.jfLetter ? letterFor.value : null;
+  const letterTask = useAiTask<CoverLetterResponse>("/api/cover-letter/generate");
 
-  // AI enrichment of the deterministic analysis — silent fallback when offline.
-  useEffect(() => {
-    if (!r) return;
-    const st = usePfStore.getState();
-    const controller = new AbortController();
-    fetch("/api/jobs/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobTitle: st.jfTitle, company: st.jfCompany, jobDescription: st.jfJD, cvSummary: st.cvText }),
-      signal: controller.signal,
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json: unknown) => {
-        if (!json || typeof json !== "object") return;
-        const j = json as { matchScore?: number; auditChecklist?: unknown; blockerWarning?: string | null };
-        const checklist = Array.isArray(j.auditChecklist) ? j.auditChecklist.filter((x): x is string => typeof x === "string").slice(0, 5) : [];
-        if (checklist.length || j.blockerWarning) {
-          setReadFor({ key: r, value: { score: typeof j.matchScore === "number" ? j.matchScore : null, checklist, warning: j.blockerWarning ?? null } });
-        }
-      })
-      .catch(() => { /* deterministic result stays */ });
-    return () => controller.abort();
-  }, [r]);
+  // The AI letter is keyed on the posting it was written for, so editing the JD
+  // or the company shows the template again instead of the previous job's letter.
+  const currentKey = postingKey(s.jfCompany, s.jfTitle, s.jfJD);
+  const aiLetter = s.jfCoverLetter?.key === currentKey ? s.jfCoverLetter : null;
 
   const [refineDraft, setRefineDraft] = useState("");
-  const [refining, setRefining] = useState(false);
 
-  // AI cover letter via the active site's generator; local draft as fallback.
-  // Extracted so the "Refine" button can re-run it with an instruction.
-  const runLetter = useCallback(async (refinement?: string) => {
+  // The local template renders at once; the AI letter replaces it when it lands.
+  const runLetter = async (refinement?: string) => {
     const st = usePfStore.getState();
-    if (refinement) setRefining(true);
-    try {
-      const res = await fetch("/api/cover-letter/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cvData: st.cvText,
-          jobDescription: st.jfJD,
-          companyName: st.jfCompany || "the company",
-          directionStatement: st.dirRole ? `${st.dirRole} internships` : undefined,
-          refinement: refinement || undefined,
-        }),
-      });
-      const json: unknown = res.ok ? await res.json() : null;
-      const data = (json as { data?: { coverLetter?: string; assumptions?: unknown } } | null)?.data;
-      const text = data?.coverLetter;
-      if (typeof text === "string" && text.trim().length > 80) {
-        const paras = text.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean);
-        const assumptions = Array.isArray(data?.assumptions) ? data.assumptions.filter((x): x is string => typeof x === "string") : [];
-        setLetterFor({ key: st.jfLetter, value: { paras, assumptions, words: text.split(/\s+/).length } });
-      }
-    } catch {
-      /* local letter renders */
-    } finally {
-      if (refinement) setRefining(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!s.jfLetter) return;
-    void runLetter();
-  }, [s.jfLetter, runLetter]);
+    const key = postingKey(st.jfCompany, st.jfTitle, st.jfJD);
+    const json = await letterTask.run({
+      cvData: st.cvText,
+      jobDescription: st.jfJD,
+      companyName: st.jfCompany.trim() || "the company",
+      directionStatement: getProfile().directionStatement ?? undefined,
+      refinement: refinement || undefined,
+    });
+    const text = json?.data?.coverLetter;
+    if (typeof text !== "string" || !text.trim()) return;
+    const paras = text.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean);
+    const raw = json?.data?.assumptions;
+    const assumptions = Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
+    st.keepCoverLetter({ key, paras, assumptions, words: text.split(/\s+/).length });
+    st.emit("AiConsulted", "jobs", `Drafted a cover letter for ${st.jfCompany.trim() || "a role"}`);
+    if (refinement) setRefineDraft("");
+  };
 
   if (!r) return null;
   const localLetter = buildCoverLetter(s.jfCompany, s.jfTitle, s.jfJD, targetKeywords(s.dirStack));
@@ -246,10 +227,18 @@ function AnalysisResult() {
   // One compatibility number, not two: lead with the AI score once it lands,
   // fall back to the instant keyword heuristic before then. The two used to
   // render side by side and disagree, which is what students noticed.
-  const scoreIsAi = typeof aiRead?.score === "number";
-  const displayScore = typeof aiRead?.score === "number" ? aiRead.score : r.compat;
+  // A degraded server read is a keyword overlap too, so it never replaces the
+  // local number or borrows the "AI" label.
+  const scoreIsAi = aiRead?.source === "ai" && typeof aiRead.score === "number";
+  const displayScore = scoreIsAi ? (aiRead.score as number) : r.compat;
   const displayTone = displayScore >= 70 ? "var(--strong)" : displayScore >= 55 ? "var(--warn)" : "var(--risk)";
-  const scoreLabel = scoreIsAi ? "AI-scored against your CV" : "keyword estimate — refine below";
+  const scoreLabel = scoreIsAi
+    ? "AI-scored against your CV"
+    : read.loading
+      ? "keyword estimate · AI read in progress"
+      : aiRead?.source === "heuristic"
+        ? "keyword estimate · the AI read didn't come back"
+        : "keyword estimate";
   return (
     <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 24px", borderBottom: "1px solid var(--line)", background: "var(--accentSoft)" }}>
@@ -291,40 +280,44 @@ function AnalysisResult() {
         </div>
       ))}
 
-      {aiRead && (aiRead.warning || aiRead.checklist.length > 0) && (
+      {(read.error || (aiRead?.source === "ai" && (aiRead.warning || aiRead.checklist.length > 0))) && (
         <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--line2)" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-            <Kicker style={{ fontSize: 9.5 }}>AI notes</Kicker>
-          </div>
-          {aiRead.warning && (
-            <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--risk)", margin: "0 0 8px" }}>{aiRead.warning}</p>
+          {aiRead?.source === "ai" && (
+            <>
+              <Kicker style={{ fontSize: 9.5, marginBottom: 8 }}>AI notes</Kicker>
+              {aiRead.warning && (
+                <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--risk)", margin: "0 0 8px" }}>{aiRead.warning}</p>
+              )}
+              {aiRead.checklist.map((c) => (
+                <div key={c.slice(0, 60)} style={{ display: "flex", gap: 9, padding: "3px 0" }}>
+                  <span style={{ color: "var(--accent)" }}>·</span>
+                  <span style={{ fontSize: 13, lineHeight: 1.6, color: "var(--muted)" }}>{c}</span>
+                </div>
+              ))}
+              <AiCaveat>One model&apos;s read of this advert against your CV. Check the advert itself before acting on it.</AiCaveat>
+            </>
           )}
-          {aiRead.checklist.map((c) => (
-            <div key={c.slice(0, 60)} style={{ display: "flex", gap: 9, padding: "3px 0" }}>
-              <span style={{ color: "var(--accent)" }}>·</span>
-              <span style={{ fontSize: 13, lineHeight: 1.6, color: "var(--muted)" }}>{c}</span>
-            </div>
-          ))}
+          <AiError message={read.error} needsAuth={read.needsAuth} />
         </div>
       )}
 
-      {!s.jfLetter && (
+      {!s.jfLetter && !aiLetter && (
         <div style={{ padding: "16px 24px" }}>
           <button
-            onClick={() => s.set({ jfLetter: true })}
+            onClick={() => { s.set({ jfLetter: true }); void runLetter(); }}
             style={{ cursor: "pointer", height: 42, padding: "0 20px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13, fontWeight: 600 }}
           >
             Generate cover letter →
           </button>
         </div>
       )}
-      {s.jfLetter && (
+      {(s.jfLetter || aiLetter) && (
         <div style={{ padding: "20px 24px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
             <Kicker style={{ fontSize: 9.5 }}>Cover letter draft</Kicker>
             <span className="pf-mono" style={{ fontSize: 10, color: "var(--muted)" }}>{letter.words} words</span>
-            <span className="pf-mono" style={{ fontSize: 10, fontWeight: 700, color: "var(--strong)", border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)", borderRadius: 6, padding: "2px 8px" }}>
-              {aiLetter ? "AI · tailored" : "reads natural"}
+            <span className="pf-mono" style={{ fontSize: 10, fontWeight: 700, color: aiLetter ? "var(--strong)" : "var(--muted)", border: `1px solid color-mix(in srgb,${aiLetter ? "var(--strong)" : "var(--muted)"} 30%,transparent)`, borderRadius: 6, padding: "2px 8px" }}>
+              {aiLetter ? "AI · tailored" : letterTask.loading ? "template · AI draft on its way" : "template · fill in the gaps"}
             </span>
           </div>
           {letter.paras.map((p, i) => (
@@ -338,24 +331,32 @@ function AnalysisResult() {
             </div>
           ))}
 
-          {/* Refine with AI — tell it what to change and regenerate the draft. */}
+          {aiLetter && (
+            <AiCaveat>An AI first draft. Review and personalise it before sending: you add the authenticity.</AiCaveat>
+          )}
+
+          {/* Refine with AI: tell it what to change and regenerate the draft. */}
           <div style={{ display: "flex", gap: 9, marginTop: 14, flexWrap: "wrap" }}>
             <input
               value={refineDraft}
               onChange={(e) => setRefineDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && refineDraft.trim() && !refining) { void runLetter(refineDraft.trim()); } }}
-              placeholder="Refine it — e.g. “more concise”, “lead with my Go project”…"
+              onKeyDown={(e) => { if (e.key === "Enter" && refineDraft.trim() && !letterTask.loading) { void runLetter(refineDraft.trim()); } }}
+              placeholder="Refine it, e.g. “more concise”, “lead with my Go project”…"
               className="pf-input"
               style={{ flex: "1 1 240px", minWidth: 0, height: 40, padding: "0 14px", fontSize: 13 }}
             />
             <button
-              onClick={() => { if (refineDraft.trim() && !refining) void runLetter(refineDraft.trim()); }}
-              disabled={!refineDraft.trim() || refining}
-              style={{ cursor: !refineDraft.trim() || refining ? "default" : "pointer", height: 40, padding: "0 18px", borderRadius: 10, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: !refineDraft.trim() || refining ? "var(--faint)" : "var(--fg)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
+              onClick={() => { if (refineDraft.trim() && !letterTask.loading) void runLetter(refineDraft.trim()); }}
+              disabled={!refineDraft.trim() || letterTask.loading}
+              style={{ cursor: !refineDraft.trim() || letterTask.loading ? "default" : "pointer", height: 40, padding: "0 18px", borderRadius: 10, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: !refineDraft.trim() || letterTask.loading ? "var(--faint)" : "var(--fg)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
             >
-              {refining ? "Refining…" : "Refine with AI"}
+              {letterTask.loading ? "Writing…" : "Refine with AI"}
             </button>
           </div>
+          <AiError
+            message={letterTask.needsAuth ? "The tailored letter uses your account. Sign in to generate or refine it; until then this is a template to fill in." : letterTask.error}
+            needsAuth={letterTask.needsAuth}
+          />
         </div>
       )}
     </Reveal>
@@ -374,6 +375,25 @@ export default function JobsPage() {
   const [liveJobs, setLiveJobs] = useState<SavedJob[]>([]);
   const [searchNote, setSearchNote] = useState<string | null>(null);
   const [minFit, setMinFit] = useState(0);
+
+  // The AI read of the pasted posting. Tagged with the posting it was run for,
+  // so editing the JD can't leave the previous job's read on screen.
+  const read = useAiTask<JdAnalyzeResponse>("/api/jobs/analyze");
+  const [readFor, setReadFor] = useState<{ key: string; value: AiJdRead } | null>(null);
+  const aiRead = readFor && readFor.key === postingKey(s.jfCompany, s.jfTitle, s.jfJD) ? readFor.value : null;
+
+  // The keyword analysis is local and instant; the AI read runs beside it on
+  // the click, not on every visit to the page.
+  const analyze = async () => {
+    s.analyzeJf();
+    const st = usePfStore.getState();
+    const key = postingKey(st.jfCompany, st.jfTitle, st.jfJD);
+    const json = await read.run({ jobTitle: st.jfTitle, company: st.jfCompany, jobDescription: st.jfJD, cvSummary: st.cvText });
+    if (!json) return;
+    const value = toJdRead(json);
+    setReadFor({ key, value });
+    if (value.source === "ai") st.emit("AiConsulted", "jobs", `AI read of the ${st.jfCompany.trim() || "pasted"} posting`);
+  };
 
   // Live search against the active site's job-board route (Adzuna/JSearch).
   const runSearch = async () => {
@@ -432,10 +452,8 @@ export default function JobsPage() {
   // Saving a live result makes it a real card: tracked in the store,
   // searchable from ⌘K, and openable in the detail drawer.
   const saveLiveJob = (job: SavedJob, open: boolean) => {
-    const st = usePfStore.getState();
-    const exists = st.savedJobs.some((sj) => sj.company === job.company && sj.role === job.role);
-    if (!exists) s.set({ savedJobs: [{ ...job, action: "Analyze" }, ...st.savedJobs] });
-    if (open) s.openJob(job.company);
+    s.saveListing(job);
+    if (open) s.openJob(job.company, job.role);
   };
 
   // Fit filter applies to already-scored results (jobPassesFit hides unknown-fit
@@ -448,7 +466,7 @@ export default function JobsPage() {
     <div>
       <PageHeader label="Phase 03 · Growth" title="Opportunity Discovery">
         <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "56ch" }}>
-          10–15 <span style={{ color: "var(--fg)", fontWeight: 600 }}>high-fit</span> targets a week beats 100 cold applications. Every role is scored 0–100 against your profile.
+          10–15 <span style={{ color: "var(--fg)", fontWeight: 600 }}>high-fit</span> targets a week beats 100 cold applications. A role is scored 0–100 against your CV when its advert names enough to score.
         </p>
       </PageHeader>
 
@@ -507,10 +525,12 @@ export default function JobsPage() {
             <Chip key={value} size="sm" label={label} on={workMode === value} onClick={() => setWorkMode(value)} />
           ))}
         </div>
-        {workMode !== "any" && (
+        {(workMode !== "any" || industry.trim()) && (
           <span style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.45, flex: "1 1 100%" }}>
-            Work mode narrows by keyword — job boards don&apos;t expose it as a field, so check the
-            advert before assuming a role is {workMode}.
+            Industry and work mode narrow by keyword, not by a field. On Adzuna the word is searched in
+            the advert; the GitHub lists carry no advert text, so there it has to appear in the title,
+            company or location, which drops most of them. Check the advert before assuming a role is
+            {workMode !== "any" ? ` ${workMode}` : " in that industry"}.
           </span>
         )}
       </Reveal>
@@ -579,17 +599,9 @@ export default function JobsPage() {
         </div>
       )}
 
-      <AddRolePanel />
+      <AddRolePanel onAnalyze={() => void analyze()} />
 
-      {s.jfAnalyzing && (
-        <div className="pf-panel" style={{ padding: 40, textAlign: "center", marginBottom: 18 }}>
-          <div className="pf-anim-spin" style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid var(--panel3)", borderTopColor: "var(--accent)", margin: "0 auto 14px" }} />
-          <div style={{ fontSize: 13.5, fontWeight: 600 }}>Scoring the role against your CV…</div>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>compatibility · dealbreakers · keyword coverage</div>
-        </div>
-      )}
-
-      {!s.jfAnalyzing && <AnalysisResult />}
+      <AnalysisResult aiRead={aiRead} read={read} />
 
       {jobsAll.length > 0 && (
         <div className="pf-mono" style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)", margin: "0 0 10px" }}>
@@ -616,7 +628,7 @@ export default function JobsPage() {
         {shownSaved.map((j, i) => (
           <Reveal key={`${j.company}-${j.role}-${i}`} style={{}}>
             <div
-              onClick={() => s.openJob(j.company)}
+              onClick={() => s.openJob(j.company, j.role)}
               className="pf-hover-border"
               style={{ cursor: "pointer", border: "1px solid var(--line)", borderRadius: 16, background: "var(--panel)", padding: "22px 24px", transition: "transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s var(--ease)" }}
             >
@@ -641,7 +653,7 @@ export default function JobsPage() {
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--line2)", paddingTop: 12 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: j.tone }}>{j.verdict}</span>
-                <span className="pf-mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)" }}>{j.action} →</span>
+                <span className="pf-mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)" }}>Open →</span>
               </div>
             </div>
           </Reveal>

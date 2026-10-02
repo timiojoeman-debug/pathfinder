@@ -8,7 +8,9 @@ vi.mock('@/lib/logger', () => ({
 import {
   computeMatchScore,
   dedupeListings,
+  expandRoleQuery,
   filterListings,
+  safeHttpUrl,
   sortByFit,
   type JobListing,
 } from '../types';
@@ -35,6 +37,34 @@ describe('computeMatchScore', () => {
   it('caps the reported keyword list at five', () => {
     const desc = 'react node typescript python java sql aws';
     expect(computeMatchScore('', desc).keywords).toHaveLength(5);
+  });
+});
+
+describe('safeHttpUrl', () => {
+  it('keeps http and https links', () => {
+    expect(safeHttpUrl('https://jobs.example.org/1')).toBe('https://jobs.example.org/1');
+    expect(safeHttpUrl('  http://jobs.example.org/2 ')).toBe('http://jobs.example.org/2');
+  });
+
+  it('drops script, data and other schemes, however they are cased or padded', () => {
+    for (const bad of ['javascript:alert(1)', ' JavaScript:alert(1)', 'java\tscript:alert(1)', 'data:text/html,<script>1</script>', 'vbscript:x', 'file:///etc/passwd', 'mailto:a@b.c']) {
+      expect(safeHttpUrl(bad)).toBeNull();
+    }
+  });
+
+  it('drops empty, relative and non-string values', () => {
+    for (const bad of ['', '   ', '/jobs/1', 'not a url', undefined, null, 42]) {
+      expect(safeHttpUrl(bad)).toBeNull();
+    }
+  });
+});
+
+describe('expandRoleQuery', () => {
+  it('turns shorthand into the phrase adverts use and leaves other words alone', () => {
+    expect(expandRoleQuery('SWE intern')).toBe('software engineer intern');
+    expect(expandRoleQuery('ML  research')).toBe('machine learning research');
+    expect(expandRoleQuery('Backend')).toBe('Backend');
+    expect(expandRoleQuery('')).toBe('');
   });
 });
 
@@ -66,6 +96,33 @@ describe('filterListings', () => {
   it('passes everything through when filters are empty', () => {
     const listings = [job(), job({ url: 'https://x/2' })];
     expect(filterListings(listings, {})).toHaveLength(2);
+  });
+
+  it('narrows by industry and work mode keywords in title, company or location', () => {
+    const listings = [
+      job({ company: 'Monzo Fintech', url: 'https://x/1' }),
+      job({ location: 'Remote', url: 'https://x/2' }),
+      job({ url: 'https://x/3' }),
+    ];
+    expect(filterListings(listings, { industry: 'fintech' }).map((j) => j.url)).toEqual(['https://x/1']);
+    expect(filterListings(listings, { workMode: 'remote' }).map((j) => j.url)).toEqual(['https://x/2']);
+    expect(filterListings(listings, { industry: '', workMode: undefined })).toHaveLength(3);
+  });
+
+  it('keeps a short filter that is the whole value, and matches whole words', () => {
+    const listings = [
+      job({ title: 'AI Research Intern', url: 'https://x/1' }),
+      job({ title: 'Daily Ops Intern', url: 'https://x/2' }),
+    ];
+    expect(filterListings(listings, { industry: 'AI' }).map((j) => j.url)).toEqual(['https://x/1']);
+  });
+
+  it('needs every word of a multi-word industry', () => {
+    const listings = [
+      job({ company: 'Acme Health Tech', url: 'https://x/1' }),
+      job({ company: 'Acme Health', url: 'https://x/2' }),
+    ];
+    expect(filterListings(listings, { industry: 'health tech' }).map((j) => j.url)).toEqual(['https://x/1']);
   });
 
   it('expands a 3-letter abbreviation to the words in the title (SWE → Software Engineer)', () => {

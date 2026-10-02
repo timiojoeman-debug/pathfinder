@@ -30,6 +30,8 @@ const MatchResponse = aiShape(
 );
 import { buildATSAuditPrompt, buildMatchScorePrompt } from "@/lib/prompts";
 import { readBody, zShort, zText } from "@/lib/api";
+import { computeMatchScore } from "@/lib/jobs/types";
+import { logger } from "@/lib/logger";
 
 const AnalyzeSchema = z.object({
   jobTitle: zShort().optional(),
@@ -39,30 +41,6 @@ const AnalyzeSchema = z.object({
   userLinkedInUrl: zShort(2000).optional(),
   userLinkedIn: zText().optional(),
 });
-
-function computeMatchScore(cvAndProfile: string, jobDescription: string): { score: number; keywords: string[] } {
-  const normalizedProfile = cvAndProfile.toLowerCase();
-  const normalizedDesc = jobDescription.toLowerCase();
-
-  const keywordCandidates = [
-    "react", "node", "typescript", "python", "java", "sql", "aws", "gcp",
-    "docker", "kubernetes", "api", "microservices", "tailwind", "postgresql",
-    "javascript", "html", "css", "git", "rest", "graphql", "redux",
-  ];
-
-  const keywords: string[] = [];
-  let hits = 0;
-
-  for (const kw of keywordCandidates) {
-    if (normalizedDesc.includes(kw)) {
-      keywords.push(kw);
-      if (normalizedProfile.includes(kw)) hits += 1;
-    }
-  }
-
-  const score = keywords.length ? Math.round((hits / keywords.length) * 100) : 40;
-  return { score, keywords: keywords.slice(0, 5) };
-}
 
 export async function POST(req: Request) {
   const parsed = await readBody(req, AnalyzeSchema);
@@ -106,35 +84,32 @@ export async function POST(req: Request) {
     const criticalKeywordsDetail = (atsResult.criticalKeywords ?? []).slice(0, 10);
 
     return NextResponse.json({
-      matchScore: matchResult.matchScore ?? fallback.score,
+      source: "ai",
+      matchScore: matchResult.matchScore,
       atsKeywords: atsKeywords.length >= 3 ? atsKeywords : fallback.keywords,
       atsKeywordsDetail: criticalKeywordsDetail.length >= 3
         ? criticalKeywordsDetail
         : fallback.keywords.map((k) => ({ keyword: k, foundInCV: false, suggestedPlacement: "Skills section" })),
-      auditChecklist:
-        auditChecklist.length > 0
-          ? auditChecklist
-          : [
-              "Key skills from the listing appear in your CV/ LinkedIn",
-              "At least one project matches this role's tech stack",
-              "Keywords are woven naturally into bullets, not stuffed",
-              "CV is one page with clean, ATS-friendly formatting",
-            ],
+      // Only what the model actually checked. A generic four-item checklist used
+      // to stand in when this was empty, and the page labelled it "AI notes".
+      auditChecklist,
       nonNegotiables: matchResult.nonNegotiables ?? [],
       hasBlockers: matchResult.hasBlockers ?? false,
       blockerWarning: matchResult.blockerWarning ?? null,
     });
-  } catch {
+  } catch (err) {
+    logger.error("jobs/analyze — AI unusable, serving keyword estimate", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    // Still a 200, so the page keeps its local result, but flagged: a keyword
+    // overlap must never be labelled as an AI score. Null when the JD names no
+    // known keywords, rather than a made-up middling number.
     return NextResponse.json({
+      source: "heuristic",
       matchScore: fallback.score,
       atsKeywords: fallback.keywords,
       atsKeywordsDetail: fallback.keywords.map((k) => ({ keyword: k, foundInCV: false, suggestedPlacement: "Skills section" })),
-      auditChecklist: [
-        "Key skills from the listing appear in your CV/ LinkedIn",
-        "At least one project matches this role's tech stack",
-        "Keywords are woven naturally into bullets, not stuffed",
-        "CV is one page with clean, ATS-friendly formatting",
-      ],
+      auditChecklist: [],
     });
   }
 }

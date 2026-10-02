@@ -21,6 +21,21 @@ export interface JobListing {
   atsKeywords: string[];
 }
 
+/**
+ * A posting link, only if it is http(s). Listing URLs come from community-edited
+ * lists and third-party APIs and end up in an `<a href>`, so a `javascript:` or
+ * `data:` URL must never get through. Returns the normalised URL or null.
+ */
+export function safeHttpUrl(raw: unknown): string | null {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  try {
+    const u = new URL(raw.trim());
+    return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 export const KEYWORD_CANDIDATES = [
   "react", "node", "typescript", "python", "java", "sql", "aws", "gcp",
   "docker", "kubernetes", "api", "microservices", "tailwind", "postgresql",
@@ -72,28 +87,60 @@ export function dedupeListings(listings: JobListing[]): JobListing[] {
  * posting spells the abbreviation out. Two-letter entries matter especially —
  * the tokenizer drops sub-3-char tokens as noise, so without expansion "ML" or
  * "PM" would vanish before matching.
+ *
+ * The first entry is the phrase a job board's full-text search should get
+ * (`expandRoleQuery`); it is also a title token, which only ever adds matches.
  */
 const ROLE_ABBREVIATIONS: Record<string, string[]> = {
-  swe: ["software", "engineer"],
-  sde: ["software", "engineer"],
-  se: ["software", "engineer"],
-  sre: ["site", "reliability", "engineer"],
-  ml: ["machine", "learning"],
-  ai: ["artificial", "intelligence"],
-  nlp: ["natural", "language"],
-  ds: ["data", "science", "scientist"],
-  da: ["data", "analyst", "analytics"],
-  de: ["data", "engineer"],
-  pm: ["product", "manager", "management"],
-  po: ["product", "owner"],
-  qa: ["quality", "assurance", "test"],
+  swe: ["software engineer", "software", "engineer"],
+  sde: ["software engineer", "software", "engineer"],
+  se: ["software engineer", "software", "engineer"],
+  sre: ["site reliability engineer", "site", "reliability", "engineer"],
+  ml: ["machine learning", "machine", "learning"],
+  ai: ["ai", "artificial", "intelligence"],
+  nlp: ["nlp", "natural", "language"],
+  ds: ["data scientist", "data", "science", "scientist"],
+  da: ["data analyst", "data", "analyst", "analytics"],
+  de: ["data engineer", "data", "engineer"],
+  pm: ["product manager", "product", "manager", "management"],
+  po: ["product owner", "product", "owner"],
+  qa: ["qa", "quality", "assurance", "test"],
   ux: ["ux", "designer", "design", "experience"],
   ui: ["ui", "designer", "design", "interface"],
   fe: ["frontend", "front-end"],
   be: ["backend", "back-end"],
-  fs: ["fullstack", "full-stack"],
+  fs: ["full stack", "fullstack", "full-stack"],
   devops: ["devops", "platform", "infrastructure"],
 };
+
+/**
+ * A role query rewritten for a job board's full-text search: shorthand becomes
+ * the phrase adverts use ("SWE intern" → "software engineer intern"). Adzuna
+ * matches every word in `what`, so sending "SWE" literally found almost nothing.
+ */
+export function expandRoleQuery(roleType: string): string {
+  return (roleType ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => ROLE_ABBREVIATIONS[w.toLowerCase()]?.[0] ?? w)
+    .join(" ");
+}
+
+/** Lower-case words of a free-text filter worth matching. Sub-3-char words are
+ *  dropped as noise ("of", "&"), unless they are all there is: "AI" on its own
+ *  is the filter, not noise. */
+function keywordTokens(text: string | undefined): string[] {
+  const all = (text ?? "").toLowerCase().split(/[^a-z0-9+#]+/).filter(Boolean);
+  const long = all.filter((t) => t.length > 2);
+  return long.length ? long : all;
+}
+
+/** Whole-word match, so "ai" doesn't hit "Daily" and "bank" doesn't hit "Bankside". */
+function hasWord(text: string, word: string): boolean {
+  const esc = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${esc}($|[^a-z0-9])`).test(text);
+}
 
 /** Split a role query into title-matchable tokens, expanding known abbreviations. */
 function roleQueryTokens(roleType: string): string[] {
@@ -128,19 +175,29 @@ function titleMatchesToken(title: string, token: string): boolean {
  * GitHub lists). A role token matches if it appears in the title (abbreviations
  * expanded to their title words); a location matches as a substring. Empty
  * filters pass everything.
+ *
+ * Industry and work mode are keyword narrowing, the same as on Adzuna, but
+ * these lists carry no advert text, so the word has to appear in the title,
+ * company or location. That is a much smaller haystack, and the UI says so.
  */
 export function filterListings(
   listings: JobListing[],
-  opts: { roleType?: string; location?: string },
+  opts: { roleType?: string; location?: string; industry?: string; workMode?: string },
 ): JobListing[] {
   const roleTokens = roleQueryTokens(opts.roleType ?? "");
   const loc = (opts.location ?? "").trim().toLowerCase();
+  const industryTokens = keywordTokens(opts.industry);
+  const modeTokens = keywordTokens(opts.workMode);
 
   return listings.filter((j) => {
     const title = j.title.toLowerCase();
+    const text = `${title} ${j.company} ${j.location} ${j.workMode}`.toLowerCase();
     const roleOk = roleTokens.length === 0 || roleTokens.some((t) => titleMatchesToken(title, t));
     const locOk = !loc || j.location.toLowerCase().includes(loc);
-    return roleOk && locOk;
+    // Every word of a multi-word filter must appear: "health tech" means both, not either.
+    const industryOk = industryTokens.every((t) => hasWord(text, t));
+    const modeOk = modeTokens.every((t) => hasWord(text, t));
+    return roleOk && locOk && industryOk && modeOk;
   });
 }
 

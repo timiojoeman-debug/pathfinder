@@ -33,6 +33,8 @@ export interface ProfileInput {
   cvProjects: boolean;
   cvLinkedIn: boolean;
   cvScores: number[];
+  /** Skills the AI read of the CV named. Only those the CV text evidences are used. */
+  cvAiSkills?: string[];
   savedJobs: SavedJob[];
   netPersona: OutreachPersona;
   netSent: number;
@@ -107,9 +109,22 @@ export interface CareerProfile {
 
 /** Skills *evidenced in the CV* — kept disjoint from missing/target skills so
  *  the profile never claims a skill is both present and absent. */
-function detectSkills(cvText: string): string[] {
+function detectSkills(cvText: string, aiSkills: string[] = []): string[] {
   const lower = cvText.toLowerCase();
-  return KEYWORD_VOCAB.filter((k) => lower.includes(k.toLowerCase()));
+  const found = KEYWORD_VOCAB.filter((k) => lower.includes(k.toLowerCase()));
+  // The AI read can name skills the vocabulary doesn't know, but a name the CV
+  // text doesn't contain is the model's guess, not evidence, so it is dropped.
+  const seen = new Set(found.map((k) => k.toLowerCase()));
+  for (const skill of aiSkills) {
+    const k = skill.trim().toLowerCase();
+    // Whole-word match, so "Go" isn't evidenced by "good".
+    const esc = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (k && !seen.has(k) && new RegExp(`(^|[^a-z0-9])${esc}($|[^a-z0-9])`).test(lower)) {
+      seen.add(k);
+      found.push(skill.trim());
+    }
+  }
+  return found;
 }
 
 function gatherTargetCompanies(board: BoardColumn[], savedJobs: SavedJob[]): TargetCompany[] {
@@ -136,14 +151,15 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
   // direction progress before any direction work happened.
   const directionSet = s.dirGenerated && !!s.dirRole;
   const keywords = targetKeywords(s.dirStack);
-  const currentSkills = detectSkills(s.cvText);
+  const currentSkills = detectSkills(s.cvText, s.cvAiSkills);
 
   // CV / ATS
   const analysis = s.cvText.trim().length >= 60 ? analyzeCvText(s.cvText, s.dirStack) : null;
   const atsHistory = s.cvScores.length ? s.cvScores : analysis && s.cvAnalyzed ? [analysis.score] : [];
   const atsScore = s.cvAnalyzed && atsHistory.length ? atsHistory[atsHistory.length - 1] : null;
   const atsDelta = atsHistory.length >= 2 ? atsHistory[atsHistory.length - 1] - atsHistory[0] : null;
-  const missingSkills = analysis ? analysis.missing.map((m) => m.label) : keywords.filter((k) => !currentSkills.includes(k));
+  const have = new Set(currentSkills.map((k) => k.toLowerCase()));
+  const missingSkills = (analysis ? analysis.missing.map((m) => m.label) : keywords).filter((k) => !have.has(k.toLowerCase()));
 
   // Pipeline
   const derived = trackerDerived(s.board, s.netSent);

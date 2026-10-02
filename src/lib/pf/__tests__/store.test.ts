@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { usePfStore } from "../store";
-import { readinessFrom } from "../logic";
+import { MAX_JD_CHARS, postingKey, readinessFrom } from "../logic";
 import { LEETCODE_PROBLEMS } from "../leetcode";
 
 /**
@@ -49,6 +49,94 @@ describe("pf store — shell + drawers", () => {
     s().closeDrawers();
     expect(s().appDetail).toBeNull();
     expect(s().jobDetail).toBeNull();
+  });
+});
+
+describe("pf store — Opportunity Discovery saves", () => {
+  beforeEach(reset);
+
+  const listing = (role: string) => ({
+    company: "Monzo", role, meta: "London · Adzuna", fit: 0, fitKnown: false, dash: 144, tone: "var(--faint)",
+    tags: ["Not scored"], verdict: "", action: "+ Save", jdText: "", url: "https://example.org/apply",
+  });
+
+  it("saves a live listing once, keeps its link, and logs JobSaved", () => {
+    s().saveListing(listing("Backend Intern"));
+    s().saveListing(listing("Backend Intern"));
+    expect(s().savedJobs).toHaveLength(1);
+    expect(s().savedJobs[0].url).toBe("https://example.org/apply");
+    expect(s().savedJobs[0].action).toBe("Open");
+    expect(lastEvent().type).toBe("JobSaved");
+    // Unscored roles log no fit number.
+    expect(lastEvent().meta).toEqual({ company: "Monzo" });
+  });
+
+  it("keeps two roles at one company apart, in the list and in the drawer key", () => {
+    s().saveListing(listing("Backend Intern"));
+    s().saveListing(listing("Data Intern"));
+    expect(s().savedJobs).toHaveLength(2);
+    s().openJob("Monzo", "Data Intern");
+    expect(s().jobDetail).toBe("monzo::data intern");
+  });
+
+  it("attaches a kept cover letter only to the saved role with the same posting", () => {
+    s().saveListing({ ...listing("Data Intern"), jdText: "Kafka and Go." });
+    s().saveListing({ ...listing("Backend Intern"), jdText: "Kafka and Go." });
+    // Same company and role as the first, but a different advert: not the same posting.
+    usePfStore.setState({ savedJobs: [...s().savedJobs, { ...listing("Data Intern"), jdText: "Python only." }] });
+    const key = postingKey("Monzo", "Data Intern", "Kafka and Go.");
+    s().keepCoverLetter({ key, paras: ["Dear team,", "Thanks."], assumptions: [], words: 3 });
+    const letters = s().savedJobs.map((j) => [j.role, j.jdText, j.coverLetter]);
+    expect(letters).toContainEqual(["Data Intern", "Kafka and Go.", "Dear team,\n\nThanks."]);
+    expect(letters).toContainEqual(["Data Intern", "Python only.", undefined]);
+    expect(letters).toContainEqual(["Backend Intern", "Kafka and Go.", undefined]);
+    expect(s().jfCoverLetter?.key).toBe(key);
+  });
+
+  it("caps the advert a saved listing keeps", () => {
+    s().saveListing({ ...listing("Backend Intern"), jdText: "x".repeat(20000) });
+    expect(s().savedJobs[0].jdText).toHaveLength(MAX_JD_CHARS);
+  });
+
+  it("hands an advert to the tailor panel and clears results run against the old one", () => {
+    usePfStore.setState({ cvTailorJD: "old", cvTailorAts: { data: {} }, cvTailorMatch: { data: {} } });
+    s().setTailorJD("new advert");
+    expect(s().cvTailorJD).toBe("new advert");
+    expect(s().cvTailorAts).toBeNull();
+    expect(s().cvTailorMatch).toBeNull();
+  });
+});
+
+describe("pf store — late AI results never overwrite newer input", () => {
+  beforeEach(reset);
+
+  const read = { skills: ["Kafka"], strengths: ["s"], nextSteps: ["n"], feedback: [{ issue: "i", suggestedFix: "f" }] };
+
+  it("keeps a CV read only while the CV text is the text that was read", () => {
+    usePfStore.setState({ cvText: "Edited after the request went out" });
+    expect(s().keepCvAiRead(read, "Original CV text")).toBe(false);
+    expect(s().cvAiRead).toBeNull();
+
+    usePfStore.setState({ cvText: "Original CV text" });
+    expect(s().keepCvAiRead(read, "Original CV text")).toBe(true);
+    expect(s().cvAiRead?.skills).toEqual(["Kafka"]);
+  });
+
+  it("caps what a CV read persists", () => {
+    usePfStore.setState({ cvText: "cv" });
+    s().keepCvAiRead({ ...read, strengths: Array(50).fill("y".repeat(2000)), skills: Array(100).fill("z".repeat(200)) }, "cv");
+    expect(s().cvAiRead!.strengths).toHaveLength(12);
+    expect(s().cvAiRead!.strengths[0]).toHaveLength(300);
+    expect(s().cvAiRead!.skills).toHaveLength(40);
+    expect(s().cvAiRead!.skills[0]).toHaveLength(60);
+  });
+
+  it("keeps a Tailor result only while the advert is the one it ran against", () => {
+    usePfStore.setState({ cvTailorJD: "new advert" });
+    expect(s().keepTailorResult("ats", { data: { overallATSScore: 50 } }, "old advert")).toBe(false);
+    expect(s().cvTailorAts).toBeNull();
+    expect(s().keepTailorResult("match", { data: { matchScore: 70 } }, "new advert")).toBe(true);
+    expect(s().cvTailorMatch).toEqual({ data: { matchScore: 70 } });
   });
 });
 
