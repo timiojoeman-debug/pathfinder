@@ -93,7 +93,7 @@ description on each page.
 ### API Routes (`src/app/api/`)
 
 Route Handlers, POST unless noted. Auth routes set httpOnly JWT cookies. Middleware applies rate limits
-(auth 10/min, AI 30/min, general 120/min, `AI_DAILY_QUOTA` 60/day). Counters live in the
+(auth 10/min, AI 30/min, general 120/min, `AI_DAILY_QUOTA` 25/day). Counters live in the
 `rate_limit_buckets` table via the `rate_limit_hit` RPC, so they hold **across serverless instances** —
 an in-memory Map gave each instance its own counter and the effective limit was (instances × limit).
 If the store is unreachable the limiter degrades to per-instance counting rather than failing requests.
