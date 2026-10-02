@@ -30,8 +30,11 @@ export const GITHUB_SOURCES: GithubSource[] = [
     url: "https://raw.githubusercontent.com/vanshb03/Summer2027-Internships/main/.github/scripts/listings.json",
   },
   {
-    label: "SimplifyJobs",
-    url: "https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/.github/scripts/listings.json",
+    // The repo was renamed from Summer2026; point at its canonical name rather than
+    // relying on GitHub forwarding the old one. Checked 2026-10-02: 4,417 active
+    // listings, 229 in the UK.
+    label: "SimplifyJobs/Summer2027",
+    url: "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json",
   },
 ];
 
