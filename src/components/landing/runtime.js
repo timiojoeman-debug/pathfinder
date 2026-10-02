@@ -19,9 +19,12 @@ export function initLanding(root) {
   function rng(seed) { let s = seed >>> 0; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
   const hash = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
   const RM = matchMedia('(prefers-reduced-motion: reduce)');
-  const INK = '#382c20', ACCENT = '#b0673c', PAPER = '#ebe2d1';
+  // the canvases' colours come from the theme tokens (paper or night), re-read when the theme changes
+  let INK = '#382c20', ACCENT = '#b0673c', PAPER = '#ebe2d1';
+  const readTheme = () => { const cs = getComputedStyle($('#main')), v = (n, d) => cs.getPropertyValue(n).trim() || d;
+    INK = v('--ink', INK); ACCENT = v('--accent', ACCENT); PAPER = v('--canvas', PAPER); };
+  readTheme();
   const MONO = getComputedStyle(root).getPropertyValue('--mono') || 'ui-monospace, monospace';
-
   /* ---------- the nav gets a paper bar once the page moves, so headings pass under it cleanly ---------- */
   {
     const nav = $('.nav');
@@ -499,6 +502,12 @@ export function initLanding(root) {
   };
   addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(refit, 150); }, { signal });
   if (document.fonts) document.fonts.ready.then(() => { if (!signal.aborted) refit(); });
+
+  /* paper or night: the canvases repaint in the new ink when <html data-theme> or the OS scheme changes */
+  const retheme = () => { readTheme(); refit(); };
+  const themeMO = watch(new MutationObserver(retheme));
+  themeMO.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme, { signal });
 
   /* ---------- score gauge ---------- */
   {
