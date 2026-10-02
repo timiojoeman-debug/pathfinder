@@ -6,7 +6,7 @@ vi.mock('@/lib/logger', () => ({
 }));
 
 const getActiveListings = vi.fn();
-vi.mock('@/lib/db/job-listings', () => ({ getActiveListings: () => getActiveListings() }));
+vi.mock('@/lib/db/job-listings', () => ({ getActiveListings: (...a: unknown[]) => getActiveListings(...a) }));
 
 import { POST } from '../route';
 import { _resetGithubCache } from '@/lib/jobs/github';
@@ -62,6 +62,8 @@ describe('POST /api/jobs/search', () => {
   const saved = { ...process.env };
 
   beforeEach(() => {
+    getActiveListings.mockReset();
+    getActiveListings.mockResolvedValue([]);
     delete process.env.ADZUNA_APP_ID;
     delete process.env.ADZUNA_APP_KEY;
     _resetGithubCache();
@@ -222,6 +224,19 @@ describe('POST /api/jobs/search', () => {
       expect(body.jobs.map((j: { title: string }) => j.title)).not.toContain('Graduate Chef');
       expect(body.sources.employers).toBe(1);
       expect(body.jobs.some((j: { company: string }) => j.company === 'Skyscanner')).toBe(true);
+    });
+
+    it('passes the location to the cache read and interleaves sources so one cannot crowd out the rest', async () => {
+      getActiveListings.mockResolvedValue([
+        CACHED({ id: 'e1', url: 'https://e/1' }),
+        CACHED({ id: 'e2', url: 'https://e/2' }),
+        CACHED({ id: 'e3', url: 'https://e/3' }),
+      ]);
+      stubFetch({ github: [GH({ id: 'g1', url: 'https://g/1', locations: ['London, UK'] })] });
+      const body = await (await POST(post({ roleType: 'software engineer intern', location: 'London' }))).json();
+      expect(getActiveListings).toHaveBeenCalledWith({ location: 'London' });
+      const urls = body.jobs.map((j: { url: string }) => j.url);
+      expect(urls.indexOf('https://g/1')).toBe(1); // second, not last
     });
 
     it('dedupes a role present in the cache and on GitHub', async () => {

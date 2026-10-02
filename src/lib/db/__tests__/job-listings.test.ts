@@ -28,6 +28,11 @@ function fakeTable(initial: Row[], fail?: 'upsert') {
     b.order = () => b;
     b.limit = () => b;
     b.eq = (col: string, v: unknown) => (filters.push((r) => r[col] === v), b);
+    b.ilike = (col: string, pat: string) => {
+      const needle = pat.replace(/^%|%$/g, '').replace(/\\([\\%_])/g, '$1').toLowerCase();
+      filters.push((r) => String(r[col] ?? '').toLowerCase().includes(needle));
+      return b;
+    };
     b.in = (col: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[col])), b);
     b.update = (p: Partial<Row>) => ((patch = p), b);
     b.upsert = async (incoming: Row[]) => {
@@ -100,6 +105,15 @@ describe('getActiveListings', () => {
     const out = await getActiveListings();
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ company: 'Acme', location: 'Location not stated', source: 'Acme careers', postedAt: '2026-09-01T00:00:00Z', matchScore: null });
+  });
+
+  it('narrows by location in the query', async () => {
+    fakeTable([
+      { id: 'x', source: 'lever', employer: 'A', title: 'Intern', location: 'London, UK', url: 'https://a/1', active: true },
+      { id: 'y', source: 'lever', employer: 'B', title: 'Intern', location: 'New York', url: 'https://b/1', active: true },
+    ]);
+    const out = await getActiveListings({ location: 'london' });
+    expect(out.map((j) => j.company)).toEqual(['A']);
   });
 
   it('is empty without a database', async () => {

@@ -17,6 +17,9 @@ vi.mock('@/lib/db/job-listings', () => ({
   syncEmployerListings: (...a: unknown[]) => syncEmployerListings(...a),
 }));
 
+const isSupabaseConfigured = vi.fn(() => true);
+vi.mock('@/lib/supabase/client', () => ({ isSupabaseConfigured: () => isSupabaseConfigured() }));
+
 import { GET } from '../route';
 
 const call = (auth?: string) =>
@@ -27,9 +30,11 @@ describe('GET /api/cron/refresh-jobs', () => {
   beforeEach(() => {
     fetchEmployerListings.mockReset();
     syncEmployerListings.mockReset();
+    isSupabaseConfigured.mockReturnValue(true);
     process.env.CRON_SECRET = 's3cret';
   });
   afterEach(() => {
+    vi.restoreAllMocks();
     if (saved === undefined) delete process.env.CRON_SECRET;
     else process.env.CRON_SECRET = saved;
   });
@@ -82,5 +87,31 @@ describe('GET /api/cron/refresh-jobs', () => {
     syncEmployerListings.mockResolvedValue(null);
     const body = await (await call('Bearer s3cret')).json();
     expect(body.failed.sort()).toEqual(['Down Co', 'Good Co']);
+  });
+
+  it('stops starting new employers past the deadline and reports the skipped ones', async () => {
+    fetchEmployerListings.mockResolvedValue([]);
+    syncEmployerListings.mockResolvedValue({ upserted: 0, closed: 0 });
+    const start = 1_000_000;
+    let calls = 0;
+    // First read sets the deadline; every later read is 5 minutes on.
+    vi.spyOn(Date, 'now').mockImplementation(() => (calls++ === 0 ? start : start + 300_000));
+    const body = await (await call('Bearer s3cret')).json();
+    expect(fetchEmployerListings).not.toHaveBeenCalled();
+    expect(body).toMatchObject({ employers: 2, skipped: 2, failed: [] });
+  });
+
+  it('returns 503 without touching boards when the database is not configured', async () => {
+    isSupabaseConfigured.mockReturnValue(false);
+    expect((await call('Bearer s3cret')).status).toBe(503);
+    expect(fetchEmployerListings).not.toHaveBeenCalled();
+  });
+
+  it('visits every employer exactly once whatever the order', async () => {
+    fetchEmployerListings.mockResolvedValue([]);
+    syncEmployerListings.mockResolvedValue({ upserted: 0, closed: 0 });
+    await call('Bearer s3cret');
+    const names = fetchEmployerListings.mock.calls.map((c) => (c[0] as { name: string }).name).sort();
+    expect(names).toEqual(['Down Co', 'Good Co']);
   });
 });

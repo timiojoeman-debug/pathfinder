@@ -24,6 +24,19 @@ describe('isEarlyCareerTitle', () => {
     'Summer Analyst, Operations',
     'New Grad Engineer',
     'Software Engineer (Intern)',
+    'Insight Week 2027',
+    'Insight Programme, Technology',
+    'Spring Week, Markets',
+    'Year in Industry Student',
+    'Industrial Year Placement',
+    'Software Apprenticeship',
+    'Degree Apprentices',
+    'Graduate Trainee Engineer',
+    'Product Manager Intern',
+    'Graduate Product Manager',
+    'Graduate Engineering Manager',
+    'Graduate Scheme: Product Manager',
+    'Graduate Programme - Engineering Manager',
   ])('keeps %s', (t) => expect(isEarlyCareerTitle(t)).toBe(true));
 
   it.each([
@@ -34,6 +47,13 @@ describe('isEarlyCareerTitle', () => {
     'Senior Graduate Recruiter',
     'Staff Engineer',
     'Backend Engineer',
+    'Graduate Programme Manager',
+    'Campus Recruiter, Graduate Hiring',
+    'Early Careers Coordinator',
+    'Talent Partner, Graduates',
+    'Partnerships Lead, Universities (Placements)',
+    'Graduate Sourcer',
+    'Insightful Analyst',
     'Ad Placementless Analyst',
   ])('drops %s', (t) => expect(isEarlyCareerTitle(t)).toBe(false));
 });

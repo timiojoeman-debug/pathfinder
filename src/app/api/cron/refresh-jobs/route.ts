@@ -4,10 +4,23 @@ import { logger } from '@/lib/logger';
 import { EMPLOYERS } from '@/lib/jobs/employers';
 import { fetchEmployerListings } from '@/lib/jobs/ats';
 import { syncEmployerListings } from '@/lib/db/job-listings';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 // ~175 boards, a few at a time; each fetch has its own timeout and one retry.
 export const maxDuration = 300;
 const CONCURRENCY = 5;
+/** Stop starting new employers here, leaving headroom under maxDuration for the ones in flight. */
+const DEADLINE_MS = 240_000;
+
+/** Fisher-Yates, so a run that hits the deadline cuts off a different tail each day. */
+function shuffled<T>(items: readonly T[]): T[] {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 function authorised(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -30,14 +43,25 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
+
+  const queue = shuffled(EMPLOYERS);
+  const deadline = Date.now() + DEADLINE_MS;
   let upserted = 0;
   let closed = 0;
   const failed: string[] = [];
+  let skipped = 0;
   let next = 0;
 
   async function worker() {
-    while (next < EMPLOYERS.length) {
-      const e = EMPLOYERS[next++];
+    while (next < queue.length) {
+      if (Date.now() > deadline) {
+        skipped = queue.length - next;
+        return;
+      }
+      const e = queue[next++];
       try {
         const listings = await fetchEmployerListings(e);
         const result = await syncEmployerListings(e.ats, e.name, listings);
@@ -59,5 +83,5 @@ export async function GET(req: Request) {
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
-  return NextResponse.json({ employers: EMPLOYERS.length, upserted, closed, failed });
+  return NextResponse.json({ employers: EMPLOYERS.length, upserted, closed, failed, skipped });
 }

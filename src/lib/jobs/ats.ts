@@ -23,13 +23,38 @@ const RETRY_BACKOFF_MS = 1_000;
  * required degree, not a graduate role, so it is excluded; and seniority words
  * rule a title out ("Senior Placement Manager" is not a placement scheme).
  */
-const EARLY_CAREER =
-  /(^|[^a-z0-9])(interns?|internships?|graduates?(?![ -]level)|placements?|early[ -]careers?|summer analysts?|new[ -]grads?)($|[^a-z0-9])/;
+const EARLY_CAREER = new RegExp(
+  "(^|[^a-z0-9])(" +
+    [
+      "interns?", "internships?", "graduates?(?![ -]level)", "placements?", "early[ -]careers?",
+      "summer analysts?", "new[ -]grads?", "insight (?:weeks?|programmes?|programs?|days?)",
+      "spring weeks?", "year in industry", "industrial year", "apprentice(?:ship)?s?", "trainees?",
+    ].join("|") +
+    ")($|[^a-z0-9])",
+);
+const INTERN = /(^|[^a-z0-9])(interns?|internships?)($|[^a-z0-9])/;
 const SENIOR = /(^|[^a-z0-9])(senior|sr|staff|principal|director|vp|head of)($|[^a-z0-9])/;
+/** Roles ABOUT graduates (hiring them, running the scheme) rather than FOR them. */
+const NOT_A_PLACE = /(^|[^a-z0-9])(recruiter|recruiting|coordinator|manager|partnerships|sourcer|talent)($|[^a-z0-9])/;
+
+/**
+ * A title that leads with "Graduate" (optionally "Graduate Scheme"/"Programme") is a graduate role even when
+ * the job itself is a manager one ("Graduate Product Manager"). It does not rescue the scheme's own
+ * staff: "Graduate Programme Manager" leaves "Manager" bare after the scheme words.
+ */
+const LEADING_GRADUATE = /^graduates?(?:\s+(?:scheme|programme|program))?\s*[:,|–—-]?\s*(.*)$/;
+const BARE_ADMIN_ROLE = /^(recruiter|recruiting|coordinator|manager|partnerships|sourcer|talent)($|[^a-z0-9])/;
+
+function leadsWithGraduateRole(t: string): boolean {
+  const rest = LEADING_GRADUATE.exec(t)?.[1];
+  return !!rest && !BARE_ADMIN_ROLE.test(rest);
+}
 
 export function isEarlyCareerTitle(title: string): boolean {
   const t = title.toLowerCase();
-  return EARLY_CAREER.test(t) && !SENIOR.test(t);
+  if (!EARLY_CAREER.test(t) || SENIOR.test(t)) return false;
+  // An explicit intern or leading-Graduate role stays even if the team is "Talent" ("Product Manager Intern").
+  return INTERN.test(t) || leadsWithGraduateRole(t) || !NOT_A_PLACE.test(t);
 }
 
 /** GET JSON with a timeout and one retry on network errors, 429 and 5xx. Throws otherwise. */

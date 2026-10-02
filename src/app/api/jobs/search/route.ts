@@ -134,6 +134,15 @@ async function searchAdzuna(
     .filter((j): j is JobListing => j !== null);
 }
 
+/** One from each source in turn, so a source with many results cannot crowd out the others. */
+function interleave<T>(lists: T[][]): T[] {
+  const out: T[] = [];
+  for (let i = 0; i < Math.max(0, ...lists.map((l) => l.length)); i++) {
+    for (const l of lists) if (i < l.length) out.push(l[i]);
+  }
+  return out;
+}
+
 export async function POST(req: Request) {
   const parsed = await readBody(req, SearchSchema);
   if (!parsed.ok) return parsed.response;
@@ -144,31 +153,26 @@ export async function POST(req: Request) {
   const workModeTerm = body.workMode ? WORK_MODE_TERMS[body.workMode.trim().toLowerCase()] : undefined;
   const what = [body.roleType && expandRoleQuery(body.roleType), body.industry, workModeTerm].filter(Boolean).join(" ").trim() || "intern";
 
-  // Employer-feed cache first. It is filtered locally by every filter the student
-  // set, like GitHub. An empty or unreachable table must never fail the search.
-  let employers: JobListing[] = [];
-  try {
-    employers = filterListings(await getActiveListings(), {
-      roleType: body.roleType,
-      location: body.location,
-      industry: body.industry,
-      workMode: workModeTerm,
-    });
-  } catch (err) {
-    logger.error("jobs/search — job cache unreachable", {
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  // GitHub lists are always available and free; filtered locally by every filter
-  // the student set, so the UI's "filters apply" holds for both sources.
-  const githubAll = await fetchGithubListings();
-  const github = filterListings(githubAll, {
+  // Employer-feed cache and GitHub lists, fetched together. Both are filtered locally by
+  // every filter the student set, so the UI's "filters apply" holds for each. An empty or
+  // unreachable cache must never fail the search.
+  const filters = {
     roleType: body.roleType,
     location: body.location,
     industry: body.industry,
     workMode: workModeTerm,
-  });
+  };
+  const [employers, github] = await Promise.all([
+    getActiveListings({ location: body.location })
+      .then((rows) => filterListings(rows, filters))
+      .catch((err: unknown) => {
+        logger.error("jobs/search — job cache unreachable", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return [] as JobListing[];
+      }),
+    fetchGithubListings().then((rows) => filterListings(rows, filters)),
+  ]);
 
   // Adzuna is pre-filtered by its own query, so it isn't re-filtered locally.
   let adzuna: JobListing[] = [];
@@ -184,7 +188,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const jobs = sortByFit(dedupeListings([...employers, ...adzuna, ...github])).slice(0, MAX_RESULTS);
+  const jobs = sortByFit(dedupeListings(interleave([employers, adzuna, github]))).slice(0, MAX_RESULTS);
 
   const message = jobs.length ? undefined : adzunaError ? UNAVAILABLE_MESSAGE : NO_MATCHES_MESSAGE;
 

@@ -2,8 +2,13 @@ import { getServerDb } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
 import type { JobListing } from '@/lib/jobs/types';
 
-/** Cap on rows read per search: the cache holds early-career roles only, so it stays small. */
-const READ_LIMIT = 3000;
+/**
+ * Rows read per search. PostgREST caps a response at 1000 rows by default, so that is the real
+ * ceiling whatever number is asked for here. Rows come newest first, so the cap drops the oldest
+ * roles. Active and location are filtered in SQL so the cap bites less; role, industry and work
+ * mode are matched afterwards by filterListings.
+ */
+const READ_LIMIT = 1000;
 
 type Row = {
   id: string;
@@ -16,14 +21,18 @@ type Row = {
   posted_at: string | null;
 };
 
-/** Active cached roles, newest first. Returns [] when Supabase is unconfigured or the read fails. */
-export async function getActiveListings(): Promise<JobListing[]> {
+/** Active cached roles, newest first, optionally narrowed to a location substring. Returns [] when Supabase is unconfigured or the read fails. */
+export async function getActiveListings(opts: { location?: string } = {}): Promise<JobListing[]> {
   const db = getServerDb();
   if (!db) return [];
-  const { data, error } = await db
+  let q = db
     .from('job_listings')
     .select('id, source, employer, title, location, work_mode, url, posted_at')
-    .eq('active', true)
+    .eq('active', true);
+  const loc = (opts.location ?? '').trim();
+  // Escape LIKE wildcards so a typed % or _ is literal, matching filterListings' substring test.
+  if (loc) q = q.ilike('location', `%${loc.replace(/[\\%_]/g, '\\$&')}%`);
+  const { data, error } = await q
     .order('posted_at', { ascending: false, nullsFirst: false })
     .limit(READ_LIMIT);
   if (error) {
