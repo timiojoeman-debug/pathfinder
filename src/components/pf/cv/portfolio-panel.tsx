@@ -59,7 +59,7 @@ export function PortfolioPanel() {
 
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>Portfolio review</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>Portfolio review</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "54ch" }}>
         Paste your project descriptions or GitHub READMEs for an honest read against the standout-project
         qualities recruiters look for. A link is optional — it&apos;s context only, nothing is scraped.

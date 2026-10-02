@@ -58,7 +58,7 @@ export function StartupPanel() {
 
   return (
     <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 3px" }}>Startup outreach</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 21, margin: "0 0 3px" }}>Startup outreach</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "58ch" }}>
         Small companies have no recruiter to route around — you email someone who can actually decide.
         That only works if you have read something they made.

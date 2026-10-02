@@ -49,7 +49,7 @@ export function LeetTab() {
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden", maxWidth: 720 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "20px 24px 6px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>LeetCode patterns · Blind 75</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>LeetCode patterns · Blind 75</h2>
         <span className="pf-mono" style={{ fontSize: 10.5, color: "var(--muted)", fontFamily: mono }}>
           {solvedSum} / {LEETCODE_TOTAL} solved
         </span>

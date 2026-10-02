@@ -432,7 +432,7 @@ function TargetRoles() {
   return (
     <Panel style={{ overflow: "hidden" }}>
       <div style={{ padding: "20px 24px 12px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Target roles</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>Target roles</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
           Tick up to three titles to search under ({picked.length}/3). &quot;Find more titles with AI&quot; above covers the ones you tick.{full ? " Untick one to swap it." : ""}
         </span>
@@ -536,7 +536,7 @@ export default function DirectionPage() {
         <TargetRoles />
 
         <Panel style={{ padding: "20px 24px" }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>The HIRE framework</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>The HIRE framework</h2>
           <span style={{ fontSize: 12.5, color: "var(--muted)" }}>The arc every phase maps to</span>
           <div style={{ marginTop: 16 }}>
             {HIRE_FRAMEWORK.map((h) => (

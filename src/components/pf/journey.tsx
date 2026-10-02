@@ -21,7 +21,7 @@ export function ProgressLadder() {
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Journey progress</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>Journey progress</h2>
         <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)" }}>{progress.overall}% overall</span>
       </div>
       {progress.phases.map((ph) => (
@@ -52,7 +52,7 @@ export function RecommendationStack() {
           <span style={{ display: "flex", width: 26, height: 26, alignItems: "center", justifyContent: "center", borderRadius: 8, background: "var(--accent)" }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#F7F1E4"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
           </span>
-          <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Do next</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 23, margin: 0 }}>Do next</h2>
         </div>
         <span style={{ fontFamily: mono, fontSize: 10, color: "var(--faint)" }}>ranked from your profile</span>
       </div>
@@ -86,7 +86,7 @@ export function MemoryFeed() {
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>What changed</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>What changed</h2>
         <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)" }}>your AI remembers</span>
       </div>
       {changes.length === 0 ? (
@@ -120,7 +120,7 @@ export function ProfileSummary() {
           entirely computed. The strengths, gaps and skills below are derived
           from logged work; the mentor's retelling is the block at the end, and
           is labelled where it starts. */}
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Your profile</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>Your profile</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Derived from every phase — it&apos;s what the mentor reads before it answers.</span>
 
       {profile.directionStatement && (

@@ -25,7 +25,7 @@ function FeedbackTab() {
   return (
     <Reveal style={{ maxWidth: 720 }}>
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 16 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Log a post-interview reflection</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>Log a post-interview reflection</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Captured while it&apos;s fresh — patterns emerge after 3+ entries</span>
         {interviewCards.length > 0 && (
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 14 }}>

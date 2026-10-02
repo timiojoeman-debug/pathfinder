@@ -98,7 +98,7 @@ export function IntelAnalysisPanel() {
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-.02em", margin: 0 }}>Priority moves</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 24, margin: 0 }}>Priority moves</h2>
         <span style={{ fontFamily: mono, fontSize: 11, color: "var(--faint)" }}>
           {ready ? `${analysable.length} role${analysable.length === 1 ? "" : "s"} with a full advert` : "needs saved roles"}
         </span>

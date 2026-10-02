@@ -129,7 +129,7 @@ export default function TrackerPage() {
 
       <Reveal style={{ border: "1px solid var(--line)", borderRadius: 16, background: "var(--panel)", padding: "20px 24px", marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Conversion funnel</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Conversion funnel</h2>
           <Link href={d.leakHref} className="pf-mono" style={{ fontSize: 10.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
             {d.leakLabel} →
           </Link>

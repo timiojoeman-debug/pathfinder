@@ -215,7 +215,7 @@ export default function CvPage() {
             {/* Score breakdown — derived from the analysis, not preset */}
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "20px 24px 12px" }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>What&apos;s affecting your score</h2>
+                <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>What&apos;s affecting your score</h2>
                 <span style={{ fontFamily: mono, fontSize: 10.5, color: (hasVague || hasMissing) ? "var(--warn)" : "var(--strong)" }}>
                   {analysis.vague.length + analysis.missing.length} to fix
                 </span>
@@ -239,7 +239,7 @@ export default function CvPage() {
           {/* AI mentor read: a real read of this text, or a plain note saying why there isn't one */}
           <Reveal style={{ border: "1px solid color-mix(in srgb,var(--accent) 22%,transparent)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>AI mentor read</h2>
+              <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>AI mentor read</h2>
               <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--accent)" }}>
                 {aiRead ? "from your full CV text" : "sends your CV text to the server"}
               </span>
@@ -286,7 +286,7 @@ export default function CvPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "20px 24px 12px" }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Vague terms detected</h2>
+                <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>Vague terms detected</h2>
                 <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--risk)" }}>weaken every bullet</span>
               </div>
               {hasVague ? (
@@ -305,7 +305,7 @@ export default function CvPage() {
 
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "20px 24px" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Missing keywords</h2>
+                <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>Missing keywords</h2>
                 <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--warn)" }}>vs your target stack</span>
               </div>
               {hasMissing && (
@@ -332,7 +332,7 @@ export default function CvPage() {
             <a onClick={() => set({ cvLinkedIn: !cvLinkedIn })} style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", textDecoration: "none", color: "var(--fg)" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 11 }}>
                 <span style={{ fontSize: 16, fontWeight: 700 }}>{linkedinChevron}</span>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>LinkedIn quick check</h2>
+                <h2 className="pf-display-sm" style={{ fontSize: 22, margin: 0 }}>LinkedIn quick check</h2>
               </span>
               <span style={{ fontFamily: mono, fontSize: 11, color: "var(--faint)" }}>paste yours to review</span>
             </a>

@@ -91,7 +91,7 @@ export function FeedbackAnalysis() {
 
   return (
     <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 16 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>Analyse what happened</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>Analyse what happened</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "54ch" }}>
         Connects the questions you were asked to the gaps in your prep, and drafts the thank-you note
         while the conversation is still fresh.

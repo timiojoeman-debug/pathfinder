@@ -149,7 +149,7 @@ export default function SettingsPage() {
         <>
           <div onClick={() => setConfirmOpen(false)} className="pf-anim-fade" style={{ position: "fixed", inset: 0, background: "var(--scrim)", zIndex: 80 }} />
           <div className="pf-anim-up" style={{ position: "fixed", top: "26vh", left: "50%", transform: "translateX(-50%)", width: "min(440px,92vw)", zIndex: 81, background: "var(--panelSolid)", border: "1px solid var(--lineStrong)", borderRadius: 16, padding: "24px 26px", boxShadow: "0 30px 70px rgba(30,22,12,.35)" }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>Delete your account?</h2>
+            <h2 className="pf-display-sm" style={{ fontSize: 24, margin: "0 0 8px" }}>Delete your account?</h2>
             <p style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.6, margin: "0 0 16px" }}>
               This permanently deletes your account and every application, contact, CV analysis, and interview log tied to it. There is no undo. Type <strong style={{ color: "var(--fg)" }}>DELETE</strong> to confirm.
             </p>

@@ -209,7 +209,7 @@ export default function StartPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 18 }}>
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "20px 24px" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 14px" }}>Your pillars</h2>
+              <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 14px" }}>Your pillars</h2>
               {pillars.map((p) => (
                 <div key={p.label} style={{ marginBottom: 13 }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
@@ -227,7 +227,7 @@ export default function StartPage() {
             </Reveal>
 
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "20px 24px" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Close these first</h2>
+              <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>Close these first</h2>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>Worst gap first — biggest leverage</span>
               <div style={{ marginTop: 14 }}>
                 {gaps.map((g) => (

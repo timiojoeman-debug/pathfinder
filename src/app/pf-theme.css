@@ -511,6 +511,16 @@
   line-height: 1.02;
   text-wrap: balance;
 }
+/* Section and panel h2s: the same serif at panel scale. Instrument Serif ships
+   one weight, so no bold here; size does the work, and call sites keep it well
+   under the 44px page h1. Card titles (h3) stay in the sans. */
+.pf-display-sm {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -.005em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
 .pf-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); font-family: var(--font-serif), Georgia, serif; font-weight: 400; line-height: 1; }
 /* Behind the content: the .pf root isolates, so -1 sits above its background and below everything in it. */
 .pf-contours { position: fixed; inset: -10%; z-index: -1; pointer-events: none; opacity: .07; color: var(--fg); }

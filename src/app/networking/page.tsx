@@ -165,7 +165,7 @@ export default function NetworkingPage() {
       {/* Who to reach, what they're called, and how to research them */}
       <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Who to reach — and what they&apos;re called</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Who to reach — and what they&apos;re called</h2>
           <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>the titles to search on LinkedIn / Glassdoor</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginBottom: 16 }}>
@@ -193,7 +193,7 @@ export default function NetworkingPage() {
 
       <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Coffee chat playbook</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Coffee chat playbook</h2>
           <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>The four-part framework · 20–30 min</span>
           <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "var(--accent)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", borderRadius: 6, padding: "3px 9px", whiteSpace: "nowrap" }}>
             never ask for a job — the referral follows
@@ -359,7 +359,7 @@ export default function NetworkingPage() {
         </Reveal>
 
         <Panel style={{ padding: "20px 22px" }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 3px" }}>Follow-up cadence</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: "0 0 3px" }}>Follow-up cadence</h2>
           <span style={{ fontSize: 12, color: "var(--muted)" }}>The 4-step sequence</span>
           <div style={{ marginTop: 14 }}>
             {FOLLOW_UP_CADENCE.map((c) => (

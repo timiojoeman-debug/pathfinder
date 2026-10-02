@@ -99,7 +99,7 @@ export function BriefingTab() {
   return (
     <Reveal style={{ maxWidth: 720 }}>
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>Company briefing</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>Company briefing</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "52ch" }}>
           What they do, what they value, and three angles for &quot;why this company?&quot; that connect to your actual work — plus questions worth asking back.
         </span>

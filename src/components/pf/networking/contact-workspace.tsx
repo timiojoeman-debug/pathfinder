@@ -170,7 +170,7 @@ export function ContactWorkspace({ contact, onContactChange }: ContactWorkspaceP
 
   return (
     <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 3px" }}>Contact workspace</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 21, margin: "0 0 3px" }}>Contact workspace</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "58ch" }}>
         One person, start to finish — prep the chat, write the follow-up from what they actually said,
         then make the referral easy for them to act on.

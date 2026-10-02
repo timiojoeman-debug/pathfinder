@@ -149,7 +149,7 @@ export default function IntelPage() {
       {/* Opportunity pipeline — from the profile's target companies */}
       <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "22px 24px 16px" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-.02em", margin: 0 }}>Opportunity pipeline</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 24, margin: 0 }}>Opportunity pipeline</h2>
           <span style={{ fontFamily: mono, fontSize: 11, color: "var(--faint)" }}>ranked by fit</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) 96px 150px minmax(0,1.2fr)", gap: 14, padding: "8px 24px", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", background: "var(--panel2)" }}>

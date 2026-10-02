@@ -81,7 +81,7 @@ export function ProfileResearch({ contact, onContactChange, onResult }: ProfileR
 
   return (
     <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 3px" }}>Research a contact</h2>
+      <h2 className="pf-display-sm" style={{ fontSize: 21, margin: "0 0 3px" }}>Research a contact</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "58ch" }}>
         Paste what you can see on their profile — the real common ground you find is what turns a cold
         message into a reply.

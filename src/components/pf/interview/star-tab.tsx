@@ -147,7 +147,7 @@ export function StarTab() {
   return (
     <Reveal style={{ maxWidth: 720 }}>
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 3px" }}>STAR story builder</h2>
+        <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>STAR story builder</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "52ch" }}>
           Draft each beat roughly — messy is fine. The builder tightens it to 60–90 seconds and tells you which questions it answers.
         </span>
