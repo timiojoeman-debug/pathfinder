@@ -18,6 +18,7 @@ import { usePfStore } from "@/lib/pf/store";
 
 const PRISTINE = usePfStore.getState();
 const s = () => usePfStore.getState();
+const addStatus = () => within(screen.getByRole("form", { name: "Add a contact" })).getByRole("status");
 const stage = (name: string) => screen.getByRole("region", { name });
 
 beforeEach(() => {
@@ -40,19 +41,19 @@ describe("ContactsBoard — add and move", () => {
     addViaForm("Sam Lee", "Monzo");
     expect(within(stage("Researched")).getByText("Sam Lee")).toBeInTheDocument();
     expect(s().contacts).toHaveLength(1);
-    expect(screen.getByRole("status")).toHaveTextContent(/Added Sam Lee/);
+    expect(addStatus()).toHaveTextContent(/Added Sam Lee/);
   });
 
   it("refuses a duplicate and an unsafe link", () => {
     render(<ContactsBoard />);
     addViaForm("Sam Lee", "Monzo");
     addViaForm("sam lee", "MONZO");
-    expect(screen.getByRole("status")).toHaveTextContent(/already have a contact/);
+    expect(addStatus()).toHaveTextContent(/already have a contact/);
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Ana" } });
     fireEvent.change(screen.getByLabelText("Company"), { target: { value: "Wise" } });
     fireEvent.change(screen.getByLabelText("Link"), { target: { value: "javascript:alert(1)" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(screen.getByRole("status")).toHaveTextContent(/http:\/\/ or https:\/\//);
+    expect(addStatus()).toHaveTextContent(/http:\/\/ or https:\/\//);
     expect(s().contacts).toHaveLength(1);
   });
 

@@ -14,6 +14,7 @@ import { formatReminder, isoToday } from "@/lib/pf/logic";
 import { usePfStore, type AddContactResult } from "@/lib/pf/store";
 import { Panel } from "@/components/pf/ui";
 import { Icon } from "@/components/pf/icons";
+import { LinkedInImport } from "./linkedin-import";
 
 const field = { height: 40, padding: "0 13px", fontSize: 13, minWidth: 0 } as const;
 
@@ -187,6 +188,7 @@ export function ContactsBoard() {
       )}
 
       <AddContact />
+      <LinkedInImport />
     </Panel>
   );
 }
