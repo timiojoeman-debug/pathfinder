@@ -130,11 +130,11 @@ function gatherTargetCompanies(board: BoardColumn[], savedJobs: SavedJob[]): Tar
   // Board first (has real pipeline stage), then saved jobs, then market matrix.
   board.forEach((col) =>
     col.cards.forEach((c) => {
-      byCompany.set(c.company.toLowerCase(), { company: c.company, role: c.role, fit: c.match ?? null, stage: col.title });
+      byCompany.set(`${c.company}|${c.role}`.toLowerCase(), { company: c.company, role: c.role, fit: c.match ?? null, stage: col.title });
     }),
   );
   savedJobs.forEach((j) => {
-    const key = j.company.toLowerCase();
+    const key = `${j.company}|${j.role}`.toLowerCase();
     if (!byCompany.has(key)) byCompany.set(key, { company: j.company, role: j.role, fit: j.fitKnown === false ? null : j.fit, stage: "Saved" });
   });
   // Only the user's real board + saved jobs count — no seeded market prospects,

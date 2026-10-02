@@ -80,7 +80,7 @@ function JobDrawer({ jobKey }: { jobKey: string }) {
       closeDrawers();
       router.push("/tracker");
     } else {
-      trackJob({ company: jd.company, role: jd.role, fit: jd.fit, tone: jd.tone });
+      trackJob({ company: jd.company, role: jd.role, fit: jd.fitKnown === false ? null : jd.fit, tone: jd.tone });
     }
   };
   // Carry the advert into the CV Tailor panel, so the student lands ready to audit against it.

@@ -566,7 +566,7 @@ export const usePfStore = create<PfState>()(
           return { board: board.map((col) => (col.id === toId ? { ...col, cards: [stamped, ...col.cards] } : col)) };
         });
         if (!card) return;
-        const ev = COLUMN_EVENT[toId];
+        const ev = toId === "applied" && card.appliedDate ? undefined : COLUMN_EVENT[toId];
         if (ev) get().emit(ev.type, "tracker", ev.label(card.company), { company: card.company, role: card.role, to: toId });
       },
       moveCardBefore: (key, targetKey) => {
@@ -589,7 +589,7 @@ export const usePfStore = create<PfState>()(
           return placed ? { board: nb } : {};
         });
         // Dropping onto a card in another column is a move like any other, and logs like one.
-        const ev = to && to !== from ? COLUMN_EVENT[to] : undefined;
+        const ev = to && to !== from && !(to === "applied" && card?.appliedDate) ? COLUMN_EVENT[to] : undefined;
         if (card && ev) get().emit(ev.type, "tracker", ev.label(card.company), { company: card.company, role: card.role, to: to! });
       },
       advanceCard: (key) => {
