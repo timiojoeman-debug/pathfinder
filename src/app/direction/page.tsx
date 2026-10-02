@@ -68,7 +68,7 @@ function ModeToggle() {
   const set = usePfStore((s) => s.set);
   const btn = (on: boolean): CSSProperties => ({
     cursor: "pointer", height: 38, padding: "0 18px", borderRadius: 10, border: "1px solid var(--line)",
-    background: on ? "var(--accent)" : "var(--panel)", color: on ? "#F7F1E4" : "var(--muted)",
+    background: on ? "var(--accent)" : "var(--panel)", color: on ? "var(--onAccent)" : "var(--muted)",
     fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
   });
   return (
@@ -136,7 +136,7 @@ function Wizard({ onGenerate, generating }: { onGenerate: () => void; generating
       <button
         onClick={onGenerate}
         disabled={!ready}
-        style={{ cursor: ready ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 14, fontWeight: 600 }}
+        style={{ cursor: ready ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: ready ? "var(--onAccent)" : "var(--faint)", fontSize: 14, fontWeight: 600 }}
       >
         Generate statement →
       </button>

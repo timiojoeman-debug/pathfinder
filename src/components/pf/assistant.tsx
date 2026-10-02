@@ -100,11 +100,11 @@ export function MentorAssistant() {
           position: "fixed", right: 22, bottom: 22, zIndex: 55,
           display: "flex", alignItems: "center", gap: 9, height: 46, padding: "0 18px",
           borderRadius: 23, border: "1px solid var(--lineStrong)", background: "var(--accent)",
-          color: "#F7F1E4", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+          color: "var(--onAccent)", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
           boxShadow: "0 6px 22px color-mix(in srgb,var(--accent) 28%,transparent)",
         }}
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F7F1E4" strokeWidth="2">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--onAccent)" strokeWidth="2">
           <path d="M21 11.5a8.38 8.38 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 21 11.5z" />
         </svg>
         Ask the mentor
@@ -191,7 +191,7 @@ export function MentorAssistant() {
                 maxWidth: "86%", borderRadius: 13, padding: "9px 12px",
                 fontSize: 12.5, lineHeight: 1.65, whiteSpace: "pre-wrap",
                 background: m.role === "user" ? "var(--accent)" : "var(--panel2)",
-                color: m.role === "user" ? "#F7F1E4" : "var(--fg)",
+                color: m.role === "user" ? "var(--onAccent)" : "var(--fg)",
                 border: m.role === "user" ? "none" : "1px solid var(--line)",
               }}
             >
@@ -229,7 +229,7 @@ export function MentorAssistant() {
             cursor: !draft.trim() || loading ? "default" : "pointer", height: 40, padding: "0 15px",
             borderRadius: 10, border: "none", flexShrink: 0,
             background: !draft.trim() || loading ? "var(--panel3)" : "var(--accent)",
-            color: !draft.trim() || loading ? "var(--faint)" : "#F7F1E4",
+            color: !draft.trim() || loading ? "var(--faint)" : "var(--onAccent)",
             fontSize: 13, fontWeight: 600,
           }}
         >

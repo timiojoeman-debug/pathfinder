@@ -29,7 +29,7 @@ const btn = (variant: "solid" | "outline" | "danger"): React.CSSProperties => ({
   cursor: "pointer", height: 38, padding: "0 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
   border: variant === "outline" ? "1px solid var(--lineStrong)" : variant === "danger" ? "1px solid color-mix(in srgb,var(--risk) 40%,transparent)" : "none",
   background: variant === "solid" ? "var(--accent)" : variant === "danger" ? "color-mix(in srgb,var(--risk) 10%,transparent)" : "var(--panel)",
-  color: variant === "solid" ? "#F7F1E4" : variant === "danger" ? "var(--risk)" : "var(--fg)",
+  color: variant === "solid" ? "var(--onAccent)" : variant === "danger" ? "var(--risk)" : "var(--fg)",
 });
 
 export default function SettingsPage() {

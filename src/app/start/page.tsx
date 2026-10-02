@@ -32,7 +32,7 @@ function OnbChip({ label, on, onClick }: { label: string; on: boolean; onClick: 
         cursor: "pointer", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600, padding: "9px 15px", borderRadius: 10,
         border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
         background: on ? "var(--accent)" : "var(--panel2)",
-        color: on ? "#F7F1E4" : "var(--muted)",
+        color: on ? "var(--onAccent)" : "var(--muted)",
         transition: "all .18s var(--ease)", userSelect: "none",
       }}
     >
@@ -141,7 +141,7 @@ export default function StartPage() {
           <button
             onClick={() => { if (step1Ready) s.setOnb({ step: 2 }); }}
             disabled={!step1Ready}
-            style={{ cursor: step1Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step1Ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 14.5, fontWeight: 600 }}
+            style={{ cursor: step1Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step1Ready ? "var(--accent)" : "var(--panel3)", color: step1Ready ? "var(--onAccent)" : "var(--faint)", fontSize: 14.5, fontWeight: 600 }}
           >
             Continue →
           </button>
@@ -183,7 +183,7 @@ export default function StartPage() {
             <button
               onClick={s.startOnbScan}
               disabled={!step2Ready}
-              style={{ cursor: step2Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step2Ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 14.5, fontWeight: 600 }}
+              style={{ cursor: step2Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step2Ready ? "var(--accent)" : "var(--panel3)", color: step2Ready ? "var(--onAccent)" : "var(--faint)", fontSize: 14.5, fontWeight: 600 }}
             >
               Calculate my readiness →
             </button>

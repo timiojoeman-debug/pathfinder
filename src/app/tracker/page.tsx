@@ -61,12 +61,12 @@ function AddApplication() {
         <button
           type="submit"
           disabled={!ready}
-          style={{ cursor: ready ? "pointer" : "default", height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+          style={{ cursor: ready ? "pointer" : "default", height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: ready ? "var(--onAccent)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
         >
           Add
         </button>
       </form>
-      {msg && <div role="status" style={{ fontSize: 12, color: "var(--warn)", marginTop: 8 }}>{msg}</div>}
+      {msg && <div role="status" style={{ fontSize: 12, color: "var(--warnText)", marginTop: 8 }}>{msg}</div>}
     </Reveal>
   );
 }

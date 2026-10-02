@@ -173,7 +173,7 @@ export default function CvPage() {
             <button
               onClick={handleAnalyze}
               disabled={!cvCanAnalyze}
-              style={{ cursor: cvCanAnalyze ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: cvBtnBg, color: cvCanAnalyze ? "#F7F1E4" : "var(--faint)", fontSize: 14, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}
+              style={{ cursor: cvCanAnalyze ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: cvBtnBg, color: cvCanAnalyze ? "var(--onAccent)" : "var(--faint)", fontSize: 14, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}
             >
               Analyse CV →
             </button>

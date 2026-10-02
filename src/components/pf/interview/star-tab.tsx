@@ -98,7 +98,7 @@ function SavedStories() {
           {confirmId === st.id ? (
             <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
               Delete this story?
-              <button onClick={() => deleteStory(st.id)} style={{ cursor: "pointer", border: "none", background: "var(--risk)", color: "#F7F1E4", borderRadius: 8, height: 28, padding: "0 11px", fontSize: 12, fontWeight: 600 }}>Delete</button>
+              <button onClick={() => deleteStory(st.id)} style={{ cursor: "pointer", border: "none", background: "var(--risk)", color: "var(--onAccent)", borderRadius: 8, height: 28, padding: "0 11px", fontSize: 12, fontWeight: 600 }}>Delete</button>
               <button onClick={() => setConfirmId(null)} style={{ cursor: "pointer", border: "1px solid var(--line)", background: "var(--panel)", color: "var(--fg)", borderRadius: 8, height: 28, padding: "0 11px", fontSize: 12, fontWeight: 600 }}>Keep</button>
             </span>
           ) : (
@@ -180,7 +180,7 @@ export function StarTab() {
               <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7 }}>
                 <span
                   className="pf-mono"
-                  style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}
+                  style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}
                 >
                   {b.mark}
                 </span>
@@ -250,7 +250,7 @@ export function StarTab() {
                   <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5 }}>
                     <span
                       className="pf-mono"
-                      style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}
+                      style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}
                     >
                       {b.mark}
                     </span>
@@ -284,7 +284,7 @@ export function StarTab() {
           {complete(built) && (
             <button
               onClick={() => save({ situation: built.situation!, task: built.task!, action: built.action!, result: built.result! }, "the tightened version")}
-              style={{ cursor: "pointer", marginTop: 14, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+              style={{ cursor: "pointer", marginTop: 14, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13, fontWeight: 600 }}
             >
               Save the tightened version
             </button>

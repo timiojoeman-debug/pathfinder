@@ -32,6 +32,11 @@
      carries --accentSoft, tinting it twice. */
   --accentText: #854826;
   --accentSoft: rgba(176, 103, 60, .12);
+  /* Text and icons drawn on a saturated fill (--accent, --risk, --strong).
+     Cream on paper; at night the fills are lighter, so it flips to ink: cream
+     on the night accent measured about 2.5:1, ink is about 6:1. */
+  --onAccent: #F7F1E4;
+  color-scheme: light;
   --strong: #6E7B3F;
   --warn: #B0862A;
   /* Text variants of the two status tones, following the --accent/--accentText
@@ -84,6 +89,9 @@
   --accent: #D2894C;
   --accentText: #E3A469;
   --accentSoft: rgba(210, 137, 76, .15);
+  --onAccent: #221A12;
+  /* Native controls (date picker icon, select menus, scrollbars) follow. */
+  color-scheme: dark;
   --strong: #A7BE73;
   --warn: #D6A94A;
   /* Light tones on a dark ground already clear the floor comfortably, so these

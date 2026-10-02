@@ -220,7 +220,7 @@ export default function NetworkingPage() {
           {COFFEE_CHAT_FRAMEWORK.map((c) => (
             <div key={c.n} style={{ border: "1px solid var(--line2)", borderRadius: 12, background: "var(--panel2)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="pf-mono" style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 700, flexShrink: 0 }}>{c.n}</span>
+                <span className="pf-mono" style={{ width: 20, height: 20, borderRadius: 6, background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 700, flexShrink: 0 }}>{c.n}</span>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>{c.label}</span>
                 <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 9.5, color: "var(--faint)", whiteSpace: "nowrap" }}>{c.time}</span>
               </div>
@@ -235,7 +235,7 @@ export default function NetworkingPage() {
         <Reveal style={{ border: "1px solid var(--lineStrong)", borderRadius: 18, background: "var(--panelSolid)", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 22px", borderBottom: "1px dashed var(--lineStrong)", background: "var(--accentSoft)" }}>
             <span style={{ display: "flex", width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: 7, background: "var(--accent)" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#F7F1E4"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--onAccent)"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
             </span>
             <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>AI outreach · tailored to {recipientLabel}</span>
             {/* Only claimed once a message has actually been scored — the
@@ -326,7 +326,7 @@ export default function NetworkingPage() {
                 onClick={() => s.generateOutreach({ name: contact.name, company: contact.company, message: (aiMsg ? aiMsg.paras : templateParas).join(" ") })}
                 disabled={!contact.name.trim()}
                 title={contact.name.trim() ? undefined : "Add who you're writing to first"}
-                style={{ cursor: contact.name.trim() ? "pointer" : "default", height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: contact.name.trim() ? "var(--accent)" : "var(--panel3)", color: contact.name.trim() ? "#F7F1E4" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
+                style={{ cursor: contact.name.trim() ? "pointer" : "default", height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: contact.name.trim() ? "var(--accent)" : "var(--panel3)", color: contact.name.trim() ? "var(--onAccent)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
               >
                 Mark as sent &amp; log it →
               </button>

@@ -176,7 +176,7 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
         <button
           onClick={onAnalyze}
           disabled={!canAnalyze}
-          style={{ cursor: canAnalyze ? "pointer" : "default", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: canAnalyze ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 13.5, fontWeight: 600 }}
+          style={{ cursor: canAnalyze ? "pointer" : "default", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: canAnalyze ? "var(--accent)" : "var(--panel3)", color: canAnalyze ? "var(--onAccent)" : "var(--faint)", fontSize: 13.5, fontWeight: 600 }}
         >
           Analyze &amp; get ATS keywords →
         </button>
@@ -492,7 +492,7 @@ export default function JobsPage() {
           style={{
             cursor: !query.trim() || searching ? "default" : "pointer", height: 46, padding: "0 22px", borderRadius: 12,
             border: "none", background: !query.trim() || searching ? "var(--panel3)" : "var(--accent)",
-            color: !query.trim() || searching ? "var(--faint)" : "#F7F1E4", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap",
+            color: !query.trim() || searching ? "var(--faint)" : "var(--onAccent)", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap",
           }}
         >
           {searching ? "Searching…" : "Search"}

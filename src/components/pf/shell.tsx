@@ -204,7 +204,7 @@ function Sidebar({ collapsed, mobileOpen }: { collapsed: boolean; mobileOpen: bo
       </nav>
 
       <div style={{ padding: collapsed ? "14px 0" : "14px 16px", borderTop: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, justifyContent: collapsed ? "center" : undefined }}>
-        <span className="pf-mono" style={{ width: 32, height: 32, borderRadius: 9, background: "var(--accent)", color: "#F7F1E4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{initials}</span>
+        <span className="pf-mono" style={{ width: 32, height: 32, borderRadius: 9, background: "var(--accent)", color: "var(--onAccent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{initials}</span>
         {!collapsed && (
           user ? (
             <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
@@ -289,7 +289,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
         <button
           onClick={() => router.push("/start")}
           className="pf-hide-mobile"
-          style={{ cursor: "pointer", display: "flex", alignItems: "center", height: 38, padding: "0 18px", borderRadius: 10, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap" }}
+          style={{ cursor: "pointer", display: "flex", alignItems: "center", height: 38, padding: "0 18px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap" }}
         >
           Re-assess →
         </button>

@@ -82,7 +82,7 @@ function FeedbackTab() {
         <button
           onClick={s.saveFeedback}
           disabled={!canSave}
-          style={{ cursor: canSave ? "pointer" : "default", marginTop: 12, height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: canSave ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+          style={{ cursor: canSave ? "pointer" : "default", marginTop: 12, height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: canSave ? "var(--accent)" : "var(--panel3)", color: canSave ? "var(--onAccent)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
         >
           Save reflection
         </button>
@@ -136,7 +136,7 @@ export default function InterviewPage() {
                 cursor: "pointer", height: 38, padding: "0 18px", borderRadius: 10,
                 border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
                 background: on ? "var(--accent)" : "var(--panel)",
-                color: on ? "#F7F1E4" : "var(--muted)",
+                color: on ? "var(--onAccent)" : "var(--muted)",
                 fontSize: 13, fontWeight: 600, transition: "all .2s var(--ease)",
               }}
             >

@@ -32,5 +32,5 @@ export function AuthShell({ kicker, title, children, footer }: {
 export const authInputStyle: React.CSSProperties = { width: "100%", height: 44, padding: "0 15px", marginBottom: 14 };
 export const authButtonStyle = (enabled: boolean): React.CSSProperties => ({
   cursor: enabled ? "pointer" : "default", width: "100%", height: 46, borderRadius: 12, border: "none",
-  background: enabled ? "var(--accent)" : "var(--panel3)", color: "#F7F1E4", fontSize: 14, fontWeight: 600,
+  background: enabled ? "var(--accent)" : "var(--panel3)", color: enabled ? "var(--onAccent)" : "var(--faint)", fontSize: 14, fontWeight: 600,
 });

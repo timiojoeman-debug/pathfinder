@@ -128,7 +128,7 @@ function JobDrawer({ jobKey }: { jobKey: string }) {
         <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
           <button
             onClick={onTrack}
-            style={{ cursor: "pointer", flex: 1, height: 44, borderRadius: 11, border: "none", background: tracked ? "var(--panel3)" : "var(--accent)", color: tracked ? "var(--fg)" : "#F7F1E4", fontSize: 13.5, fontWeight: 600 }}
+            style={{ cursor: "pointer", flex: 1, height: 44, borderRadius: 11, border: "none", background: tracked ? "var(--panel3)" : "var(--accent)", color: tracked ? "var(--fg)" : "var(--onAccent)", fontSize: 13.5, fontWeight: 600 }}
           >
             {tracked ? "Tracked ✓ — view board" : "+ Track this role"}
           </button>
@@ -251,7 +251,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
                 <span style={{
                   width: 20, height: 20, borderRadius: "50%",
                   background: i < colIdx ? "var(--strong)" : i === colIdx ? "var(--accent)" : "var(--panel2)",
-                  color: i <= colIdx ? "#F7F1E4" : "var(--faint)",
+                  color: i <= colIdx ? "var(--onAccent)" : "var(--faint)",
                   display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0,
                   border: `1px solid ${i <= colIdx ? "transparent" : "var(--line)"}`,
                 }}>
@@ -275,7 +275,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
                     cursor: "pointer", whiteSpace: "nowrap", fontSize: 12, fontWeight: 600, padding: "7px 12px", borderRadius: 9,
                     border: `1px solid ${timing === t ? "var(--risk)" : "var(--line)"}`,
                     background: timing === t ? "var(--risk)" : "var(--panel2)",
-                    color: timing === t ? "#F7F1E4" : "var(--muted)",
+                    color: timing === t ? "var(--onAccent)" : "var(--muted)",
                     transition: "all .18s var(--ease)",
                   }}
                 >
@@ -368,7 +368,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
           {colIdx < 3 && (
             <button
               onClick={() => advanceCard(cardKey)}
-              style={{ cursor: "pointer", flex: 1, height: 44, borderRadius: 11, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13.5, fontWeight: 600 }}
+              style={{ cursor: "pointer", flex: 1, height: 44, borderRadius: 11, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13.5, fontWeight: 600 }}
             >
               {nextLabels[colIdx]}
             </button>
@@ -395,7 +395,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
             <span style={{ fontSize: 13, flex: "1 1 200px" }}>Remove {c.company} from the tracker? Its notes and dates go with it.</span>
             <button
               onClick={() => removeCard(cardKey)}
-              style={{ cursor: "pointer", height: 38, padding: "0 14px", borderRadius: 10, border: "none", background: "var(--risk)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+              style={{ cursor: "pointer", height: 38, padding: "0 14px", borderRadius: 10, border: "none", background: "var(--risk)", color: "var(--onAccent)", fontSize: 13, fontWeight: 600 }}
             >
               Yes, remove
             </button>
