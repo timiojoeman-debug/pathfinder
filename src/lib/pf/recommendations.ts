@@ -12,6 +12,7 @@ import type { CareerProfile } from "./profile";
 import type { ProgressReport } from "./progress";
 import type { PfPhase } from "./events";
 import { isoToday, timingPlan } from "./logic";
+import { LEET_ON_TRACK } from "./leetcode";
 
 export interface Recommendation {
   id: string;
@@ -120,7 +121,7 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
   }
 
   // 6. Build interview readiness *before* the callback — it takes weeks, not days.
-  if (p.directionSet && p.applicationsSubmitted >= 2 && p.leetSolved < 30 && p.interviewsLanded === 0) {
+  if (p.directionSet && p.applicationsSubmitted >= 2 && p.leetSolved < Math.round(LEET_ON_TRACK * 2 / 3) && p.interviewsLanded === 0) {
     recs.push({
       id: "build-interview-readiness",
       title: "Start interview prep now — before the first callback",
@@ -134,7 +135,7 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
   }
 
   // 7. Interview in the pipeline → convert what you've earned before applying more.
-  if (p.applicationsSubmitted >= 5 && p.interviewsLanded > 0 && p.leetSolved < 55) {
+  if (p.applicationsSubmitted >= 5 && p.interviewsLanded > 0 && p.leetSolved < LEET_ON_TRACK) {
     recs.push({
       id: "prep-interviews",
       title: "Convert the interviews you've earned",

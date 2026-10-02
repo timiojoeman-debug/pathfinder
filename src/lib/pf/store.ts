@@ -28,6 +28,7 @@ import {
   fitTone,
   readinessFrom,
   roleFit,
+  trackCardKey,
   targetKeywords,
   type JfResult,
   type OnbState,
@@ -168,7 +169,8 @@ interface PfState {
   saveJfJob: () => void;
   analyzeJf: () => void;
 
-  generateOutreach: (company?: string) => void;
+  /** Log a sent message. Returns false (and logs nothing) without a real recipient and message. */
+  generateOutreach: (contact: { name: string; company?: string; message: string }) => boolean;
 
   /** Mark a problem solved, or un-mark it if it already was. */
   toggleProblem: (slug: string) => void;
@@ -181,16 +183,28 @@ interface PfState {
   setRemind: (key: string, value: string) => void;
   setCardDate: (key: string, field: "opens" | "deadline", value: string) => void;
   setDiag: (key: string, timing: string) => void;
-  trackJob: (job: { company: string; role: string; fit: number; tone: string }) => void;
+  trackJob: (job: { company: string; role: string; fit: number | null; tone: string }) => void;
 }
 
 /** Stamp a card as it lands in a new column. */
 function stampCard(card: BoardCard, toId: BoardColumn["id"]): BoardCard {
-  if (toId === "applied" && !card.appliedDate) return { ...card, appliedDate: Date.now(), tag: "ATS ✓", when: "today" };
-  if (toId === "interview") return { ...card, tag: "scheduled", when: "prep now" };
-  if (toId === "offer") return { ...card, tag: "offer", when: "decide" };
-  if (toId === "rejected") return { ...card, tag: "rejected", tone: "var(--risk)", when: "today", rejected: true };
+  const now = Date.now();
+  if (toId === "applied" && !card.appliedDate) return { ...card, appliedDate: now, movedAt: now, tag: "ATS ✓", when: "today" };
+  if (toId === "interview") return { ...card, tag: "scheduled", when: "prep now", movedAt: now, reachedInterview: true };
+  if (toId === "offer") return { ...card, tag: "offer", when: "decide", movedAt: now, reachedInterview: true };
+  if (toId === "rejected") return { ...card, tag: "rejected", tone: "var(--risk)", when: "today", movedAt: now, rejected: true };
   return card;
+}
+
+const COLUMN_EVENT: Partial<Record<BoardColumn["id"], { type: PfEventType; label: (co: string) => string }>> = {
+  applied: { type: "ApplicationSubmitted", label: (co) => `Applied to ${co}` },
+  interview: { type: "InterviewScheduled", label: (co) => `Interview stage · ${co}` },
+  offer: { type: "OfferReceived", label: (co) => `Offer from ${co} 🎉` },
+  rejected: { type: "ApplicationAdvanced", label: (co) => `Rejected or ghosted · ${co}` },
+};
+
+function columnOf(board: BoardColumn[], key: string): BoardColumn["id"] | null {
+  return board.find((col) => col.cards.some((c) => c.key === key))?.id ?? null;
 }
 
 function stripCard(board: BoardColumn[], key: string): { board: BoardColumn[]; moved: BoardCard | null } {
@@ -283,8 +297,8 @@ export const usePfStore = create<PfState>()(
       startOnbScan: () => {
         const { onb } = get();
         if (!(onb.cv && onb.projects && onb.outreach && onb.cadence)) return;
-        set({ onbScanning: true });
-        setTimeout(() => set((s) => ({ onbScanning: false, onb: { ...s.onb, step: 3 } })), 1300);
+        // The baseline is arithmetic, so it shows at once rather than behind a pretend scan.
+        set((s) => ({ onb: { ...s.onb, step: 3 } }));
       },
       /**
        * Finishing Stage 00 has to hand its answers to the rest of the system,
@@ -346,11 +360,8 @@ export const usePfStore = create<PfState>()(
       generateDirection: () => {
         const s = get();
         if (!(s.dirRole && s.dirIndustry && s.dirSize)) return;
-        set({ dirGenerating: true });
-        setTimeout(() => {
-          set({ dirGenerating: false, dirGenerated: true });
-          get().emit("CareerDirectionUpdated", "direction", `Direction set: ${s.dirRole} in ${s.dirIndustry}`, { role: s.dirRole!, industry: s.dirIndustry! });
-        }, 900);
+        set({ dirGenerated: true });
+        get().emit("CareerDirectionUpdated", "direction", `Direction set: ${s.dirRole} in ${s.dirIndustry}`, { role: s.dirRole!, industry: s.dirIndustry! });
       },
       copyVariant: (v) => {
         try { void navigator.clipboard.writeText(v); } catch { /* clipboard unavailable */ }
@@ -369,34 +380,34 @@ export const usePfStore = create<PfState>()(
           chatN: s.chatN + 1,
         });
       },
+      /** Hand the chat's answers to the wizard. Only a role and industry the student actually
+       *  stated count; the company size is left for them to pick rather than assumed. */
       acceptChat: () => {
-        set((s) => ({ dirMode: "wizard", dirGenerated: true, dirSize: s.dirSize || "Startups 0–50" }));
         const s = get();
-        get().emit("CareerDirectionUpdated", "direction", `Direction drafted from AI chat: ${s.dirRole ?? "role"}`, s.dirRole ? { role: s.dirRole } : undefined);
+        if (!(s.dirRole && s.dirIndustry)) return;
+        set({ dirMode: "wizard", dirGenerated: !!s.dirSize });
+        if (s.dirSize) get().emit("CareerDirectionUpdated", "direction", `Direction drafted from chat: ${s.dirRole} in ${s.dirIndustry}`, { role: s.dirRole, industry: s.dirIndustry });
       },
 
       analyzeCv: () => {
         const s0 = get();
         if (s0.cvText.trim().length < 60) return;
-        set({ cvAnalyzing: true });
-        setTimeout(() => {
-          const s = get();
-          const analysis = analyzeCvText(s.cvText, s.dirStack);
-          const prev = s.cvScores.length ? s.cvScores[s.cvScores.length - 1] : null;
-          const label = prev !== null && prev !== analysis.score
-            ? `ATS score ${prev} → ${analysis.score}`
-            : `CV analyzed — ATS ${analysis.score}`;
-          set({ cvAnalyzing: false, cvAnalyzed: true, cvScores: [...s.cvScores, analysis.score] });
-          get().emit("CVAnalyzed", "cv", label, { score: analysis.score, vague: analysis.vague.length, missing: analysis.missing.length });
-        }, 1400);
+        const s = s0;
+        const analysis = analyzeCvText(s.cvText, s.dirStack);
+        const prev = s.cvScores.length ? s.cvScores[s.cvScores.length - 1] : null;
+        const label = prev !== null && prev !== analysis.score
+          ? `ATS score ${prev} → ${analysis.score}`
+          : `CV analysed, ATS ${analysis.score}`;
+        set({ cvAnalyzed: true, cvScores: [...s.cvScores, analysis.score] });
+        get().emit("CVAnalyzed", "cv", label, { score: analysis.score, vague: analysis.vague.length, missing: analysis.missing.length });
       },
       reAnalyzeCv: () => set({ cvAnalyzed: false, cvProjects: false }),
 
       saveJfJob: () => {
         const s = get();
         if (!(s.jfTitle.trim() && s.jfCompany.trim())) return;
-        // the student's own baseline once onboarded, else their evidence-derived readiness, never a flat 74
-        const fit = roleFit(s.jfJD, s.onbDone ? readinessFrom(s.onb) : getProgress().overall, s.cvText, targetKeywords(s.dirStack));
+        const scored = roleFit(s.jfJD, s.cvText);
+        const fit = scored ?? 0;
         const jdLower = s.jfJD.toLowerCase();
         const found = ["React", "TypeScript", "JavaScript", "Next.js", "Node", "Express", "Python", "Go", "Java", "C++", "SQL", "PostgreSQL", "MongoDB", "AWS", "Docker", "Kubernetes", "GraphQL", "REST", "CI/CD", "Testing", "Git", "Linux"]
           .filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0)
@@ -408,35 +419,37 @@ export const usePfStore = create<PfState>()(
               role: s.jfTitle.trim(),
               meta: "Added by you · just now",
               fit,
-              dash: Math.round(144 * (1 - fit / 100)),
-              tone: fitTone(fit),
+              fitKnown: scored !== null,
+              dash: scored === null ? 144 : Math.round(144 * (1 - fit / 100)),
+              tone: scored === null ? "var(--faint)" : fitTone(fit),
               tags: found.length ? found : ["Manual"],
-              verdict: fit >= 70 ? "Strong match" : fit >= 55 ? "Reach — tailor hard" : "Long shot",
+              verdict: scored === null ? (s.cvText.trim() ? "Not scored: the posting names no tech" : "Not scored: add your CV first") : fit >= 70 ? "Strong match" : fit >= 55 ? "Reach, tailor hard" : "Long shot",
               action: "Analyze",
               jdText: s.jfJD.trim(),
             },
             ...s.savedJobs,
           ],
         });
-        get().emit("JobSaved", "jobs", `Saved ${s.jfTitle.trim()} at ${s.jfCompany.trim()} (fit ${fit})`, { company: s.jfCompany.trim(), fit });
+        get().emit("JobSaved", "jobs", `Saved ${s.jfTitle.trim()} at ${s.jfCompany.trim()}${scored === null ? "" : ` (fit ${fit})`}`, scored === null ? { company: s.jfCompany.trim() } : { company: s.jfCompany.trim(), fit });
       },
       analyzeJf: () => {
         const s = get();
         if (s.jfJD.trim().length < 80) return;
-        set({ jfAnalyzing: true });
-        setTimeout(() => {
-          const st = get();
-          const result = analyzeJobDescription(st.jfJD, st.cvText, targetKeywords(st.dirStack));
-          set({ jfAnalyzing: false, jfResult: result });
-          get().emit("JobMatched", "jobs", `Matched ${st.jfCompany.trim() || "a role"} — ${result.compat}% compatible`, { company: st.jfCompany.trim(), compat: result.compat });
-        }, 1500);
+        const result = analyzeJobDescription(s.jfJD, s.cvText, targetKeywords(s.dirStack));
+        set({ jfResult: result });
+        get().emit("JobMatched", "jobs", `Matched ${s.jfCompany.trim() || "a role"}, ${result.compat}% compatible`, { company: s.jfCompany.trim(), compat: result.compat });
       },
 
-      generateOutreach: (company?: string) => {
+      // Networking progress is counted from this, so it needs a real recipient and a real
+      // message: a blank form used to log "a contact" and could be clicked up to 80%.
+      generateOutreach: ({ name, company, message }) => {
+        const who = name.trim();
+        if (!who || !message.trim()) return false;
         const s = get();
-        const co = company?.trim() || "a contact";
+        const co = company?.trim();
         set({ netGenerated: true, netSent: s.netSent + 1 });
-        get().emit("RecruiterContacted", "networking", `Outreach sent to ${co} (${s.netPersona})`, { company: co, persona: s.netPersona });
+        get().emit("RecruiterContacted", "networking", `Outreach sent to ${who}${co ? ` at ${co}` : ""} (${s.netPersona})`, co ? { company: co, contact: who, persona: s.netPersona } : { contact: who, persona: s.netPersona });
+        return true;
       },
 
       toggleProblem: (slug) => {
@@ -493,6 +506,7 @@ export const usePfStore = create<PfState>()(
 
       moveCard: (key, toId) => {
         const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
+        if (columnOf(get().board, key) === toId) return;
         set((s) => {
           const { board, moved } = stripCard(s.board, key);
           if (!moved) return {};
@@ -500,12 +514,13 @@ export const usePfStore = create<PfState>()(
           return { board: board.map((col) => (col.id === toId ? { ...col, cards: [stamped, ...col.cards] } : col)) };
         });
         if (!card) return;
-        const co = card.company;
-        if (toId === "applied") get().emit("ApplicationSubmitted", "tracker", `Applied to ${co}`, { company: co });
-        else if (toId === "interview") get().emit("InterviewScheduled", "tracker", `Interview stage · ${co}`, { company: co });
-        else if (toId === "offer") get().emit("OfferReceived", "tracker", `Offer from ${co} 🎉`, { company: co });
+        const ev = toId === "applied" && card.appliedDate ? undefined : COLUMN_EVENT[toId];
+        if (ev) get().emit(ev.type, "tracker", ev.label(card.company), { company: card.company, role: card.role, to: toId });
       },
-      moveCardBefore: (key, targetKey) =>
+      moveCardBefore: (key, targetKey) => {
+        const from = columnOf(get().board, key);
+        const to = columnOf(get().board, targetKey);
+        const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
         set((s) => {
           if (key === targetKey) return {};
           const { board, moved } = stripCard(s.board, key);
@@ -516,11 +531,15 @@ export const usePfStore = create<PfState>()(
             if (idx < 0) return col;
             placed = true;
             const cards = [...col.cards];
-            cards.splice(idx, 0, stampCard(moved!, col.id));
+            cards.splice(idx, 0, col.id === from ? moved! : stampCard(moved!, col.id));
             return { ...col, cards };
           });
           return placed ? { board: nb } : {};
-        }),
+        });
+        // Dropping onto a card in another column is a move like any other, and logs like one.
+        const ev = to && to !== from && !(to === "applied" && card?.appliedDate) ? COLUMN_EVENT[to] : undefined;
+        if (card && ev) get().emit(ev.type, "tracker", ev.label(card.company), { company: card.company, role: card.role, to: to! });
+      },
       advanceCard: (key) => {
         const s0 = get();
         const colIdx0 = s0.board.findIndex((col) => col.cards.some((c) => c.key === key));
@@ -535,57 +554,65 @@ export const usePfStore = create<PfState>()(
           ][colIdx];
           const { board, moved } = stripCard(s.board, key);
           if (!moved) return {};
-          const stamped = colIdx === 0 ? stampCard(moved, "applied") : { ...moved, ...advTag };
+          const stamped = colIdx === 0 ? stampCard(moved, "applied") : { ...moved, ...advTag, movedAt: Date.now(), reachedInterview: true };
           return { board: board.map((col, i) => (i === colIdx + 1 ? { ...col, cards: [stamped, ...col.cards] } : col)) };
         });
         if (!card || colIdx0 < 0 || colIdx0 >= 3) return;
-        const co = card.company;
-        const targetId = ["applied", "interview", "offer"][colIdx0];
-        if (targetId === "applied") get().emit("ApplicationSubmitted", "tracker", `Applied to ${co}`, { company: co });
-        else if (targetId === "interview") get().emit("InterviewScheduled", "tracker", `Interview stage · ${co}`, { company: co });
-        else if (targetId === "offer") get().emit("OfferReceived", "tracker", `Offer from ${co} 🎉`, { company: co });
+        const ev = COLUMN_EVENT[(["applied", "interview", "offer"] as const)[colIdx0]];
+        if (ev) get().emit(ev.type, "tracker", ev.label(card.company), { company: card.company, role: card.role });
       },
-      removeCard: (key) =>
+      removeCard: (key) => {
+        const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
         set((s) => ({
           appDetail: null,
           board: s.board.map((col) => ({ ...col, cards: col.cards.filter((c) => c.key !== key) })),
-        })),
-      setRemind: (key, value) =>
+        }));
+        if (card) get().emit("ApplicationAdvanced", "tracker", `Removed ${card.role} at ${card.company} from the tracker`, { company: card.company, removed: true });
+      },
+      setRemind: (key, value) => {
+        const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
         set((s) => ({
           board: s.board.map((col) => ({
             ...col,
             cards: col.cards.map((c) => (c.key === key ? { ...c, remind: value } : c)),
           })),
-        })),
-      setCardDate: (key, field, value) =>
+        }));
+        if (card && value) get().emit("ApplicationAdvanced", "tracker", `Reminder set · ${card.company} (${value})`, { company: card.company, remind: value });
+      },
+      setCardDate: (key, field, value) => {
+        const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
         set((s) => ({
           board: s.board.map((col) => ({
             ...col,
             cards: col.cards.map((c) => (c.key === key ? { ...c, [field]: value || undefined } : c)),
           })),
-        })),
+        }));
+        if (card && value) get().emit("ApplicationAdvanced", "tracker", `${field === "opens" ? "Opening" : "Deadline"} date · ${card.company} (${value})`, { company: card.company, [field]: value });
+      },
       setDiag: (key, timing) => {
         const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
         set((s) => ({ diags: { ...s.diags, [key]: timing } }));
         get().emit("RejectionDiagnosed", "tracker", `Diagnosed rejection · ${card?.company ?? key} (${timing})`, { company: card?.company ?? key, timing });
       },
       trackJob: (job) => {
-        const slug = job.company.toLowerCase();
-        if (get().board.some((col) => col.cards.some((c) => c.key === slug))) return;
+        // Keyed by company and role, so two roles at one company are two cards. Older cards
+        // were keyed by company alone, hence the field comparison as well as the key.
+        const slug = trackCardKey(job.company, job.role);
+        if (get().board.some((col) => col.cards.some((c) => c.key === slug || trackCardKey(c.company, c.role) === slug))) return;
         set((s) => ({
           board: s.board.map((col, i) =>
             i === 0
               ? {
                   ...col,
                   cards: [
-                    { key: slug, company: job.company, role: job.role, tag: "fit " + job.fit, tone: job.tone, when: "new", match: job.fit, note: "Tracked from Opportunity Discovery. Tailor the CV before applying." },
+                    { key: slug, company: job.company, role: job.role, tag: job.fit === null ? "saved" : "fit " + job.fit, tone: job.tone, when: "new", ...(job.fit === null ? {} : { match: job.fit }), note: "Tracked from Opportunity Discovery. Tailor the CV before applying." },
                     ...col.cards,
                   ],
                 }
               : col,
           ),
         }));
-        get().emit("JobSaved", "jobs", `Tracking ${job.company} (fit ${job.fit})`, { company: job.company, fit: job.fit });
+        get().emit("JobSaved", "jobs", `Tracking ${job.role} at ${job.company}${job.fit === null ? "" : ` (fit ${job.fit})`}`, job.fit === null ? { company: job.company } : { company: job.company, fit: job.fit });
       },
     }),
     {
@@ -640,7 +667,12 @@ export const usePfStore = create<PfState>()(
             return stored ? { ...def, ...stored } : def;
           });
         }
-        return { ...current, ...p, board };
+        // `ivSolved` is a projection of `ivProblems`. Recompute it on load so counts saved under
+        // an older problem list can't outlive the list they were counted against.
+        const ivProblems = p.ivProblems ?? current.ivProblems;
+        const ivSolved: Record<string, number> = {};
+        for (const c of LEETCODE_CATEGORIES) ivSolved[c.name] = c.problems.filter((x) => ivProblems[x.slug]).length;
+        return { ...current, ...p, board, ivProblems, ivSolved };
       },
     },
   ),

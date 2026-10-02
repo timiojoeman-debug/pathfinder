@@ -3,7 +3,7 @@
 /**
  * Practice a problem, then have your solution rated.
  *
- * The problem is drawn from the real 100-problem list, not generated. There is
+ * The problem is drawn from the real Blind 75 list, not generated. There is
  * an AI route (`/interview/random-problem`) that invents a problem and a
  * LeetCode URL, but a hallucinated link is the exact fabrication the verified
  * list was built to remove — so "surprise me" picks from `LEETCODE_PROBLEMS`

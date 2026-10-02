@@ -45,7 +45,8 @@ export interface ProfileInput {
 export interface TargetCompany {
   company: string;
   role: string;
-  fit: number;
+  /** Null when nothing scored this role. Never a placeholder number. */
+  fit: number | null;
   stage: string; // pipeline column title, or "Prospect"
 }
 
@@ -57,6 +58,8 @@ export interface CareerProfile {
   workSetting: string | null;
   directionStatement: string | null;
   directionSet: boolean;
+  /** The stack the student picked. Unlike `targetKeywords`, never defaulted. */
+  targetStack: string[];
 
   /* Skills */
   currentSkills: string[];
@@ -83,6 +86,8 @@ export interface CareerProfile {
   /* Networking */
   outreachSent: number;
   contactedCompanies: string[];
+  /** Coffee chats the student marked as held. */
+  coffeeChatsDone: number;
 
   /* Interview */
   leetSolved: number;
@@ -110,20 +115,24 @@ function gatherTargetCompanies(board: BoardColumn[], savedJobs: SavedJob[]): Tar
   // Board first (has real pipeline stage), then saved jobs, then market matrix.
   board.forEach((col) =>
     col.cards.forEach((c) => {
-      byCompany.set(c.company.toLowerCase(), { company: c.company, role: c.role, fit: c.match ?? 60, stage: col.title });
+      byCompany.set(`${c.company}|${c.role}`.toLowerCase(), { company: c.company, role: c.role, fit: c.match ?? null, stage: col.title });
     }),
   );
   savedJobs.forEach((j) => {
-    const key = j.company.toLowerCase();
-    if (!byCompany.has(key)) byCompany.set(key, { company: j.company, role: j.role, fit: j.fit, stage: "Saved" });
+    const key = `${j.company}|${j.role}`.toLowerCase();
+    if (!byCompany.has(key)) byCompany.set(key, { company: j.company, role: j.role, fit: j.fitKnown === false ? null : j.fit, stage: "Saved" });
   });
   // Only the user's real board + saved jobs count — no seeded market prospects,
   // so a new user's target list starts empty.
-  return [...byCompany.values()].sort((a, b) => b.fit - a.fit);
+  // Unscored roles sort last rather than pretending to a middling fit.
+  return [...byCompany.values()].sort((a, b) => (b.fit ?? -1) - (a.fit ?? -1));
 }
 
 export function deriveProfile(s: ProfileInput): CareerProfile {
-  const directionSet = !!(s.dirRole && s.dirIndustry && s.dirSize) || s.dirGenerated;
+  // Set means the student composed a statement, not that onboarding pre-filled
+  // the chips: those are a starting point, and counting them handed out
+  // direction progress before any direction work happened.
+  const directionSet = s.dirGenerated && !!s.dirRole;
   const keywords = targetKeywords(s.dirStack);
   const currentSkills = detectSkills(s.cvText);
 
@@ -202,6 +211,7 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
     workSetting: s.dirSetting,
     directionStatement: directionSet ? directionStatement(s) : null,
     directionSet,
+    targetStack: s.dirStack,
 
     currentSkills,
     missingSkills,
@@ -225,6 +235,7 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
 
     outreachSent: s.netSent,
     contactedCompanies,
+    coffeeChatsDone: s.events.filter((e) => e.type === "CoffeeChatCompleted").length,
 
     leetSolved,
     weakPatterns,

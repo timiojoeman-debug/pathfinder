@@ -50,11 +50,12 @@ export default function IntelPage() {
 
   const overallTone = progress.overall >= 65 ? "var(--strong)" : progress.overall >= 45 ? "var(--warn)" : "var(--risk)";
   // Lead with the outcome (interview rate) and the highest-leverage input
-  // (referrals) — not raw application volume, which optimises the wrong thing.
+  // (warm outreach), not raw application volume, which optimises the wrong thing.
+  // The tile counts companies messaged; nothing here can tell a referral was given.
   const interviewRatePct = profile.applicationsSubmitted ? Math.round(profile.interviewRate * 100) : null;
   const stats = [
     { label: "Interview rate", value: interviewRatePct !== null ? `${interviewRatePct}%` : "—", note: "the number that matters", color: "var(--accent)" },
-    { label: "Referrals", value: String(profile.contactedCompanies.length), note: "warm paths opened", color: "var(--active)" },
+    { label: "Companies reached", value: String(profile.contactedCompanies.length), note: "outreach sent", color: "var(--active)" },
     { label: "Interviews", value: String(profile.interviewsLanded), note: "landed", color: "var(--strong)" },
     { label: "Offers", value: String(profile.offers), note: profile.offers ? "in hand" : "keep going", color: "var(--fg)" },
   ];
@@ -155,10 +156,10 @@ export default function IntelPage() {
           </div>
         )}
         {pipeline.map((o) => {
-          const tone = fitTone(o.fit);
+          const tone = o.fit === null ? "var(--faint)" : fitTone(o.fit);
           return (
             <div
-              key={o.company}
+              key={`${o.company}|${o.role}`}
               onClick={() => openOpportunity(o.company)}
               role="button"
               tabIndex={0}
@@ -172,9 +173,9 @@ export default function IntelPage() {
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ width: 34, height: 4, borderRadius: 2, background: "var(--panel3)", overflow: "hidden" }}>
-                  <span style={{ display: "block", height: "100%", width: `${o.fit}%`, background: tone }} />
+                  <span style={{ display: "block", height: "100%", width: `${o.fit ?? 0}%`, background: tone }} />
                 </span>
-                <span style={{ fontFamily: mono, fontSize: 12.5, fontWeight: 700, color: tone }}>{o.fit}</span>
+                <span style={{ fontFamily: mono, fontSize: 12.5, fontWeight: 700, color: tone }} title={o.fit === null ? "Not scored yet" : undefined}>{o.fit ?? "–"}</span>
               </span>
               <span style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{o.stage}</span>
               <span style={{ fontSize: 12.5, color: "var(--accent)", fontWeight: 600 }}>Open →</span>

@@ -8,6 +8,7 @@
 
 import { makeEvent, relativeTime, type PfEvent, type PfPhase } from "./events";
 import type { CareerProfile } from "./profile";
+import { LEETCODE_TOTAL } from "./leetcode";
 
 export interface AiInteraction {
   phase: PfPhase;
@@ -28,10 +29,10 @@ export function buildMentorContext(p: CareerProfile, recentInteractions: AiInter
   if (p.currentSkills.length) lines.push(`- Skills evidenced: ${p.currentSkills.slice(0, 10).join(", ")}`);
   if (p.missingSkills.length) lines.push(`- Missing target skills: ${p.missingSkills.join(", ")}`);
   if (p.atsScore !== null) lines.push(`- Current ATS score: ${p.atsScore}${p.atsDelta ? ` (${p.atsDelta > 0 ? "+" : ""}${p.atsDelta} over time)` : ""}`);
-  if (p.targetCompanies.length) lines.push(`- Target companies: ${p.targetCompanies.slice(0, 5).map((c) => `${c.company} (${c.stage}, fit ${c.fit})`).join("; ")}`);
+  if (p.targetCompanies.length) lines.push(`- Target companies: ${p.targetCompanies.slice(0, 5).map((c) => `${c.company} (${c.stage}, ${c.fit === null ? "fit not scored" : `fit ${c.fit}`})`).join("; ")}`);
   lines.push(`- Applications: ${p.applicationsSubmitted} submitted, ${p.interviewsLanded} interviews, ${p.offers} offers`);
   lines.push(`- Networking: ${p.outreachSent} messages sent${p.contactedCompanies.length ? `, contacted ${p.contactedCompanies.join(", ")}` : ""}`);
-  lines.push(`- Interview prep: ${p.leetSolved}/75 LeetCode${p.weakPatterns.length ? `, weak in ${p.weakPatterns.join(", ")}` : ""}`);
+  lines.push(`- Interview prep: ${p.leetSolved}/${LEETCODE_TOTAL} LeetCode${p.weakPatterns.length ? `, weak in ${p.weakPatterns.join(", ")}` : ""}`);
   if (p.strengths.length) lines.push(`- Strengths: ${p.strengths.join("; ")}`);
   if (p.weaknesses.length) lines.push(`- Gaps: ${p.weaknesses.join("; ")}`);
 

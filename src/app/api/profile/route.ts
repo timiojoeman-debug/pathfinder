@@ -65,7 +65,8 @@ export async function POST(req: Request) {
     );
 
     // Append only genuinely new events (client sends its full recent tail; we
-    // dedupe by (label, ts) to keep the stream idempotent under retries).
+    // dedupe by (label, ts) to keep the stream idempotent under retries). Keying on
+    // the label alone dropped real repeats: a second "Applied to X", a re-solved problem.
     const events = Array.isArray(body.events) ? body.events.slice(-50) : [];
     if (events.length) {
       const { data: existing } = await db
@@ -74,9 +75,10 @@ export async function POST(req: Request) {
         .eq("user_id", user.userId)
         .order("created_at", { ascending: false })
         .limit(100);
-      const seen = new Set((existing ?? []).map((e) => `${e.label}`));
+      const key = (label: string, at: string | number) => `${label}|${new Date(at).getTime()}`;
+      const seen = new Set((existing ?? []).map((e) => key(e.label, e.created_at)));
       const fresh = events
-        .filter((e) => !seen.has(e.label))
+        .filter((e) => Number.isFinite(e.ts) && !seen.has(key(e.label, e.ts)))
         .map((e) => ({
           user_id: user.userId,
           event_type: e.type,

@@ -9,7 +9,7 @@
 import Link from "next/link";
 import type { DragEvent } from "react";
 import { REJECTION_DIAGNOSIS } from "@/lib/pf/data";
-import { callbackSummary, formatReminder, rejectionInsight, trackerDerived } from "@/lib/pf/logic";
+import { callbackSummary, cardWhen, formatReminder, rejectionInsight, trackerDerived } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
 import { PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
@@ -144,7 +144,7 @@ export default function TrackerPage() {
                       closes {formatReminder(c.deadline)}
                     </span>
                   )}
-                  <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10, color: "var(--faint)" }}>{c.when}</span>
+                  <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10, color: "var(--faint)" }}>{cardWhen(c)}</span>
                 </div>
               </div>
             ))}

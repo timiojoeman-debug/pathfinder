@@ -31,9 +31,14 @@ export interface BoardCard {
   tag: string;
   tone: string; // css var token, e.g. "var(--strong)"
   when: string;
-  match: number;
+  /** CV-to-posting fit. Absent when nothing scored it (e.g. added by hand). */
+  match?: number;
   note: string;
   rejected?: boolean;
+  /** Set once the card reaches Interview, and kept if it later moves on. */
+  reachedInterview?: boolean;
+  /** When the card last changed column; `when: "today"` is rendered relative to it. */
+  movedAt?: number;
   appliedDate?: number;
   remind?: string; // yyyy-mm-dd
   /** The scheme's opening and closing dates, entered by the student from the

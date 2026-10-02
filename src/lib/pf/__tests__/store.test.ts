@@ -152,8 +152,14 @@ describe("pf store — jobs + networking + interview", () => {
     expect(lastEvent().type).toBe("JobSaved");
   });
 
+  it("generateOutreach logs nothing without a recipient and a message", () => {
+    expect(s().generateOutreach({ name: "", message: "Hi" })).toBe(false);
+    expect(s().generateOutreach({ name: "Sam", message: "  " })).toBe(false);
+    expect(s().netSent).toBe(0);
+  });
+
   it("generateOutreach increments the sent count and logs a contact", () => {
-    s().generateOutreach();
+    expect(s().generateOutreach({ name: "Sam Lee", company: "Monzo", message: "Hi Sam" })).toBe(true);
     expect(s().netGenerated).toBe(true);
     expect(s().netSent).toBe(1);
     expect(lastEvent().type).toBe("RecruiterContacted");
@@ -192,7 +198,7 @@ describe("pf store — tracker board", () => {
   it("trackJob adds a card to Saved, logs it, and dedupes on a second call", () => {
     s().trackJob({ company: "Vercel", role: "Frontend Intern", fit: 74, tone: "var(--strong)" });
     const saved = s().board.find((c) => c.id === "saved")!;
-    expect(saved.cards.map((c) => c.key)).toContain("vercel");
+    expect(saved.cards.map((c) => c.key)).toContain("vercel::frontend intern");
     expect(lastEvent().type).toBe("JobSaved");
     const count = saved.cards.length;
     s().trackJob({ company: "Vercel", role: "Frontend Intern", fit: 74, tone: "var(--strong)" });
@@ -201,9 +207,9 @@ describe("pf store — tracker board", () => {
 
   it("moveCard relocates a card, stamps it, and logs the stage change", () => {
     s().trackJob({ company: "Monzo", role: "Backend Intern", fit: 66, tone: "var(--warn)" });
-    s().moveCard("monzo", "applied");
+    s().moveCard("monzo::backend intern", "applied");
     const applied = s().board.find((c) => c.id === "applied")!;
-    const card = applied.cards.find((c) => c.key === "monzo");
+    const card = applied.cards.find((c) => c.key === "monzo::backend intern");
     expect(card).toBeTruthy();
     expect(card!.tag).toBe("ATS ✓");
     expect(lastEvent().type).toBe("ApplicationSubmitted");
@@ -211,16 +217,16 @@ describe("pf store — tracker board", () => {
 
   it("removeCard drops the card and clears the app drawer", () => {
     s().trackJob({ company: "Stripe", role: "SWE Intern", fit: 58, tone: "var(--warn)" });
-    usePfStore.setState({ appDetail: "stripe" });
-    s().removeCard("stripe");
-    expect(s().board.flatMap((c) => c.cards).find((c) => c.key === "stripe")).toBeUndefined();
+    usePfStore.setState({ appDetail: "stripe::swe intern" });
+    s().removeCard("stripe::swe intern");
+    expect(s().board.flatMap((c) => c.cards).find((c) => c.key === "stripe::swe intern")).toBeUndefined();
     expect(s().appDetail).toBeNull();
   });
 
   it("setRemind stamps a reminder date on a card", () => {
     s().trackJob({ company: "FanDuel", role: "Backend Intern", fit: 73, tone: "var(--strong)" });
-    s().setRemind("fanduel", "2026-08-01");
-    const card = s().board.flatMap((c) => c.cards).find((c) => c.key === "fanduel");
+    s().setRemind("fanduel::backend intern", "2026-08-01");
+    const card = s().board.flatMap((c) => c.cards).find((c) => c.key === "fanduel::backend intern");
     expect(card!.remind).toBe("2026-08-01");
   });
 
@@ -229,9 +235,37 @@ describe("pf store — tracker board", () => {
     expect(s().diags["optiver"]).toBe("Within hours");
     expect(lastEvent().type).toBe("RejectionDiagnosed");
   });
+
+  it("tracks two roles at one company as two cards", () => {
+    s().trackJob({ company: "Monzo", role: "Backend Intern", fit: 66, tone: "var(--warn)" });
+    s().trackJob({ company: "Monzo", role: "Data Intern", fit: null, tone: "var(--faint)" });
+    const saved = s().board.find((c) => c.id === "saved")!.cards;
+    expect(saved).toHaveLength(2);
+    expect(saved.find((c) => c.role === "Data Intern")!.match).toBeUndefined();
+  });
+
+  it("keeps the callback when an interviewed card is rejected, and logs the rejection", () => {
+    s().trackJob({ company: "Monzo", role: "Backend Intern", fit: 66, tone: "var(--warn)" });
+    s().moveCard("monzo::backend intern", "interview");
+    s().moveCard("monzo::backend intern", "rejected");
+    const card = s().board.find((c) => c.id === "rejected")!.cards[0];
+    expect(card.reachedInterview).toBe(true);
+    expect(lastEvent().label).toContain("Rejected");
+  });
+
+  it("logs a move made by dropping onto a card in another column", () => {
+    s().trackJob({ company: "A", role: "R", fit: 60, tone: "" });
+    s().trackJob({ company: "B", role: "R", fit: 60, tone: "" });
+    s().moveCard("b::r", "applied");
+    const before = s().events.length;
+    s().moveCardBefore("a::r", "b::r");
+    expect(s().board.find((c) => c.id === "applied")!.cards.map((c) => c.key)).toEqual(["a::r", "b::r"]);
+    expect(s().events.length).toBe(before + 1);
+    expect(lastEvent().type).toBe("ApplicationSubmitted");
+  });
 });
 
-describe("pf store — timer-driven actions", () => {
+describe("pf store — instant actions (no pretend delays)", () => {
   beforeEach(() => { reset(); vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
@@ -243,8 +277,6 @@ describe("pf store — timer-driven actions", () => {
 
     usePfStore.setState({ cvText: "x".repeat(120), dirStack: ["React", "Node"] });
     s().analyzeCv();
-    expect(s().cvAnalyzing).toBe(true);
-    vi.runAllTimers();
     expect(s().cvAnalyzed).toBe(true);
     expect(s().cvScores).toHaveLength(1);
     expect(lastEvent().type).toBe("CVAnalyzed");
@@ -280,11 +312,9 @@ describe("pf store — timer-driven actions", () => {
     s().startOnbScan();
     expect(s().onbScanning).toBe(false);
 
+    expect(s().onb.step).not.toBe(3);
     usePfStore.setState({ onb: { ...s().onb, cadence: 42 } });
     s().startOnbScan();
-    expect(s().onbScanning).toBe(true);
-    vi.runAllTimers();
-    expect(s().onbScanning).toBe(false);
     expect(s().onb.step).toBe(3);
   });
 });

@@ -42,7 +42,7 @@ export function CommandPalette() {
 
   const allCmds: Cmd[] = [
     ...SCREEN_ROUTES.map(([label, href]) => ({ label, hint: "go to", pick: () => go(href) })),
-    ...savedJobs.map((j) => ({ label: j.company + " — " + j.role, hint: "job · fit " + j.fit, pick: () => go("/jobs", { jobDetail: j.company }) })),
+    ...savedJobs.map((j) => ({ label: j.company + " — " + j.role, hint: j.fitKnown === false ? "job · not scored" : "job · fit " + j.fit, pick: () => go("/jobs", { jobDetail: j.company }) })),
     ...board.flatMap((col) =>
       col.cards.map((c) => ({ label: c.company + " — " + c.role, hint: "application · " + col.title, pick: () => go("/tracker", { appDetail: c.key }) })),
     ),

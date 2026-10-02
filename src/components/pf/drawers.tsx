@@ -8,7 +8,7 @@
 
 import { useRouter } from "next/navigation";
 import { DIAG_TIMINGS, JOB_DETAILS, REJECTION_DIAGNOSIS } from "@/lib/pf/data";
-import { formatReminder } from "@/lib/pf/logic";
+import { cardWhen, formatReminder, trackCardKey } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
 import { Kicker, MarkDot } from "./ui";
 
@@ -66,15 +66,15 @@ function JobDrawer({ company }: { company: string }) {
     resp: [],
     reqs: [] as [string, boolean][],
   };
-  const slug = jd.company.toLowerCase();
-  const tracked = board.some((col) => col.cards.some((c) => c.key === slug));
+  const slug = trackCardKey(jd.company, jd.role);
+  const tracked = board.some((col) => col.cards.some((c) => c.key === slug || trackCardKey(c.company, c.role) === slug));
 
   const onTrack = () => {
     if (tracked) {
       closeDrawers();
       router.push("/tracker");
     } else {
-      trackJob({ company: jd.company, role: jd.role, fit: jd.fit, tone: jd.tone });
+      trackJob({ company: jd.company, role: jd.role, fit: jd.fitKnown === false ? null : jd.fit, tone: jd.tone });
     }
   };
   const onTailor = () => {
@@ -190,7 +190,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
   const nextLabels = ["Mark as applied →", "Log interview →", "Log offer →"];
   const isRej = colIdx === 4;
   const timing = diags[cardKey] ?? null;
-  const match = c.match || 70;
+  const match = c.match ?? null;
 
   return (
     <DrawerShell onClose={closeDrawers}>
@@ -207,11 +207,11 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 22 }}>
           <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "13px 15px", background: "var(--panel)" }}>
             <Kicker style={{ fontSize: 8.5, marginBottom: 4 }}>CV match rate</Kicker>
-            <div className="pf-mono" style={{ fontSize: 20, fontWeight: 700, color: match >= 65 ? "var(--strong)" : "var(--warn)" }}>{match}%</div>
+            <div className="pf-mono" style={{ fontSize: 20, fontWeight: 700, color: match === null ? "var(--faint)" : match >= 65 ? "var(--strong)" : "var(--warn)" }} title={match === null ? "Not scored" : undefined}>{match === null ? "–" : `${match}%`}</div>
           </div>
           <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "13px 15px", background: "var(--panel)" }}>
             <Kicker style={{ fontSize: 8.5, marginBottom: 4 }}>Status note</Kicker>
-            <div style={{ fontSize: 13.5, fontWeight: 600, paddingTop: 3 }}>{c.when}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, paddingTop: 3 }}>{cardWhen(c)}</div>
           </div>
         </div>
 

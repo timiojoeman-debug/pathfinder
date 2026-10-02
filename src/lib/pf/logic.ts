@@ -210,16 +210,18 @@ export interface JfResult {
   noBlockers: boolean;
 }
 
-export function roleFit(jd: string, baseReadiness: number, cvText: string, targetKw: string[]): number {
+/** How much of a posting's named tech the CV already evidences. Null when there is nothing to
+ *  score: no CV yet, or a posting that names no technology. It used to start from the student's
+ *  self-rated onboarding baseline, which made a slider answer look like a match score. */
+export function roleFit(jd: string, cvText: string): number | null {
   const jdLower = jd.toLowerCase();
   const cvLower = cvText.toLowerCase();
-  let fit = baseReadiness;
+  const asked = KEYWORD_VOCAB.filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0);
+  if (!asked.length || !cvText.trim()) return null;
+  const evidenced = asked.filter((k) => cvLower.indexOf(k.toLowerCase()) >= 0).length;
+  let fit = Math.round((evidenced / asked.length) * 100);
   if (/senior|staff|[3-9]\+ years|phd/i.test(jd)) fit -= 26;
-  const matched = KEYWORD_VOCAB.filter(
-    (k) => jdLower.indexOf(k.toLowerCase()) >= 0 && (cvLower.indexOf(k.toLowerCase()) >= 0 || targetKw.indexOf(k) >= 0),
-  );
-  fit += Math.min(10, matched.length * 2);
-  return Math.max(20, Math.min(95, fit));
+  return Math.max(5, Math.min(95, fit));
 }
 
 export function analyzeJobDescription(jd: string, cvText: string, targetKw: string[]): JfResult {
@@ -273,6 +275,11 @@ export function buildCoverLetter(company: string, role: string, jd: string, targ
 
 /* ── Tracker derivations ───────────────────────────────────────────── */
 
+/** A tracker card's key: company and role together, so two roles at one company don't collide. */
+export function trackCardKey(company: string, role: string): string {
+  return `${company.trim().toLowerCase()}::${role.trim().toLowerCase()}`;
+}
+
 export function columnCount(board: BoardColumn[], id: string): number {
   const col = board.find((c) => c.id === id);
   return col ? col.cards.length : 0;
@@ -282,14 +289,18 @@ export interface FunnelStage { label: string; value: number; pct: string; color:
 
 export function trackerDerived(board: BoardColumn[], netSent: number) {
   const submitted = columnCount(board, "applied") + columnCount(board, "interview") + columnCount(board, "offer") + columnCount(board, "rejected");
-  const interviews = columnCount(board, "interview") + columnCount(board, "offer");
+  // A callback stays a callback: a card rejected after its interview still counts,
+  // or moving it to Rejected would quietly lower the student's interview rate.
+  const interviews = board.reduce(
+    (n, col) => n + col.cards.filter((c) => col.id === "interview" || col.id === "offer" || c.reachedInterview).length,
+    0,
+  );
   const offers = columnCount(board, "offer");
   const now = Date.now();
   let weeklyCount = 0;
   board.forEach((col) =>
     col.cards.forEach((c) => {
       if (c.appliedDate && now - c.appliedDate < 6048e5) weeklyCount += 1;
-      else if (c.when === "2d ago" || c.when === "5d ago") weeklyCount += 1;
     }),
   );
   // Source (TechTalk Four Pillars): aim for ~10-15 quality applications/week.
@@ -328,6 +339,15 @@ export function trackerDerived(board: BoardColumn[], netSent: number) {
   else { leakLabel = "Pipeline healthy — keep the cadence"; leakHref = "/jobs"; }
 
   return { submitted, interviews, offers, weeklyCount, weeklyGoal, weeklyPct, weeklyTone, weeklyNote, stats, funnel, leakLabel, leakHref };
+}
+
+/** A card's "when" label. "today" was written once and never aged, so a card applied to a
+ *  month ago still said today; it is now read off the timestamp at render time. */
+export function cardWhen(c: Pick<BoardCard, "when" | "movedAt" | "appliedDate">, now: number = Date.now()): string {
+  const ts = c.movedAt ?? c.appliedDate;
+  if (c.when !== "today" || !ts) return c.when;
+  const days = Math.floor((now - ts) / 864e5);
+  return days <= 0 ? "today" : days === 1 ? "yesterday" : days < 14 ? `${days}d ago` : `${Math.round(days / 7)}w ago`;
 }
 
 /** The student's own callback rate: how many sent applications reached an interview. Nothing is
