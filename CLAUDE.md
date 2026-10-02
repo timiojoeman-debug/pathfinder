@@ -12,7 +12,7 @@ Product emphasis is deliberately weighted toward the two phases that convert: **
 - **Styling**: Tailwind CSS 4, plus a warm-paper design system scoped to `.pf` (`data-theme` light/dark)
 - **State**: Zustand 5 — `lib/pf/store.ts` (the live app, persisted to localStorage) and `lib/stores/*` (app-store, auth-store)
 - **Database**: Supabase PostgreSQL with pgvector — **deployed**; migrations in `supabase/migrations/`
-- **AI**: OpenAI via direct fetch — `gpt-4.1-mini` for route handlers (`lib/ai.ts`), `gpt-4o` in `lib/ai/mentor-engine.ts`, `text-embedding-3-small` for RAG
+- **AI**: OpenAI via direct fetch — `gpt-4.1-mini` for route handlers (`lib/ai.ts`), `gpt-4.1-mini` in `lib/ai/mentor-engine.ts` (moved off `gpt-4o` after the outreach trial in `docs/mentor-model-trial-2026-10-03.md`; only outreach was measured), `text-embedding-3-small` for RAG
 - **Auth**: Custom JWT (jose) + PBKDF2 password hashing (`lib/auth.ts`)
 - **File parsing**: pdf-parse (PDF), mammoth (DOCX)
 - **Testing**: Vitest 4 + Testing Library (jsdom)
