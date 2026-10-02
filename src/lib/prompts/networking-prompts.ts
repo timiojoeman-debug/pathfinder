@@ -9,7 +9,7 @@ type OutreachParams = {
 };
 
 export function buildOutreachPrompt(params: OutreachParams): string {
-  const { hiringPyramid, stats, targetGroups, outreachVariants, dosAndDonts } = NETWORKING_STRATEGY;
+  const { hiringPyramid, stats, targetGroups, outreachVariants, dosAndDonts, whoToAsk, connectionRequests, personalisationSignals, transactionalVsRelationship } = NETWORKING_STRATEGY;
   const groupKey = params.contactType === "recruiter" ? "recruiters" : params.contactType === "hiringManager" ? "hiringManagers" : "peers";
   const group = targetGroups[groupKey];
   const searchTitles = "searchTitles" in group ? (group as { searchTitles: readonly string[] }).searchTitles.join(", ") : "N/A";
@@ -31,6 +31,17 @@ OUTREACH VARIANTS (choose based on actual context — NEVER fabricate connection
 2. ${outreachVariants.contentHook.name}: ${outreachVariants.contentHook.when} → ${outreachVariants.contentHook.leadWith}
 3. ${outreachVariants.curiosityHumility.name}: ${outreachVariants.curiosityHumility.when} → ${outreachVariants.curiosityHumility.leadWith}
 
+WHO TO ASK FOR WHAT (nobody is ever asked for a job):
+${whoToAsk.map(w => `- ${w.who}: ${w.style}. Referral: ${w.referral ? "yes, once they know you" : "no"}. ${w.ask}`).join("\n")}
+${askRule(params.contactType)}
+
+CONNECTION NOTE ANATOMY (a LinkedIn note is at most ${connectionRequests.charLimit} characters):
+${params.contactType === "peer" ? `Peer note: ${connectionRequests.peer.parts.join("; ")}. ${connectionRequests.peer.note}` : `Recruiter note: ${connectionRequests.recruiter.parts.join("; ")}. ${connectionRequests.recruiter.note}`}
+
+PERSONALISATION SIGNALS (use only ones the contact profile actually shows, never invent): ${personalisationSignals.map(x => `${x.signal} (${x.look})`).join("; ")}
+
+RELATIONSHIP, NOT TRANSACTION: ${transactionalVsRelationship.map(r => `${r.row}: not ${r.transactional}, but ${r.relationship}`).join("; ")}
+
 DO'S: ${dosAndDonts.dos.join("; ")}
 DON'TS: ${dosAndDonts.donts.join("; ")}
 
@@ -40,6 +51,7 @@ Role: ${params.roleName}
 
 CRITICAL RULES:
 - First assess what shared attributes ACTUALLY exist. Never fabricate.
+- Never ask the contact for a job. ${params.contactType === "peer" ? "Do not ask for a referral in the first message either: ask to learn from them." : "Never ask this contact for a referral."}
 - If the message is a LinkedIn connection note, keep it under 300 characters. For a first message or email, keep it short: roughly 5-6 sentences.
 - Include a reminder: "${dosAndDonts.footer}"
 
@@ -67,6 +79,13 @@ Respond ONLY with valid JSON:
     "editReminder": "${dosAndDonts.footer}"
   }
 }`;
+}
+
+/** The hard rule for the contact type, in the outreach prompt. */
+export function askRule(t: "recruiter" | "hiringManager" | "peer"): string {
+  return t === "peer"
+    ? "THIS CONTACT: a peer. They can refer the student, but only once they know them. Ask for their story and advice, not a referral and not a job."
+    : `THIS CONTACT: a ${t === "recruiter" ? "recruiter" : "hiring manager"}. They cannot refer the student. NEVER ask them for a referral or a job. Show fit for the specific role and make one clear, fit-driven ask${t === "recruiter" ? " (for example, insight on the role or process)" : ""}.`;
 }
 
 /* Who the contact is decides the close. Peers can refer; recruiters and hiring

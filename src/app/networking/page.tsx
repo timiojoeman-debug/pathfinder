@@ -25,6 +25,7 @@ import { NextStep } from "@/components/pf/next-step";
 import { ContactWorkspace } from "@/components/pf/networking/contact-workspace";
 import { ProfileResearch } from "@/components/pf/networking/profile-research";
 import { StartupPanel } from "@/components/pf/networking/startup-panel";
+import { EventsPlaybook, OneLinerCard, SignalsChecklist, WhoToAskMatrix } from "@/components/pf/networking/playbooks";
 import { NaturalnessBadge, type Naturalness } from "@/components/pf/networking/naturalness-note";
 
 const PERSONA_API_TYPE: Record<OutreachPersona, "recruiter" | "hiringManager" | "peer"> = {
@@ -142,11 +143,18 @@ export default function NetworkingPage() {
 
       <NextStep />
 
-      <ProfileResearch
-        contact={contact}
-        onContactChange={(c) => s.set({ netContact: c })}
-        onResult={({ contact: c, data }) => s.set({ netResearch: { key: netContactKey(c), name: c.name.trim(), data }, netDraft: null })}
-      />
+      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ flex: "2 1 460px", minWidth: 0 }}>
+          <ProfileResearch
+            contact={contact}
+            onContactChange={(c) => s.set({ netContact: c })}
+            onResult={({ contact: c, data }) => s.set({ netResearch: { key: netContactKey(c), name: c.name.trim(), data }, netDraft: null })}
+          />
+        </div>
+        <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+          <SignalsChecklist />
+        </div>
+      </div>
       <ContactWorkspace
         contact={{ name: contact.name, company: contact.company }}
         onContactChange={editContact}
@@ -162,6 +170,8 @@ export default function NetworkingPage() {
           </Reveal>
         ))}
       </div>
+
+      <WhoToAskMatrix />
 
       {/* Who to reach, what they're called, and how to research them */}
       <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
@@ -231,6 +241,9 @@ export default function NetworkingPage() {
           ))}
         </div>
       </Panel>
+
+      <OneLinerCard />
+      <EventsPlaybook />
 
       <div style={{ display: "grid", gridTemplateColumns: "1.25fr 0.75fr", gap: 18 }}>
         <Reveal style={{ border: "1px solid var(--lineStrong)", borderRadius: 18, background: "var(--panelSolid)", overflow: "hidden" }}>

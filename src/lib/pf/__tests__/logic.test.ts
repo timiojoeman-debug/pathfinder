@@ -8,7 +8,7 @@ import {
   roleFit, analyzeJobDescription, cardWhen,
   buildCoverLetter, followUpMessage,
   trackerDerived,
-  roleFamiliesFor, targetRoleOptions, pruneTargetRoles, mapExplorePreferences, exploreMessages, EXPLORE_MAX_TURNS, EXPLORE_MAX_CHARS, outreachSubject, buildOutreachTemplate, jobPassesFit, composeSharedAttributes, postingKey,
+  roleFamiliesFor, targetRoleOptions, pruneTargetRoles, mapExplorePreferences, exploreMessages, EXPLORE_MAX_TURNS, EXPLORE_MAX_CHARS, outreachSubject, buildOutreachTemplate, jobPassesFit, composeSharedAttributes, postingKey, composeOneLiners,
   type OnbState, type DirectionFields,
 } from '../logic';
 
@@ -338,6 +338,30 @@ describe('composeSharedAttributes', () => {
   it('falls back when there is nothing real to personalise on', () => {
     expect(composeSharedAttributes(null, {}, 'Student targeting internships')).toBe('Student targeting internships');
     expect(composeSharedAttributes(null, { about: '   ' }, 'fallback')).toBe('fallback');
+  });
+});
+
+describe('composeOneLiners', () => {
+  const lines = (d: Parameters<typeof composeOneLiners>[0]) => Object.fromEntries(composeOneLiners(d).map((l) => [l.id, l.line]));
+
+  it('leaves visible brackets where the app knows nothing', () => {
+    const l = lines({ dirRole: null, dirStack: [], dirIndustry: null });
+    expect(l.role).toContain('[the role you want]');
+    expect(l.bridge).toBe('I used to [what you did before]. Now I do [skill] in [new place].');
+    expect(l.problem).toBe('I help [who] with [problem].');
+  });
+
+  it('fills role, stack and industry from the direction answers', () => {
+    const l = lines({ dirRole: 'Backend', dirStack: ['Go', 'SQL', 'AWS', 'Node'], dirIndustry: 'Fintech' });
+    expect(l.role).toBe("I'm a student aiming for Backend roles in Fintech, and right now I'm working on [what you're building or learning], using Go, SQL and AWS.");
+    expect(l.bridge).toBe('I used to [what you did before]. Now I do Go, SQL and AWS in Fintech.');
+    expect(l.problem).toBe('I help [who] in Fintech with [problem].');
+  });
+
+  it('treats the "Open" industry as unknown', () => {
+    const l = lines({ dirRole: 'Frontend', dirStack: ['React'], dirIndustry: 'Open' });
+    expect(l.role).not.toContain('Open');
+    expect(l.bridge).toContain('in [new place]');
   });
 });
 

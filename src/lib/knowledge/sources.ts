@@ -13,6 +13,30 @@
 import type { SourceRef } from './types';
 
 export const SOURCES: Record<string, SourceRef> = {
+  // ── TechTalk slide decks (Slide Audit 2026-10-02). Marketing-grade webinar
+  //    slides: numbers are rules of thumb, not research. ─────────────────
+  'deck-network-at-events': {
+    id: 'deck-network-at-events',
+    title: 'TechTalk — How To Network At Events (slide deck)',
+    kind: 'masterclass-doc',
+    vaultPath: 'Slide Audit 2026-10-02/report-E.md',
+    confidence: 'medium',
+  },
+  'deck-september-surge': {
+    id: 'deck-september-surge',
+    title: 'TechTalk — September Surge (slide deck, online networking slides)',
+    kind: 'masterclass-doc',
+    vaultPath: 'Slide Audit 2026-10-02/report-C.md',
+    confidence: 'medium',
+  },
+  'deck-june-day2': {
+    id: 'deck-june-day2',
+    title: 'TechTalk — Get Hired in the Age of AI, Day 2 (slide deck)',
+    kind: 'masterclass-doc',
+    vaultPath: 'Slide Audit 2026-10-02/report-A.md',
+    confidence: 'medium',
+  },
+
   // ── Primary TechTalk masterclass material ─────────────────────────────
   'doc-four-pillars': {
     id: 'doc-four-pillars',
