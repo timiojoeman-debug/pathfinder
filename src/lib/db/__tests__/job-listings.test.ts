@@ -7,7 +7,7 @@ vi.mock('@/lib/logger', () => ({
 }));
 
 import { getServerDb } from '@/lib/supabase/client';
-import { getActiveListings, syncEmployerListings } from '../job-listings';
+import { getActiveListings, getListingActive, syncEmployerListings } from '../job-listings';
 
 type Row = { source: string; employer: string; url: string; active: boolean; title?: string; [k: string]: unknown };
 type ServerDb = ReturnType<typeof getServerDb>;
@@ -98,6 +98,25 @@ describe('syncEmployerListings', () => {
   it('returns null with no database configured', async () => {
     vi.mocked(getServerDb).mockReturnValue(null);
     expect(await syncEmployerListings('ashby', 'Acme', [])).toBeNull();
+  });
+});
+
+describe('getListingActive', () => {
+  it('reports active and closed rows, and omits URLs the cache does not know', async () => {
+    fakeTable([
+      { source: 'lever', employer: 'A', url: 'https://a/1', active: true },
+      { source: 'lever', employer: 'A', url: 'https://a/2', active: false },
+    ]);
+    const got = await getListingActive(['https://a/1', 'https://a/2', 'https://a/3']);
+    expect([...got]).toEqual([['https://a/1', true], ['https://a/2', false]]);
+    expect(got.has('constructor')).toBe(false);
+  });
+
+  it('is empty without a database or without URLs', async () => {
+    vi.mocked(getServerDb).mockReturnValue(null);
+    expect((await getListingActive(['https://a/1'])).size).toBe(0);
+    fakeTable([]);
+    expect((await getListingActive([])).size).toBe(0);
   });
 });
 
