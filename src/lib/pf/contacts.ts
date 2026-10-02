@@ -108,3 +108,13 @@ export function applicationsAtCompany(board: BoardColumn[], company: string): { 
   if (!co) return [];
   return board.flatMap((col) => col.cards.filter((c) => norm(c.company) === co).map((c) => ({ key: c.key, role: c.role, column: col.title })));
 }
+
+/** LinkedIn people search for alumni (or anyone) at a company. A plain link the student
+ *  opens themselves: nothing is fetched. `university` is optional; the live store holds
+ *  none today, so callers currently pass the company alone. Blank company returns null. */
+export function alumniSearchUrl(company: string, university?: string): string | null {
+  const co = company.trim();
+  if (!co) return null;
+  const keywords = [co, university?.trim()].filter(Boolean).join(" ");
+  return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(keywords)}`;
+}

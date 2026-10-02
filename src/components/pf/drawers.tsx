@@ -15,6 +15,7 @@ import { safeHttpUrl } from "@/lib/jobs/types";
 import { Kicker } from "./ui";
 import { CloseBtn, DrawerShell } from "./drawer-shell";
 import { ContactDrawer } from "./networking/contact-drawer";
+import { AlumniLink } from "./networking/alumni-link";
 import { FollowUpDraft } from "./tracker/follow-up-draft";
 import { useEffect, useRef, useState } from "react";
 
@@ -279,6 +280,8 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
             Open the posting ↗
           </a>
         )}
+
+        <div><AlumniLink company={c.company} /></div>
 
         {people.length > 0 && (
           <div style={{ marginTop: 18 }}>

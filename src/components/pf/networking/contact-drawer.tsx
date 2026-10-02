@@ -15,6 +15,7 @@ import { usePfStore } from "@/lib/pf/store";
 import { safeHttpUrl } from "@/lib/jobs/types";
 import { CloseBtn, DrawerShell } from "@/components/pf/drawer-shell";
 import { Kicker } from "@/components/pf/ui";
+import { AlumniLink } from "./alumni-link";
 
 interface Draft { name: string; company: string; role: string; howWeMet: HowWeMet; link: string; notes: string }
 
@@ -145,6 +146,7 @@ export function ContactDrawer({ id }: { id: string }) {
             Open their profile ↗
           </a>
         )}
+        <div><AlumniLink company={c.company} /></div>
 
         <Kicker style={{ fontSize: 9.5, margin: "14px 0 8px" }}>Notes</Kicker>
         <textarea
