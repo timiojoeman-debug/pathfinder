@@ -14,6 +14,7 @@ import { StarTab } from "@/components/pf/interview/star-tab";
 import { QuestionsTab } from "@/components/pf/interview/questions-tab";
 import { BriefingTab } from "@/components/pf/interview/briefing-tab";
 import { LeetTab } from "@/components/pf/interview/leetcode-tab";
+import { AnswerGuides } from "@/components/pf/interview/answer-guides";
 import { PracticePanel } from "@/components/pf/interview/practice-panel";
 import { FeedbackAnalysis } from "@/components/pf/interview/feedback-analysis";
 
@@ -153,7 +154,12 @@ export default function InterviewPage() {
         </>
       )}
       {ivTab === "star" && <StarTab />}
-      {ivTab === "questions" && <QuestionsTab />}
+      {ivTab === "questions" && (
+        <>
+          <QuestionsTab />
+          <AnswerGuides />
+        </>
+      )}
       {ivTab === "briefing" && <BriefingTab />}
       {ivTab === "feedback" && <FeedbackTab />}
     </div>

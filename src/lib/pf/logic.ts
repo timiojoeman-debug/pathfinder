@@ -13,6 +13,7 @@ import {
   type BoardColumn,
   type OutreachPersona,
 } from "./data";
+import type { PfEvent } from "./events";
 
 /* ── Shared scales ─────────────────────────────────────────────────── */
 
@@ -416,6 +417,34 @@ export function trackerDerived(board: BoardColumn[], netSent: number) {
   else { leakLabel = "Pipeline healthy, keep the cadence"; leakHref = "/jobs"; }
 
   return { submitted, interviews, offers, weeklyCount, weeklyGoal, weeklyPct, weeklyTone, weeklyNote, stats, funnel, leakLabel, leakHref };
+}
+
+const WEEK_MS = 6048e5;
+
+export interface WeeklyActivity {
+  applicationsSent: number;
+  conversationsHad: number;
+  interviewsBooked: number;
+}
+
+/**
+ * The three weekly inputs from the TechTalk September and rejection decks ("set activity targets,
+ * not outcome targets"): applications sent, conversations had, interviews booked, over the last
+ * seven days. Pure counts of things the student did or logged. They are shown on the tracker and
+ * deliberately feed nothing else: not readiness, not progress.
+ *
+ * - applications sent: board cards with an `appliedDate` in the window (same rule as the weekly cadence bar)
+ * - conversations had: `RecruiterContacted` + `CoffeeChatCompleted` events
+ * - interviews booked: `InterviewScheduled` events (a card moved to Interview)
+ */
+export function weeklyActivity(board: BoardColumn[], events: Pick<PfEvent, "type" | "ts">[], now: number = Date.now()): WeeklyActivity {
+  const inWeek = (ts: number | undefined) => ts !== undefined && now - ts >= 0 && now - ts < WEEK_MS;
+  const count = (types: string[]) => events.filter((e) => types.includes(e.type) && inWeek(e.ts)).length;
+  return {
+    applicationsSent: board.reduce((n, col) => n + col.cards.filter((c) => inWeek(c.appliedDate)).length, 0),
+    conversationsHad: count(["RecruiterContacted", "CoffeeChatCompleted"]),
+    interviewsBooked: count(["InterviewScheduled"]),
+  };
 }
 
 /** A card's "when" label. "today" was written once and never aged, so a card applied to a

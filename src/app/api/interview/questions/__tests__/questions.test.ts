@@ -78,6 +78,16 @@ describe("POST /api/interview/questions", () => {
     expect(prompt).not.toContain("DIFFICULTY: HARDER");
   });
 
+  it("asks for one AI usage question answered with AIM", async () => {
+    mockOpenAI(QUESTIONS);
+    await POST(req({}));
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    const prompt = body.messages.map((m: { content: string }) => m.content).join(" ");
+    expect(prompt).toContain('type "AI usage"');
+    expect(prompt).toContain("Acknowledge");
+    expect(prompt).toContain("Move Forward");
+  });
+
   it("unwraps questions nested under `data` (aiShape)", async () => {
     mockOpenAI({ data: QUESTIONS });
     const res = await POST(req({ more: true }));
@@ -90,8 +100,9 @@ describe("POST /api/interview/questions", () => {
     const res = await POST(req({ targetRole: "Backend Intern" }));
     expect(res.status).toBe(200);
     const json = await res.json();
-    // Four generic practice questions, none derived from the student.
-    expect(json.questions).toHaveLength(4);
+    // Five generic practice questions (one is the AI usage question), none derived from the student.
+    expect(json.questions).toHaveLength(5);
+    expect(json.questions.map((q: { type: string }) => q.type)).toContain("AI usage");
     expect(json.questions.map((q: { type: string }) => q.type)).toContain("Behavioral");
     // Flagged as degraded, and asserts nothing about a CV it never read.
     expect(json.source).toBe("fallback");

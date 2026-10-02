@@ -7,6 +7,10 @@
  * The tracker's "Prep" action hands a company over through `ivBriefingFor`.
  * The last briefing per company is kept in the store, so it survives a reload.
  *
+ * Briefings are tiered (beginner, intermediate, advanced; TechTalk June 2026 Masterclass Day 3).
+ * Briefings saved before tiers existed have none of those fields and still render from the
+ * original ones, so every tier field is optional and read defensively.
+ *
  * The prompt asks the model to flag its own uncertainty about a company's tech
  * stack, and that flag is surfaced rather than hidden: a confident-looking list
  * of technologies a company may not use is worse than no list at all.
@@ -20,6 +24,10 @@ import { Reveal } from "@/components/pf/ui";
 import { AiCaveat, AiError, AiList, AiSection, AiTag, GenerateButton } from "@/components/pf/ai-panel";
 
 type BriefingData = SavedBriefing["data"];
+
+/** Model output is not trusted to be an array: anything else renders as nothing rather than crashing. */
+const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim() !== "") : []);
+const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
 const CONFIDENCE_TONE = {
   high: "var(--strong)",
@@ -174,6 +182,8 @@ export function BriefingTab() {
             <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.65, margin: 0 }}>{brief.companyOverview}</p>
           )}
 
+          <TieredResearch tiers={brief.tiers} />
+
           {brief.techStack?.length ? (
             <AiSection title="Likely tech stack">
               <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 9 }}>
@@ -211,5 +221,36 @@ export function BriefingTab() {
         </div>
       )}
     </Reveal>
+  );
+}
+
+/** One titled list; renders nothing when the model left it empty or malformed. */
+function Tier({ title, items, marker }: { title: string; items: unknown; marker?: string }) {
+  const list = strs(items);
+  if (!list.length) return null;
+  return <AiSection title={title}><AiList items={list} marker={marker} /></AiSection>;
+}
+
+function TieredResearch({ tiers }: { tiers: BriefingData["tiers"] }) {
+  if (!tiers || typeof tiers !== "object") return null;
+  const { beginner: b, intermediate: i, advanced: a } = tiers;
+  const insight = str(a?.insight);
+  return (
+    <>
+      <Tier title="Beginner: the basics" items={b?.facts} />
+      <Tier title="Beginner: check these yourself" items={b?.toCheck} marker="→" />
+      <Tier title="Intermediate: customers and their pain points" items={i?.customersAndPainPoints} />
+      <Tier title="Intermediate: people to look up on LinkedIn" items={i?.peopleToResearch} marker="→" />
+      <Tier title="Advanced: competitive landscape" items={a?.competitiveLandscape} />
+      <Tier title="Advanced: strategic signals" items={a?.strategicSignals} />
+      <Tier title="What it means for the role" items={a?.whatItMeansForTheRole} />
+      <Tier title="Three angles you could bring" items={a?.angles} />
+      {insight && (
+        <AiSection title="The one insight">
+          <p style={{ fontSize: 13, lineHeight: 1.65, margin: 0 }}>{insight}</p>
+          {str(a?.whyItLands) && <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, margin: "6px 0 0" }}>Why it lands: {str(a?.whyItLands)}</p>}
+        </AiSection>
+      )}
+    </>
   );
 }

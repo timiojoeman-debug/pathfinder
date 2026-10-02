@@ -55,6 +55,23 @@ describe("POST /api/interview/company-briefing", () => {
     expect(json.data.companyOverview).toContain("Monzo");
   });
 
+  it("asks for beginner / intermediate / advanced tiers and keeps the honesty rules", async () => {
+    mockOpenAI(BRIEFING_ENVELOPE);
+    await POST(req({ companyName: "Monzo", roleName: "Backend Intern" }));
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    const prompt = body.messages.map((m: { content: string }) => m.content).join(" ");
+    for (const k of ["beginner", "intermediate", "advanced", "competitiveLandscape", "strategicSignals", "whatItMeansForTheRole", "angles", "insight", "uncertainties"]) {
+      expect(prompt).toContain(k);
+    }
+    expect(prompt).toMatch(/Never invent/);
+  });
+
+  it("passes a tiered payload through, and still accepts the old flat one", async () => {
+    mockOpenAI({ data: { companyOverview: "Monzo.", tiers: { advanced: { insight: "Lending is the lever." } } } });
+    const res = await POST(req({ companyName: "Monzo" }));
+    expect((await res.json()).data.tiers.advanced.insight).toBe("Lending is the lever.");
+  });
+
   it("500s when the model returns an empty payload", async () => {
     mockOpenAI({ data: {} });
     const res = await POST(req({ companyName: "Monzo" }));

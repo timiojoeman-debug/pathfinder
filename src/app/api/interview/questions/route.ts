@@ -40,6 +40,12 @@ const FALLBACK_QUESTIONS = {
         "Use STARL: Situation and Task briefly, focus on Actions (break down work, communicate, manage scope), give the Result (with a number where you can), then add what you learned.",
     },
     {
+      type: "AI usage",
+      question: "If we hired you, how would you use AI in your work?",
+      answerTemplate:
+        "Use AIM. Acknowledge why AI matters in this field (it enhances skills rather than replacing them), Illustrate with one real example of how you use it and check its output, then Move Forward by asking how their team uses AI.",
+    },
+    {
       type: "Technical",
       question: "How would you design an API for an internship application tracker?",
       answerTemplate:

@@ -21,7 +21,9 @@ STARL STRUCTURE (Situation, Task, Action, Result, Learnings):
 
 CATEGORY: ${matchedCategory?.name || category} — ${categoryPrompt}
 
-PRACTICE TIMINGS:
+${matchedCategory?.id === "ai_usage" ? `AI USAGE STORY: this is evidence for "How do you use AI in your work?". Help the student show a real workflow, how they checked the output, and what they changed. Never invent a tool, a number or a result they did not give.
+` : ""}PRACTICE TIMINGS:
+- Brief (${INTERVIEW_PREP.practiceTimings.brief.duration}): ${INTERVIEW_PREP.practiceTimings.brief.use}
 - Short (${INTERVIEW_PREP.practiceTimings.short.duration}): ${INTERVIEW_PREP.practiceTimings.short.use}
 - Medium (${INTERVIEW_PREP.practiceTimings.medium.duration}): ${INTERVIEW_PREP.practiceTimings.medium.use}
 
@@ -90,6 +92,7 @@ Generate questions from the student's ACTUAL CV content (not generic):
 - For each project: deep-dive questions referencing their tech stack and architecture
 - For each experience: behavioural questions drawing on what they actually did
 - Include "Tell me about yourself", "Why this company?", "Walk me through your project"
+- Include exactly one question of type "AI usage": "${INTERVIEW_PREP.aim.question}" or a close variant tied to the target role. Its answerTemplate must use the AIM structure: ${INTERVIEW_PREP.aim.steps.map((a) => `${a.name} (${a.action})`).join("; ")}. Do not invent tools or projects the student has not listed
 - Role-specific technical questions
 ${difficulty === "harder" ? `
 DIFFICULTY: HARDER. The student has seen a first set and wants a tougher round. Skip warm-up questions
@@ -113,7 +116,7 @@ Respond ONLY with valid JSON:
   "shouldRepeatAnalysis": false,
   "data": {
     "questions": [{
-      "type": "Behavioral" | "Technical" | "Situational" | "CV-Specific" | "Project Deep-Dive",
+      "type": "Behavioral" | "Technical" | "Situational" | "CV-Specific" | "Project Deep-Dive" | "AI usage",
       "question": string,
       "answerTemplate": string,
       "relatedCVItem": string,
@@ -125,24 +128,40 @@ Respond ONLY with valid JSON:
 }
 
 export function buildCompanyBriefingPrompt(companyName: string, roleName: string, studentProfile: string): string {
+  const t = INTERVIEW_PREP.companyResearchTiers;
   return `You are PathFinder's AI career mentor — Company Research Briefing.
 
-Generate a research briefing for ${companyName} for the ${roleName} role.
+Generate a tiered research briefing for ${companyName} for the ${roleName} role.
 
 Student profile: ${studentProfile}
 
+The three research levels are:
+- Beginner: ${t.beginner}
+- Intermediate: ${t.intermediate}
+- Advanced: ${t.advanced}
+${t.note}
+
+HONESTY RULES (these matter more than completeness):
+- Use only what you can say from public knowledge. If you are not confident of a fact, leave it out and add it to "uncertainties" instead.
+- Never invent funding rounds, figures, dates, executive names, customers, competitors or news. A shorter, true list beats a longer, guessed one.
+- You cannot browse. Say so where it matters: "signals" are things the company has publicly been doing as far as you know, which may be out of date.
+- For the intermediate tier, give the student things to LOOK UP (roles to find on LinkedIn, questions to answer about customers), not claims about named people.
+
 Include:
-1. What the company does (1-2 sentences)
+1. What the company does (1-2 sentences) as "companyOverview"
 2. Known tech stack (flag uncertainty: "I'm not confident about their exact tech stack — verify on their engineering blog or careers page.")
 3. What they value (from public knowledge)
-4. 3 talking points for "Why this company?" connected to the student's actual interests and skills (not generic flattery)
-5. 3 intelligent questions to ask the interviewer
+4. "tiers.beginner": 2-4 plain facts about the company and 2-3 things to check yourself (careers page, Glassdoor, likely interview questions)
+5. "tiers.intermediate": their likely customers and the pain points those customers have, plus 2-4 people or teams to research on LinkedIn (by role, not by name)
+6. "tiers.advanced": competitive landscape (2-4 points), strategic signals (2-4, with what each suggests), what this means for the ${roleName} role in the next 6-12 months and the likely challenges, exactly 3 angles on how the student could add value connected to their actual skills, and ONE insight: a sharp observation that shows they have thought about the company, plus why it lands
+7. 3 talking points for "Why this company?" connected to the student's actual interests and skills (not generic flattery)
+8. 3 intelligent questions to ask the interviewer
 
 Respond ONLY with valid JSON:
 {
   "inputQuality": string,
   "inputQualityExplanation": string,
-  "methodologyReference": "PathFinder Interview Prep - Company Research",
+  "methodologyReference": "PathFinder Interview Prep - Company Research (tiers from TechTalk June 2026 Masterclass, Day 3)",
   "feedback": [],
   "strengths": string[],
   "crossPhaseInsights": string[],
@@ -154,6 +173,18 @@ Respond ONLY with valid JSON:
     "techStack": string[],
     "techStackConfidence": "high" | "medium" | "low",
     "values": string[],
+    "tiers": {
+      "beginner": { "facts": string[], "toCheck": string[] },
+      "intermediate": { "customersAndPainPoints": string[], "peopleToResearch": string[] },
+      "advanced": {
+        "competitiveLandscape": string[],
+        "strategicSignals": string[],
+        "whatItMeansForTheRole": string[],
+        "angles": string[],
+        "insight": string,
+        "whyItLands": string
+      }
+    },
     "whyThisCompany": string[],
     "questionsToAsk": string[],
     "uncertainties": string[]
