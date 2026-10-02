@@ -103,7 +103,7 @@ export default function LoginPage() {
               <div style={{ fontSize: 12.5, color: "var(--risk)", marginBottom: 14, lineHeight: 1.5 }}>{error}</div>
             )}
 
-            <button
+            <button className="pf-shine"
               type="submit"
               disabled={busy}
               style={{ cursor: busy ? "default" : "pointer", width: "100%", height: 46, borderRadius: 12, border: "none", background: busy ? "var(--panel3)" : "var(--accent)", color: busy ? "var(--faint)" : "var(--onAccent)", fontSize: 14, fontWeight: 600 }}

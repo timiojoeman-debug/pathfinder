@@ -60,7 +60,7 @@ export function CommandPalette() {
       />
       <div
         className="pf-anim-up"
-        style={{ position: "fixed", top: "14vh", left: "50%", transform: "translateX(-50%)", width: "min(560px,92vw)", zIndex: 81, background: "var(--panelSolid)", border: "1px solid var(--lineStrong)", borderRadius: 18, overflow: "hidden", boxShadow: "0 30px 70px rgba(30,22,12,.35)" }}
+        style={{ position: "fixed", top: "14vh", left: 0, right: 0, marginInline: "auto", width: "min(560px,92vw)", zIndex: 81, background: "var(--panelSolid)", border: "1px solid var(--lineStrong)", borderRadius: 18, overflow: "hidden", boxShadow: "0 30px 70px rgba(30,22,12,.35)" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "16px 18px", borderBottom: "1px solid var(--line)" }}>
           <span style={{ color: "var(--faint)" }}><Icon name="search" /></span>

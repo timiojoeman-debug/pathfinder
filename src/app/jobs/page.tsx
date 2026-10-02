@@ -187,7 +187,7 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
         >
           Save to my list
         </button>
-        <button
+        <button className="pf-shine"
           onClick={onAnalyze}
           disabled={!canAnalyze}
           style={{ cursor: canAnalyze ? "pointer" : "default", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: canAnalyze ? "var(--accent)" : "var(--panel3)", color: canAnalyze ? "var(--onAccent)" : "var(--faint)", fontSize: 13.5, fontWeight: 600 }}

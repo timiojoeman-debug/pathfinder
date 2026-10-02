@@ -9,7 +9,7 @@ export default function NotFound() {
       <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6, margin: "0 0 20px" }}>
         The link may be out of date, or the address mistyped.
       </p>
-      <Link href="/" style={{ ...authButtonStyle(true), display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>
+      <Link href="/" className="pf-shine" style={{ ...authButtonStyle(true), display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>
         Back to home
       </Link>
     </AuthShell>

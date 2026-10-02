@@ -61,7 +61,7 @@ function ResetForm() {
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Confirm password</div>
           <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required className="pf-input" style={authInputStyle} />
           {error && <div style={{ fontSize: 12.5, color: "var(--risk)", marginBottom: 14 }}>{error}</div>}
-          <button type="submit" disabled={busy} style={authButtonStyle(!busy)}>{busy ? "Updating…" : "Update password →"}</button>
+          <button type="submit" className="pf-shine" disabled={busy} style={authButtonStyle(!busy)}>{busy ? "Updating…" : "Update password →"}</button>
         </form>
       )}
     </AuthShell>

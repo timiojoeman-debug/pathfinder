@@ -80,7 +80,7 @@ function FeedbackTab() {
           className="pf-input"
           style={{ width: "100%", minHeight: 70, padding: "12px 15px", fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
         />
-        <button
+        <button className="pf-shine"
           onClick={s.saveFeedback}
           disabled={!canSave}
           style={{ cursor: canSave ? "pointer" : "default", marginTop: 12, height: 42, padding: "0 20px", borderRadius: 11, border: "none", background: canSave ? "var(--accent)" : "var(--panel3)", color: canSave ? "var(--onAccent)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
