@@ -213,6 +213,8 @@ interface PfState {
   /** Add an application by hand. Returns false for a missing field or a card that already exists. */
   addCard: (card: { company: string; role: string; column: BoardColumn["id"]; link?: string; appliedOn?: string }) => boolean;
   setCardNote: (key: string, note: string) => void;
+  /** The student sent a follow-up on this application. Clears the follow-up nudge for two weeks. */
+  markFollowedUp: (key: string) => void;
 }
 
 /** Stamp a card as it lands in a new column. */
@@ -673,8 +675,9 @@ export const usePfStore = create<PfState>()(
         // Anything past Saved was applied to. Back-filled applications keep the date the
         // student gives, so last month's applications don't count toward this week.
         if (column !== "saved") {
+          // Clamped to now: an application can't have been sent in the future.
           const parsed = appliedOn ? new Date(appliedOn + "T00:00:00").getTime() : NaN;
-          card = { ...card, appliedDate: Number.isFinite(parsed) ? parsed : Date.now() };
+          card = { ...card, appliedDate: Number.isFinite(parsed) ? Math.min(parsed, Date.now()) : Date.now() };
         }
         set((s) => ({ board: s.board.map((col) => (col.id === column ? { ...col, cards: [card, ...col.cards] } : col)) }));
         const ev = COLUMN_EVENT[column];
@@ -685,10 +688,19 @@ export const usePfStore = create<PfState>()(
       setCardNote: (key, note) => {
         const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
         if (!card || card.note === note) return;
+        // No event: a note is bookkeeping, not progress.
         set((s) => ({
           board: s.board.map((col) => ({ ...col, cards: col.cards.map((c) => (c.key === key ? { ...c, note } : c)) })),
         }));
-        get().emit("ApplicationAdvanced", "tracker", `Note updated · ${card.company}`, { company: card.company, note: true });
+      },
+      markFollowedUp: (key) => {
+        const card = get().board.flatMap((c) => c.cards).find((c) => c.key === key);
+        if (!card) return;
+        const now = Date.now();
+        set((s) => ({
+          board: s.board.map((col) => ({ ...col, cards: col.cards.map((c) => (c.key === key ? { ...c, followedUpAt: now } : c)) })),
+        }));
+        get().emit("ApplicationAdvanced", "tracker", `Followed up · ${card.role} at ${card.company}`, { company: card.company, role: card.role, followedUp: true });
       },
     }),
     {

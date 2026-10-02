@@ -47,6 +47,8 @@ export interface BoardCard {
   deadline?: string; // yyyy-mm-dd
   /** The posting, when the student added the card by hand with a link. http(s) only. */
   link?: string;
+  /** When the student last marked a follow-up as sent. Drafting one does not set it. */
+  followedUpAt?: number;
 }
 
 export interface BoardColumn {

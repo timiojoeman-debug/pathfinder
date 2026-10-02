@@ -4,7 +4,6 @@ import { deriveProfile } from "../profile";
 import { computeProgress } from "../progress";
 import { dominantRejectionTiming } from "../logic";
 import { DIAG_FIX } from "../data";
-import { applicationFollowUpNotes } from "@/components/pf/tracker/follow-up-draft";
 
 /**
  * Store actions behind the Interview and Tracker honesty pass: saved STAR
@@ -83,6 +82,13 @@ describe("tracker — add application", () => {
     expect(cards()).toHaveLength(1);
   });
 
+  it("clamps a future applied-on date to now", () => {
+    const before = Date.now();
+    s().addCard({ company: "Wise", role: "SWE Intern", column: "applied", appliedOn: "2999-01-01" });
+    expect(cards()[0].appliedDate).toBeGreaterThanOrEqual(before);
+    expect(cards()[0].appliedDate).toBeLessThanOrEqual(Date.now());
+  });
+
   it("marks a card added straight to Interview as a callback", () => {
     s().addCard({ company: "Wise", role: "SWE Intern", column: "interview" });
     expect(cards()[0]).toMatchObject({ column: "interview", reachedInterview: true });
@@ -91,13 +97,27 @@ describe("tracker — add application", () => {
 });
 
 describe("tracker — notes", () => {
-  it("edits a card's note and logs it once, ignoring an unchanged save", () => {
+  it("edits a card's note without logging an event: a note is not progress", () => {
     s().addCard({ company: "Monzo", role: "Backend Intern", column: "applied" });
     const n = s().events.length;
     s().setCardNote("monzo::backend intern", "Spoke to Sam in recruiting.");
     expect(cards()[0].note).toBe("Spoke to Sam in recruiting.");
-    s().setCardNote("monzo::backend intern", "Spoke to Sam in recruiting.");
-    expect(s().events).toHaveLength(n + 1);
+    expect(s().events).toHaveLength(n);
+  });
+});
+
+describe("tracker — follow-up sent", () => {
+  it("stamps followedUpAt and logs it, and the profile carries it to the nudge", () => {
+    s().addCard({ company: "Monzo", role: "Backend Intern", column: "applied" });
+    s().markFollowedUp("monzo::backend intern");
+    expect(cards()[0].followedUpAt).toBeTypeOf("number");
+    expect(lastEvent()).toMatchObject({ type: "ApplicationAdvanced", meta: { followedUp: true } });
+    expect(deriveProfile({ ...s() }).trackedCards[0].followedUpAt).toBe(cards()[0].followedUpAt);
+  });
+
+  it("ignores an unknown card", () => {
+    s().markFollowedUp("nope");
+    expect(s().events).toHaveLength(0);
   });
 });
 
@@ -109,14 +129,5 @@ describe("rejection fix routing", () => {
     expect(route("1–2 weeks")).toBe("/networking");
     expect(route("Never")).toBe("/networking");
     expect(dominantRejectionTiming({ a: "Never" })).toBeNull();
-  });
-});
-
-describe("application follow-up notes", () => {
-  it("tells the model there was no conversation, and carries the card's note", () => {
-    const notes = applicationFollowUpNotes({ company: "Monzo", role: "Backend Intern", appliedDate: new Date("2026-09-01T00:00:00").getTime(), note: "Referred by Sam." });
-    expect(notes).toContain("Backend Intern role at Monzo on 1 September");
-    expect(notes).toMatch(/no conversation/i);
-    expect(notes).toContain("Referred by Sam.");
   });
 });
