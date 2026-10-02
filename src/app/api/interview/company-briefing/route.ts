@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
 import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildCompanyBriefingPrompt } from '@/lib/prompts';
+import { getCachedAi, setCachedAi } from '@/lib/db/ai-cache';
+
+const ROUTE = 'interview/company-briefing';
 
 export async function POST(req: Request) {
   try {
@@ -10,6 +13,14 @@ export async function POST(req: Request) {
     const { companyName, roleName, studentProfile } = __p.data;
     if (!companyName) {
       return NextResponse.json({ error: 'Company name is required' }, { status: 400 });
+    }
+
+    // Signed-in only (middleware 401s the rest); no header, no cache.
+    const userId = req.headers.get('x-user-id');
+    const cacheKey = { companyName, roleName, studentProfile };
+    if (userId) {
+      const hit = await getCachedAi(userId, ROUTE, cacheKey);
+      if (hit) return NextResponse.json(hit);
     }
 
     const systemPrompt = buildCompanyBriefingPrompt(
@@ -27,6 +38,7 @@ export async function POST(req: Request) {
     "interview/company-briefing",
     );
 
+    if (userId) await setCachedAi(userId, ROUTE, cacheKey, result);
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json(

@@ -4,6 +4,9 @@ import { callAIValidated, AIError, aiShape } from '@/lib/ai';
 import { buildTitleVariantPrompt } from '@/lib/prompts/direction-prompts';
 import { readBody, zShort } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { getCachedAi, setCachedAi } from '@/lib/db/ai-cache';
+
+const ROUTE = 'direction/title-variants';
 
 /** This prompt returns `variants` at the root, but `aiShape` also tolerates
  *  the model nesting it under `data` on some runs. */
@@ -31,6 +34,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required field: role' }, { status: 400 });
     }
 
+    // Signed-in only (middleware 401s the rest); no header, no cache.
+    const userId = req.headers.get('x-user-id');
+    if (userId) {
+      const hit = await getCachedAi<{ variants: unknown }>(userId, ROUTE, parsed.data);
+      if (hit) return NextResponse.json(hit);
+    }
+
     const systemPrompt = buildTitleVariantPrompt(
       role,
       Array.isArray(techStack) ? techStack : [],
@@ -48,7 +58,9 @@ export async function POST(req: Request) {
       'direction/title-variants',
     );
 
-    return NextResponse.json({ variants: result.variants });
+    const out = { variants: result.variants };
+    if (userId) await setCachedAi(userId, ROUTE, parsed.data, out);
+    return NextResponse.json(out);
   } catch (err) {
     if (err instanceof AIError) {
       return NextResponse.json(
