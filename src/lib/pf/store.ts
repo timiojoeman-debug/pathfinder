@@ -137,6 +137,20 @@ export interface SavedBriefing {
     whyThisCompany?: string[];
     questionsToAsk?: string[];
     uncertainties?: string[];
+    /** Tiered research (beginner / intermediate / advanced). Absent on briefings saved before tiers existed. */
+    tiers?: BriefingTiers;
+  };
+}
+export interface BriefingTiers {
+  beginner?: { facts?: string[]; toCheck?: string[] };
+  intermediate?: { customersAndPainPoints?: string[]; peopleToResearch?: string[] };
+  advanced?: {
+    competitiveLandscape?: string[];
+    strategicSignals?: string[];
+    whatItMeansForTheRole?: string[];
+    angles?: string[];
+    insight?: string;
+    whyItLands?: string;
   };
 }
 

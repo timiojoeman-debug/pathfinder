@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type DragEvent, type FormEvent } from "react";
 import { DIAG_FIX, REJECTION_DIAGNOSIS, type BoardColumn } from "@/lib/pf/data";
-import { callbackSummary, cardWhen, dominantRejectionTiming, formatReminder, isoToday, rejectionInsight, trackerDerived } from "@/lib/pf/logic";
+import { callbackSummary, cardWhen, dominantRejectionTiming, formatReminder, isoToday, rejectionInsight, trackerDerived, weeklyActivity } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
 import { PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
@@ -76,6 +76,7 @@ export default function TrackerPage() {
   const router = useRouter();
   const d = trackerDerived(s.board, s.netSent);
   const callback = callbackSummary(d.submitted, d.interviews);
+  const activity = weeklyActivity(s.board, s.events);
   const insight = rejectionInsight(s.diags, REJECTION_DIAGNOSIS);
   const dominant = dominantRejectionTiming(s.diags);
   const fix = dominant ? DIAG_FIX[dominant.timing] : undefined;
@@ -115,6 +116,29 @@ export default function TrackerPage() {
           <div className="pf-mono" style={{ fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 6 }}>Your callback rate</div>
           <div style={{ fontSize: 20, fontWeight: 700 }}>{callback.value}</div>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>{callback.note}</div>
+        </div>
+      </Reveal>
+
+      <Reveal style={{ border: "1px solid var(--line)", borderRadius: 16, background: "var(--panel)", padding: "18px 22px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700 }}>Your inputs, last 7 days</span>
+          <span className="pf-mono" style={{ fontSize: 10, color: "var(--faint)" }}>things you control</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, margin: "12px 0 10px" }}>
+          {[
+            { label: "Applications sent", value: activity.applicationsSent },
+            { label: "Conversations had", value: activity.conversationsHad },
+            { label: "Interviews booked", value: activity.interviewsBooked },
+          ].map((n) => (
+            <div key={n.label}>
+              <div className="pf-mono" style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-.03em" }}>{n.value}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>{n.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.55 }}>
+          Replies and offers depend on other people. These three are the part you steer: what you send, who you talk to, and the interviews you line up. Conversations count outreach you sent and coffee chats you logged.
+          <span style={{ color: "var(--faint)" }}> Activity targets rather than outcome targets, as the TechTalk September and rejection decks put it.</span>
         </div>
       </Reveal>
 

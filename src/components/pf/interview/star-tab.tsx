@@ -30,6 +30,7 @@ const CATEGORIES = [
   { id: "leadership", name: "Leadership" },
   { id: "failure", name: "Failure & learning" },
   { id: "time_pressure", name: "Time pressure" },
+  { id: "ai_usage", name: "AI usage" },
 ] as const;
 
 const BEATS = [

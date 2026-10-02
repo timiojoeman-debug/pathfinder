@@ -7,7 +7,7 @@ import {
   targetKeywords, analyzeCvText,
   roleFit, analyzeJobDescription, cardWhen,
   buildCoverLetter, followUpMessage,
-  trackerDerived,
+  trackerDerived, weeklyActivity,
   roleFamiliesFor, targetRoleOptions, pruneTargetRoles, mapExplorePreferences, exploreMessages, EXPLORE_MAX_TURNS, EXPLORE_MAX_CHARS, outreachSubject, buildOutreachTemplate, jobPassesFit, composeSharedAttributes, postingKey, composeOneLiners,
   type OnbState, type DirectionFields,
 } from '../logic';
@@ -424,5 +424,32 @@ describe('exploreMessages', () => {
     expect(msgs[0]).toEqual({ role: 'system', content: 'x'.repeat(EXPLORE_MAX_CHARS) });
     expect(msgs[msgs.length - 1]).toEqual({ role: 'assistant', content: 'm59' });
     expect(exploreMessages('c', [{ who: 'you', text: 'y'.repeat(9000) }])[1].content).toHaveLength(EXPLORE_MAX_CHARS);
+  });
+});
+
+describe('weeklyActivity', () => {
+  const NOW = 1_800_000_000_000;
+  const DAY = 864e5;
+  const ev = (type: string, ageDays: number) => ({ type: type as never, ts: NOW - ageDays * DAY });
+  const boardApplied = (ages: number[]) =>
+    EMPTY_BOARD.map((col) => col.id === 'applied'
+      ? { ...col, cards: ages.map((a, i) => ({ ...mkCard(`a${i}`), appliedDate: NOW - a * DAY })) }
+      : { ...col, cards: [] });
+
+  it('counts only the last seven days, across applications, conversations and interviews', () => {
+    const a = weeklyActivity(
+      boardApplied([0, 3, 6.9, 8]),
+      [ev('RecruiterContacted', 1), ev('CoffeeChatCompleted', 2), ev('RecruiterContacted', 9), ev('InterviewScheduled', 0.5), ev('InterviewScheduled', 20), ev('AiConsulted', 0)],
+      NOW,
+    );
+    expect(a).toEqual({ applicationsSent: 3, conversationsHad: 2, interviewsBooked: 1 });
+  });
+
+  it('is all zeros for an empty board and no events', () => {
+    expect(weeklyActivity(EMPTY_BOARD, [], NOW)).toEqual({ applicationsSent: 0, conversationsHad: 0, interviewsBooked: 0 });
+  });
+
+  it('ignores events dated in the future', () => {
+    expect(weeklyActivity(EMPTY_BOARD, [ev('CoffeeChatCompleted', -2)], NOW).conversationsHad).toBe(0);
   });
 });

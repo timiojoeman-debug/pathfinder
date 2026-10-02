@@ -30,6 +30,7 @@ const TYPE_TONE: Record<string, string> = {
   Technical: "var(--accent)",
   Situational: "var(--warn)",
   "CV-Specific": "var(--strong)",
+  "AI usage": "var(--active)",
 };
 
 export function QuestionsTab() {

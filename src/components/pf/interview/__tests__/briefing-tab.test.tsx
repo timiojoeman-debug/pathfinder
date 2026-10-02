@@ -94,4 +94,41 @@ describe("BriefingTab", () => {
     expect(screen.getByText("Monzo builds on Go microservices.")).toBeTruthy();
     expect(screen.getByText(/Partly inferred/)).toBeTruthy();
   });
+
+  it("renders the tiers when a briefing has them", () => {
+    store.ivBriefings = { monzo: { company: "Monzo", role: "Backend Intern", at: Date.now(), data: {
+      companyOverview: "Monzo is a UK bank.",
+      tiers: {
+        beginner: { facts: ["Digital-first bank"], toCheck: ["Read the careers page"] },
+        intermediate: { customersAndPainPoints: ["Switchers want fewer fees"], peopleToResearch: ["An engineering manager"] },
+        advanced: {
+          competitiveLandscape: ["Competes with other challenger banks"],
+          strategicSignals: ["Expanding lending"],
+          whatItMeansForTheRole: ["Reliability work"],
+          angles: ["Go experience", "Testing habits", "Curiosity about payments"],
+          insight: "Lending depends on data quality.",
+          whyItLands: "It links the product to the role.",
+        },
+      },
+    } } };
+    store.ivBriefingFor = { company: "Monzo", role: "Backend Intern" };
+    render(<BriefingTab />);
+    expect(screen.getByText("Digital-first bank")).toBeTruthy();
+    expect(screen.getByText("Expanding lending")).toBeTruthy();
+    expect(screen.getByText("Testing habits")).toBeTruthy();
+    expect(screen.getByText("Lending depends on data quality.")).toBeTruthy();
+  });
+
+  it("still renders a briefing saved before tiers existed, and ignores malformed tier fields", () => {
+    store.ivBriefings = { monzo: { company: "Monzo", role: "Backend Intern", at: Date.now(), data: {
+      companyOverview: "Old briefing.",
+      whyThisCompany: ["You like payments"],
+      tiers: { beginner: { facts: "not an array" }, advanced: { angles: null } },
+    } } };
+    store.ivBriefingFor = { company: "Monzo", role: "Backend Intern" };
+    render(<BriefingTab />);
+    expect(screen.getByText("Old briefing.")).toBeTruthy();
+    expect(screen.getByText("You like payments")).toBeTruthy();
+    expect(screen.queryByText(/Beginner/)).toBeNull();
+  });
 });

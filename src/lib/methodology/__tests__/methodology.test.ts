@@ -142,9 +142,29 @@ describe('Interview Prep', () => {
     expect(INTERVIEW_PREP.practiceTimings).not.toHaveProperty('extended');
   });
 
+  it('carries the AIM structure, the legible AI-fluency cells and the screening-call module', () => {
+    expect(INTERVIEW_PREP.aim.steps.map((a) => a.letter).join('')).toBe('AIM');
+    expect(INTERVIEW_PREP.aiFluency.components).toHaveLength(4);
+    // Upper-level cells were unreadable on the slides, so no per-cell text exists for them.
+    for (const l of INTERVIEW_PREP.aiFluency.levels) expect(Object.keys(l).sort()).toEqual(['heading', 'name']);
+    expect(INTERVIEW_PREP.screeningCall.failureModes).toHaveLength(5);
+    expect(INTERVIEW_PREP.screeningCall.alwaysPrepare).toHaveLength(3);
+    expect(INTERVIEW_PREP.practiceTimings.brief.duration).toBe('1-2 minutes');
+  });
+
+  it('cites only sources that exist', async () => {
+    const { SOURCES } = await import('@/lib/knowledge');
+    const ids = [
+      ...INTERVIEW_PREP.aim.sourceIds, ...INTERVIEW_PREP.aiFluency.sourceIds, ...INTERVIEW_PREP.pastPresentFuture.sourceIds,
+      ...INTERVIEW_PREP.goodVsGreat.sourceIds, ...INTERVIEW_PREP.screeningCall.sourceIds, ...INTERVIEW_PREP.companyResearchTiers.sourceIds,
+    ];
+    for (const id of ids) expect(SOURCES[id], id).toBeDefined();
+  });
+
   it('exports story categories', () => {
     expect(INTERVIEW_PREP.storyCategories).toBeDefined();
     expect(Array.isArray(INTERVIEW_PREP.storyCategories)).toBe(true);
-    expect(INTERVIEW_PREP.storyCategories.length).toBe(5);
+    expect(INTERVIEW_PREP.storyCategories.length).toBe(6);
+    expect(INTERVIEW_PREP.storyCategories.map((c) => c.id)).toContain('ai_usage');
   });
 });
