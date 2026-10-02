@@ -76,7 +76,7 @@ function JobDrawer({ company }: { company: string }) {
       closeDrawers();
       router.push("/tracker");
     } else {
-      trackJob({ company: jd.company, role: jd.role, fit: jd.fit, tone: jd.tone });
+      trackJob({ company: jd.company, role: jd.role, fit: jd.fitKnown === false ? null : jd.fit, tone: jd.tone });
     }
   };
   const onTailor = () => {
