@@ -21,6 +21,21 @@ export interface JobListing {
   atsKeywords: string[];
 }
 
+/**
+ * A posting link, only if it is http(s). Listing URLs come from community-edited
+ * lists and third-party APIs and end up in an `<a href>`, so a `javascript:` or
+ * `data:` URL must never get through. Returns the normalised URL or null.
+ */
+export function safeHttpUrl(raw: unknown): string | null {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  try {
+    const u = new URL(raw.trim());
+    return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 export const KEYWORD_CANDIDATES = [
   "react", "node", "typescript", "python", "java", "sql", "aws", "gcp",
   "docker", "kubernetes", "api", "microservices", "tailwind", "postgresql",
@@ -112,9 +127,19 @@ export function expandRoleQuery(roleType: string): string {
     .join(" ");
 }
 
-/** Lower-case words of a free-text filter worth matching (sub-3-char noise dropped). */
+/** Lower-case words of a free-text filter worth matching. Sub-3-char words are
+ *  dropped as noise ("of", "&"), unless they are all there is: "AI" on its own
+ *  is the filter, not noise. */
 function keywordTokens(text: string | undefined): string[] {
-  return (text ?? "").toLowerCase().split(/[^a-z0-9+#.]+/).filter((t) => t.length > 2);
+  const all = (text ?? "").toLowerCase().split(/[^a-z0-9+#]+/).filter(Boolean);
+  const long = all.filter((t) => t.length > 2);
+  return long.length ? long : all;
+}
+
+/** Whole-word match, so "ai" doesn't hit "Daily" and "bank" doesn't hit "Bankside". */
+function hasWord(text: string, word: string): boolean {
+  const esc = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${esc}($|[^a-z0-9])`).test(text);
 }
 
 /** Split a role query into title-matchable tokens, expanding known abbreviations. */
@@ -169,8 +194,9 @@ export function filterListings(
     const text = `${title} ${j.company} ${j.location} ${j.workMode}`.toLowerCase();
     const roleOk = roleTokens.length === 0 || roleTokens.some((t) => titleMatchesToken(title, t));
     const locOk = !loc || j.location.toLowerCase().includes(loc);
-    const industryOk = industryTokens.length === 0 || industryTokens.some((t) => text.includes(t));
-    const modeOk = modeTokens.length === 0 || modeTokens.some((t) => text.includes(t));
+    // Every word of a multi-word filter must appear: "health tech" means both, not either.
+    const industryOk = industryTokens.every((t) => hasWord(text, t));
+    const modeOk = modeTokens.every((t) => hasWord(text, t));
     return roleOk && locOk && industryOk && modeOk;
   });
 }

@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { DIAG_TIMINGS, REJECTION_DIAGNOSIS } from "@/lib/pf/data";
 import { cardWhen, formatReminder, trackCardKey } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
+import { safeHttpUrl } from "@/lib/jobs/types";
 import { Kicker } from "./ui";
 
 function Scrim({ onClose }: { onClose: () => void }) {
@@ -67,9 +68,11 @@ function JobDrawer({ jobKey }: { jobKey: string }) {
     ...(jd.meta.startsWith("Added by you") ? [["Added by you", "var(--accent)"] as [string, string]] : []),
     jd.fitKnown === false ? ["Not scored", "var(--faint)"] : ["Scored from your CV", "var(--strong)"],
   ];
+  // Re-checked at render: jobs persisted before the mappers filtered links can hold any scheme.
+  const postingUrl = safeHttpUrl(jd.url);
   const desc = jd.jdText?.trim()
     ? jd.jdText.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-    : [jd.url
+    : [postingUrl
         ? "This listing came without a description. Open the original posting to read it, or paste the advert into the add-role form to score it."
         : "No description stored for this role yet. Paste one into the add-role form to score it."];
   const slug = trackCardKey(jd.company, jd.role);
@@ -84,8 +87,9 @@ function JobDrawer({ jobKey }: { jobKey: string }) {
     }
   };
   // Carry the advert into the CV Tailor panel, so the student lands ready to audit against it.
+  // Always set it, even to "": otherwise a posting with no JD lands on the previous posting's audit.
   const onTailor = () => {
-    if (jd.jdText?.trim()) setTailorJD(jd.jdText.trim());
+    setTailorJD(jd.jdText?.trim() ?? "");
     closeDrawers();
     router.push("/cv");
   };
@@ -151,8 +155,8 @@ function JobDrawer({ jobKey }: { jobKey: string }) {
           </>
         )}
 
-        {jd.url && (
-          <a href={jd.url} target="_blank" rel="noopener noreferrer" className="pf-mono" style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 20, fontSize: 11, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
+        {postingUrl && (
+          <a href={postingUrl}target="_blank" rel="noopener noreferrer" className="pf-mono" style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 20, fontSize: 11, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
             Open original posting ↗
           </a>
         )}

@@ -7,6 +7,7 @@ import {
   dedupeListings,
   expandRoleQuery,
   filterListings,
+  safeHttpUrl,
   sortByFit,
   type JobListing,
 } from "@/lib/jobs/types";
@@ -76,7 +77,7 @@ type AdzunaResult = {
 
 function mapAdzunaResult(r: AdzunaResult, cvSummary: string): JobListing | null {
   const title = r.title?.trim();
-  const url = r.redirect_url?.trim();
+  const url = safeHttpUrl(r.redirect_url);
   if (!title || !url) return null;
 
   const description = r.description?.trim() ?? "";

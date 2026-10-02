@@ -344,10 +344,14 @@ export function trackCardKey(company: string, role: string): string {
   return `${company.trim().toLowerCase()}::${role.trim().toLowerCase()}`;
 }
 
+/** Longest advert a saved job keeps; it is persisted to localStorage. */
+export const MAX_JD_CHARS = 8000;
+
 /** Identifies the posting a cover letter was written for: the role plus a hash
  *  of the advert, so editing the JD makes an older letter stale. */
 export function postingKey(company: string, role: string, jd: string): string {
-  const text = jd.trim();
+  // Hashes only what a saved job keeps, so a stored role still matches its letter.
+  const text = jd.trim().slice(0, MAX_JD_CHARS);
   let h = 0;
   for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;
   return `${trackCardKey(company, role)}::${text.length}:${h}`;

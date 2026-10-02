@@ -57,6 +57,7 @@ export default function CvPage() {
   const dirStack = usePfStore((s) => s.dirStack);
   const set = usePfStore((s) => s.set);
   const emit = usePfStore((s) => s.emit);
+  const keepCvAiRead = usePfStore((s) => s.keepCvAiRead);
   const analyzeCv = usePfStore((s) => s.analyzeCv);
   const reAnalyzeCv = usePfStore((s) => s.reAnalyzeCv);
 
@@ -66,12 +67,13 @@ export default function CvPage() {
   const [uploadNote, setUploadNote] = useState<string | null>(null);
   const [aiNote, setAiNote] = useState<string | null>(null);
 
-  /** Keep a real read; say so plainly when the route reports it failed. */
-  const keepRead = (json: CvAnalyzeResponse) => {
+  /** Keep a real read of `forText`; say so plainly when the route reports it failed.
+   *  A read that lands after the CV was edited is dropped by the store. */
+  const keepRead = (json: CvAnalyzeResponse, forText: string) => {
     const read = toAiRead(json);
     if (read) {
+      if (!keepCvAiRead(read, forText)) return;
       setAiNote(null);
-      set({ cvAiRead: read });
       emit("AiConsulted", "cv", "AI mentor read of the CV");
     } else {
       setAiNote(json.aiMessage ?? "The AI read came back empty. Try again in a minute.");
@@ -93,16 +95,17 @@ export default function CvPage() {
       return;
     }
     set({ cvText: rawText, cvAnalyzed: false, cvAiRead: null });
-    keepRead(json);
+    keepRead(json, rawText);
   };
 
   // The ATS read is local and instant; the AI read is a server call that needs
   // an account, so it can fail on its own without taking the local read with it.
   const runAiRead = async () => {
+    const forText = usePfStore.getState().cvText;
     const fd = new FormData();
-    fd.append("text", usePfStore.getState().cvText);
+    fd.append("text", forText);
     const json = await reader.run(fd);
-    if (json) keepRead(json);
+    if (json) keepRead(json, forText);
   };
 
   const handleAnalyze = () => {

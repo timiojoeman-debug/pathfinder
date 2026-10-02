@@ -26,6 +26,7 @@ import {
   fitTone,
   pruneTargetRoles,
   readinessFrom,
+  MAX_JD_CHARS,
   postingKey,
   roleFit,
   trackCardKey,
@@ -202,9 +203,13 @@ interface PfState {
   /** Save a live search result (deduped on company + role) and log it. */
   saveListing: (job: SavedJob) => void;
   /** Keep a generated cover letter, and attach it to the saved role it was written for. */
-  keepCoverLetter: (letter: JfCoverLetter, company: string, role: string) => void;
+  keepCoverLetter: (letter: JfCoverLetter) => void;
   /** Hand an advert to the CV Tailor panel, clearing results run against the old one. */
   setTailorJD: (jd: string) => void;
+  /** Keep an AI read of `forText` (length-capped). False, and nothing kept, if the CV changed meanwhile. */
+  keepCvAiRead: (read: CvAiRead, forText: string) => boolean;
+  /** Keep a Tailor result run against `forJD`. False, and nothing kept, if the advert changed meanwhile. */
+  keepTailorResult: (kind: "ats" | "match", result: TailorAts | TailorMatch, forJD: string) => boolean;
 
   /** Log a sent message. Returns false (and logs nothing) without a real recipient and message. */
   generateOutreach: (contact: { name: string; company?: string; message: string }) => boolean;
@@ -473,7 +478,7 @@ export const usePfStore = create<PfState>()(
               tags: found.length ? found : ["Manual"],
               verdict: scored === null ? (s.cvText.trim() ? "Not scored: the posting names no tech" : "Not scored: add your CV first") : fit >= 70 ? "Strong match" : fit >= 55 ? "Reach, tailor hard" : "Long shot",
               action: "Open",
-              jdText: s.jfJD.trim(),
+              jdText: s.jfJD.trim().slice(0, MAX_JD_CHARS),
               ...(letter ? { coverLetter: letter.paras.join("\n\n") } : {}),
             },
             ...s.savedJobs,
@@ -491,18 +496,40 @@ export const usePfStore = create<PfState>()(
       saveListing: (job) => {
         const key = trackCardKey(job.company, job.role);
         if (get().savedJobs.some((j) => trackCardKey(j.company, j.role) === key)) return;
-        set((s) => ({ savedJobs: [{ ...job, action: "Open" }, ...s.savedJobs] }));
+        set((s) => ({ savedJobs: [{ ...job, action: "Open", jdText: job.jdText?.slice(0, MAX_JD_CHARS) }, ...s.savedJobs] }));
         get().emit("JobSaved", "jobs", `Saved ${job.role} at ${job.company}${job.fitKnown === false ? "" : ` (fit ${job.fit})`}`, job.fitKnown === false ? { company: job.company } : { company: job.company, fit: job.fit });
       },
-      keepCoverLetter: (letter, company, role) => {
-        const key = trackCardKey(company, role);
+      keepCoverLetter: (letter) => {
         const text = letter.paras.join("\n\n");
+        // Keyed on the posting (role + advert), so a saved role whose JD differs from
+        // the one the letter was written for doesn't get it.
         set((s) => ({
           jfCoverLetter: letter,
-          savedJobs: s.savedJobs.map((j) => (trackCardKey(j.company, j.role) === key ? { ...j, coverLetter: text } : j)),
+          savedJobs: s.savedJobs.map((j) => (postingKey(j.company, j.role, j.jdText ?? "") === letter.key ? { ...j, coverLetter: text } : j)),
         }));
       },
       setTailorJD: (jd) => set({ cvTailorJD: jd, cvTailorAts: null, cvTailorMatch: null }),
+      keepCvAiRead: (read, forText) => {
+        // A read that lands after the CV was edited describes text that no longer
+        // exists, and its skills would feed the profile. Drop it.
+        if (get().cvText !== forText) return false;
+        const cap = (xs: string[], n = 12) => xs.slice(0, n).map((x) => x.slice(0, 300));
+        set({
+          cvAiRead: {
+            skills: read.skills.slice(0, 40).map((x) => x.slice(0, 60)),
+            strengths: cap(read.strengths),
+            nextSteps: cap(read.nextSteps),
+            feedback: read.feedback.slice(0, 12).map((f) => ({ issue: f.issue.slice(0, 300), suggestedFix: f.suggestedFix.slice(0, 500) })),
+          },
+        });
+        return true;
+      },
+      keepTailorResult: (kind, result, forJD) => {
+        // Same guard for the Tailor panel: a result for an advert that has since changed is stale.
+        if (get().cvTailorJD !== forJD) return false;
+        set(kind === "ats" ? { cvTailorAts: result as TailorAts } : { cvTailorMatch: result as TailorMatch });
+        return true;
+      },
 
       // Networking progress is counted from this, so it needs a real recipient and a real
       // message: a blank form used to log "a contact" and could be clicked up to 80%.

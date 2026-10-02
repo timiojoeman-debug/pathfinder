@@ -6,7 +6,7 @@ const { emit } = vi.hoisted(() => ({ emit: vi.fn() }));
 vi.mock("@/lib/pf/store", async () => {
   const { create } = await import("zustand");
   type S = Record<string, unknown>;
-  const usePfStore = create<S>()((set) => ({
+  const usePfStore = create<S>()((set, get) => ({
     cvText: "",
     cvTailorJD: "",
     cvTailorAts: null,
@@ -14,6 +14,12 @@ vi.mock("@/lib/pf/store", async () => {
     emit,
     set: (patch: S) => set(patch),
     setTailorJD: (jd: string) => set({ cvTailorJD: jd, cvTailorAts: null, cvTailorMatch: null }),
+    // Mirrors the real store's guard (tested in store.test.ts).
+    keepTailorResult: (kind: string, result: unknown, forJD: string) => {
+      if (get().cvTailorJD !== forJD) return false;
+      set(kind === "ats" ? { cvTailorAts: result } : { cvTailorMatch: result });
+      return true;
+    },
   }));
   return { usePfStore };
 });
@@ -79,6 +85,23 @@ describe("TailorPanel", () => {
     await waitFor(() => expect(atsTask.run).toHaveBeenCalledWith(expect.objectContaining({ jobDescription: JD, cvData: "Backend engineer." })));
     await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "cv", expect.stringContaining("ATS audit")));
     expect(usePfStore.getState().cvTailorAts).toEqual({ data: { overallATSScore: 64 } });
+  });
+
+  it("drops an audit that lands after the advert was edited", async () => {
+    usePfStore.setState({ cvText: "Backend engineer." });
+    let resolve!: (v: unknown) => void;
+    atsTask = aiTask({ run: vi.fn(() => new Promise((r) => { resolve = r; })) as never });
+    render(<TailorPanel />);
+    const box = screen.getByPlaceholderText(/paste the full job description/i);
+    fireEvent.change(box, { target: { value: JD } });
+    fireEvent.click(screen.getByRole("button", { name: /run ats audit/i }));
+    fireEvent.change(box, { target: { value: JD + " Also Kubernetes." } });
+    resolve({ data: { overallATSScore: 64 } });
+
+    await waitFor(() => expect(atsTask.run).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 0));
+    expect(usePfStore.getState().cvTailorAts).toBeNull();
+    expect(emit).not.toHaveBeenCalled();
   });
 
   it("renders the stored ATS score and keyword findings", () => {
