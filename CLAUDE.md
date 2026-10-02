@@ -27,9 +27,17 @@ npm run test         # Run tests (vitest watch)
 npm run test:run     # Run tests once
 npm run test:coverage # Run tests + enforce the coverage ratchet
 npm run lint         # ESLint — currently clean; CI fails on any error
+npm run db:start     # Local Supabase in Docker (applies supabase/migrations); db:stop / db:reset
+npm run e2e:env      # Write .env.e2e from the LOCAL stack (refuses a non-local URL)
+npm run test:e2e     # Playwright smoke tests against a production build + local Supabase
 ```
 
-CI (`.github/workflows/ci.yml`) runs `npm ci`, `tsc --noEmit`, `test:coverage`, `lint`, and `build`. All are hard gates.
+**Never test against production.** `.env.local` points at the deployed Supabase. Signed-in testing
+uses the local stack (Docker Desktop must be running); `.env.e2e` sets every key the app reads, so
+nothing from `.env.local` leaks in, and its OpenAI key is deliberately invalid (AI success paths are
+stubbed with `page.route`).
+
+CI (`.github/workflows/ci.yml`) runs `npm ci`, `tsc --noEmit`, `test:coverage`, `lint`, and `build` (job `verify`), and the Playwright smoke tests against a local Supabase stack (job `e2e`). All are hard gates.
 
 ## Architecture
 
