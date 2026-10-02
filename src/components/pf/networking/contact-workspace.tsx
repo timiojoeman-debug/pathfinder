@@ -18,7 +18,7 @@
 
 import { useState } from "react";
 import { FOLLOW_UP_CADENCE } from "@/lib/pf/data";
-import { usePfStore, useProfile } from "@/lib/pf/store";
+import { recentCoffeeChat, usePfStore, useProfile } from "@/lib/pf/store";
 import { cvStrengthLines, networkingProfileLine } from "@/lib/pf/ai-context";
 import { useAiTask, type AiEnvelope } from "@/lib/pf/use-ai";
 import { Chip, Panel } from "@/components/pf/ui";
@@ -81,13 +81,28 @@ function Field({
   );
 }
 
-export function ContactWorkspace() {
+interface WorkspaceContact { name: string; company: string }
+
+interface ContactWorkspaceProps {
+  /** The page's shared contact. When given, the name and company fields are
+   *  controlled by the parent, so the person researched or written to above is
+   *  already here, and editing it here updates it there. Omitted → internal state. */
+  contact?: WorkspaceContact;
+  onContactChange?: (patch: Partial<WorkspaceContact>) => void;
+}
+
+export function ContactWorkspace({ contact, onContactChange }: ContactWorkspaceProps = {}) {
   const emit = usePfStore((s) => s.emit);
+  const completeCoffeeChat = usePfStore((s) => s.completeCoffeeChat);
   const profile = useProfile();
 
-  const [name, setName] = useState("");
+  const [internal, setInternal] = useState<WorkspaceContact>({ name: "", company: "" });
+  const { name, company } = contact ?? internal;
+  const editContact = (patch: Partial<WorkspaceContact>) =>
+    onContactChange ? onContactChange(patch) : setInternal((c) => ({ ...c, ...patch }));
+  const setName = (v: string) => editContact({ name: v });
+  const setCompany = (v: string) => editContact({ company: v });
   const [role, setRole] = useState("");
-  const [company, setCompany] = useState("");
   const [kind, setKind] = useState<ContactType>("peer");
   const [notes, setNotes] = useState("");
   const [step, setStep] = useState(1);
@@ -102,7 +117,14 @@ export function ContactWorkspace() {
 
   // Real count from the event log, so the prompt's "how experienced is this
   // student at coffee chats" signal is evidence, not a guess.
-  const coffeeChatsDone = profile.events.filter((e) => e.type === "CoffeeChatCompleted").length;
+  const coffeeChatsDone = profile.coffeeChatsDone;
+  // From the event log, not local state, so it survives navigation: one chat
+  // counts once, and the store refuses a repeat within 24 hours too.
+  const chatLogged = !!contactName && recentCoffeeChat(profile.events, { contact: contactName, company: contactCompany });
+
+  const markChatDone = () => {
+    completeCoffeeChat({ contact: contactName, company: contactCompany });
+  };
 
   const canPrep = contactName.length > 0 && contactCompany.length > 0;
   // Step 1 is the thank-you note; the route hard-refuses it without notes.
@@ -119,13 +141,13 @@ export function ContactWorkspace() {
       coffeeChatsDone,
       contactType: kind,
     });
-    if (result?.data) emit("AiConsulted", "networking", `Prepped a coffee chat with ${contactName}`);
+    if (result?.data) emit("AiConsulted", "networking", `Prepped a coffee chat with ${contactName}`, { kind: "coffee-chat-prep" });
   };
 
   const runFollow = async () => {
     const result = await follow.run({ contactName, chatNotes, cadenceStep: step, contactType: kind });
     if (result?.data?.message) {
-      emit("AiConsulted", "networking", `Drafted follow-up step ${step} for ${contactName}`);
+      emit("AiConsulted", "networking", `Drafted follow-up step ${step} for ${contactName}`, { kind: "follow-up" });
     }
   };
 
@@ -138,7 +160,7 @@ export function ContactWorkspace() {
       cvStrengths: cvStrengthLines(profile),
     });
     if (result?.data?.referralMessage) {
-      emit("AiConsulted", "networking", `Built a referral package for ${contactName}`);
+      emit("AiConsulted", "networking", `Built a referral package for ${contactName}`, { kind: "referral-package" });
     }
   };
 
@@ -233,6 +255,26 @@ export function ContactWorkspace() {
         <span className="pf-mono" style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)", fontFamily: mono, display: "block", marginBottom: 9 }}>
           2 · After the chat
         </span>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 11 }}>
+          <button
+            onClick={markChatDone}
+            disabled={!contactName || chatLogged}
+            title={contactName ? undefined : "Add the contact name first"}
+            style={{
+              cursor: contactName && !chatLogged ? "pointer" : "default", height: 36, padding: "0 15px", borderRadius: 10,
+              border: "1px solid var(--lineStrong)", background: "var(--panel)",
+              color: contactName && !chatLogged ? "var(--fg)" : "var(--faint)", fontSize: 12.5, fontWeight: 600,
+            }}
+          >
+            {chatLogged ? `Chat with ${contactName} logged` : "Mark chat done"}
+          </button>
+          <span style={{ fontSize: 11.5, color: "var(--faint)" }}>
+            {contactName
+              ? `${coffeeChatsDone} coffee chat${coffeeChatsDone === 1 ? "" : "s"} logged so far. Only mark one you actually had.`
+              : "Add the contact name first."}
+          </span>
+        </div>
 
         <textarea
           value={notes}

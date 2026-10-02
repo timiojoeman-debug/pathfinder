@@ -53,7 +53,7 @@ export function StartupPanel() {
       companyName,
       companyDetail,
     });
-    if (result?.data?.message) emit("AiConsulted", "networking", `Drafted startup outreach to ${companyName}`);
+    if (result?.data?.message) emit("AiConsulted", "networking", `Drafted startup outreach to ${companyName}`, { kind: "startup-outreach" });
   };
 
   return (

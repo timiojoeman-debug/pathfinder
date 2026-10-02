@@ -11,8 +11,7 @@ import { readBody, zShort, zText } from "@/lib/api";
 
 /** The prompt asks for these fields nested under `data`, but the model
  *  sometimes flattens them to the root. `aiShape` tolerates both so the route
- *  reads real content instead of silently shipping the empty fallback (a 200
- *  with nothing to send — the failure this validation exists to catch). */
+ *  reads real content in either shape instead of rejecting a usable answer. */
 const OutreachResponse = aiShape(
   z.object({
     message: z.string().min(1),
@@ -48,25 +47,12 @@ const OutreachSchema = z.object({
   }).optional(),
 });
 
-const FALLBACK_OUTREACH = {
-  message: "",
-  questions: [
-    "What do successful interns at your company typically have on their CV or portfolio?",
-    "How do internship applications usually get reviewed and shortlisted?",
-    "What projects or technologies are most important for this team over the next 6–12 months?",
-    "If you were in my position, how would you spend the next 4–8 weeks preparing?",
-    "Is there anyone else you'd recommend I speak with as I explore this path?",
-  ],
-  topics: [
-    "Recent product launches or engineering blog posts from the company",
-    "How new grads or interns are onboarded and mentored",
-    "Technical stack and how teams collaborate across functions",
-    "Career paths from intern to full‑time engineer at the company",
-    "Any university or regional communities tied to the company",
-  ],
-  followUp:
-    "Hi again NAME, just wanted to gently follow up on my previous note in case it got buried. No rush at all – I'd still be very grateful for any quick advice you can share around internships at COMPANY.",
-};
+/** No canned fallback: the old one shipped an empty message and a follow-up
+ *  with literal NAME/COMPANY tokens, which the page showed verbatim. The page
+ *  already holds a structural template built from the real contact (or the last
+ *  real draft), so a failure says so and the page says which one it kept. */
+const AI_UNAVAILABLE =
+  "The AI writer is unavailable right now. Try again in a minute.";
 
 export async function POST(req: Request) {
   const parsed = await readBody(req, OutreachSchema);
@@ -74,7 +60,10 @@ export async function POST(req: Request) {
   const body = parsed.data;
 
   const studentProfile = [
-    `Sender: ${body.senderName || "Student"}`,
+    // Never a name guessed from an email address: with no real name, no signature.
+    body.senderName
+      ? `Sender: ${body.senderName}`
+      : "Sender name: not given. End the message without a signature or a name placeholder",
     `Target role: ${body.roleTitle || "intern role"}`,
     `Technologies: ${body.technologies || "N/A"}`,
   ].join("; ");
@@ -106,7 +95,7 @@ export async function POST(req: Request) {
     //      retrieved from pgvector, with the exchange logged to ai_interactions
     //      so later phases can say "last time you...";
     //   2. a direct one-shot call — no context, no methodology, still real AI;
-    //   3. the fallback template, in the catch below.
+    //   3. a 503 in the catch below; the page keeps its structural template.
     // Any failure in tier 1 drops to tier 2 rather than failing the request.
     let aiResult: z.infer<typeof OutreachResponse> | null = null;
 
@@ -158,15 +147,17 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       message: messageText,
-      questions: aiResult.questions ?? FALLBACK_OUTREACH.questions,
-      topics: aiResult.topics ?? FALLBACK_OUTREACH.topics,
-      followUp: aiResult.followUp ?? FALLBACK_OUTREACH.followUp,
+      // Only what the model actually wrote for this contact; generic prompts
+      // dressed as personalised ones are the thing to avoid.
+      questions: aiResult.questions ?? [],
+      topics: aiResult.topics ?? [],
+      followUp: aiResult.followUp?.trim() || null,
       naturalness,
     });
   } catch (e) {
-    logger.error("networking/outreach — AI unusable, serving fallback template", {
+    logger.error("networking/outreach — AI unusable, no message generated", {
       error: e instanceof Error ? e.message : String(e),
     });
-    return NextResponse.json(FALLBACK_OUTREACH);
+    return NextResponse.json({ error: AI_UNAVAILABLE, retryable: true }, { status: 503 });
   }
 }

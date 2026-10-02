@@ -6,7 +6,6 @@
  * follow-up cadence.
  */
 
-import { useState } from "react";
 import {
   COFFEE_CHAT_FRAMEWORK,
   FOLLOW_UP_CADENCE,
@@ -17,12 +16,14 @@ import {
   type OutreachPersona,
 } from "@/lib/pf/data";
 import { buildOutreachTemplate, composeSharedAttributes, followUpMessage, outreachSubject, targetKeywords } from "@/lib/pf/logic";
-import { usePfStore } from "@/lib/pf/store";
-import { useAuthStore } from "@/lib/stores";
+import { netContactKey, netDraftKey, usePfStore, type NetContact } from "@/lib/pf/store";
+import { useState } from "react";
+import { useAiTask } from "@/lib/pf/use-ai";
 import { Chip, PageHeader, Panel, Reveal } from "@/components/pf/ui";
+import { AiCaveat, AiError, AiList, AiSection, GenerateButton } from "@/components/pf/ai-panel";
 import { NextStep } from "@/components/pf/next-step";
 import { ContactWorkspace } from "@/components/pf/networking/contact-workspace";
-import { ProfileResearch, type AnalysisData, type ResearchContact } from "@/components/pf/networking/profile-research";
+import { ProfileResearch } from "@/components/pf/networking/profile-research";
 import { StartupPanel } from "@/components/pf/networking/startup-panel";
 import { NaturalnessBadge, type Naturalness } from "@/components/pf/networking/naturalness-note";
 
@@ -33,25 +34,35 @@ const PERSONA_API_TYPE: Record<OutreachPersona, "recruiter" | "hiringManager" | 
   "Startup founder": "peer",
 };
 
-interface AiOutreach { paras: string[]; followUp: string | null; naturalness: Naturalness | null }
+/** `/api/networking/outreach` answers at the root (aiShape), not in an envelope. */
+interface OutreachResult {
+  message?: string;
+  questions?: string[];
+  topics?: string[];
+  followUp?: string | null;
+  naturalness?: Naturalness;
+}
 
 export default function NetworkingPage() {
   const s = usePfStore();
-  const user = useAuthStore((a) => a.user);
-  const senderName = user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "";
 
-  // The real recipient the student is writing to — one shared contact across
-  // the research panel and the outreach generator, never a fabricated named
-  // contact. The draft stays honestly blank until the student fills it in.
-  const [contact, setContact] = useState<ResearchContact>({ name: "", company: "", about: "", experience: "" });
-  const [research, setResearch] = useState<AnalysisData | null>(null);
-  const [aiMsg, setAiMsg] = useState<AiOutreach | null>(null);
-  const [generating, setGenerating] = useState(false);
+  // The real recipient the student is writing to: one shared, persisted contact
+  // across Research, Outreach and the Contact workspace, never a fabricated
+  // named contact. The draft stays honestly blank until the student fills it in.
+  // No sender name is sent: the account holds only an email, and a name guessed
+  // from it signs a university student's messages "s1234567".
+  const contact = s.netContact;
+  // Research belongs to the person it was run on. Once the contact changes, both
+  // the findings and the profile text pasted for them stop being about this person.
+  const staleResearch = !!s.netResearch && s.netResearch.key !== netContactKey(contact);
+  const research = staleResearch ? null : s.netResearch?.data ?? null;
+  const draftKey = netDraftKey(s.netPersona, contact);
+  // The last draft is shown only for the contact and persona it was written for.
+  const aiMsg = s.netDraft?.key === draftKey ? s.netDraft : null;
+  const outreach = useAiTask<OutreachResult>("/api/networking/outreach");
+  const [emptyReply, setEmptyReply] = useState(false);
 
-  const editContact = (patch: Partial<ResearchContact>) => {
-    setContact((c) => ({ ...c, ...patch }));
-    setAiMsg(null);
-  };
+  const editContact = (patch: Partial<NetContact>) => s.set({ netContact: { ...contact, ...patch } });
 
   const role = s.dirRole ? `${s.dirRole} Intern` : "SWE Intern";
   const techs = targetKeywords(s.dirStack).slice(0, 3).join(", ");
@@ -69,53 +80,53 @@ export default function NetworkingPage() {
   const researchBits = [...(research?.connectionPoints ?? []), ...(research?.outreachAngles ?? [])].filter(Boolean);
   const sharedAttributes = composeSharedAttributes(
     research,
-    { about: contact.about, experience: contact.experience },
+    staleResearch ? {} : { about: contact.about, experience: contact.experience },
     s.dirRole ? `${s.dirRole} student targeting internships` : "Student targeting internships",
   );
 
-  // AI outreach via the active site's generator, built from the real contact
-  // the student entered; the structural template is the instant fallback.
+  // AI outreach built from the real contact the student entered. On any
+  // failure the structural template stays and the reason is shown.
   const regenerate = async () => {
-    if (generating) return;
-    setGenerating(true);
-    try {
-      const res = await fetch("/api/networking/outreach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: PERSONA_API_TYPE[s.netPersona],
-          recipientName: contact.name.trim() || undefined,
-          senderName,
-          roleTitle: role,
-          company: contact.company.trim() || "the company",
-          technologies: techs,
-          // The research findings + what the student actually pasted about this
-          // person — no invented common ground.
-          sharedAttributes,
-        }),
-      });
-      const json: unknown = res.ok ? await res.json() : null;
-      const j = json as { message?: string; followUp?: string; naturalness?: Naturalness } | null;
-      if (j?.message && j.message.trim().length > 60) {
-        setAiMsg({
-          paras: j.message.split(/\n{2,}|\n/).map((p) => p.trim()).filter(Boolean),
-          followUp: typeof j.followUp === "string" && j.followUp.trim() ? j.followUp : null,
-          // The route scores every message it generates; showing the real
-          // verdict is the only honest version of the badge in the header.
-          naturalness: j.naturalness ?? null,
-        });
-      }
-    } catch {
-      /* template message stays */
-    } finally {
-      setGenerating(false);
+    const key = draftKey;
+    setEmptyReply(false);
+    const r = await outreach.run({
+      type: PERSONA_API_TYPE[s.netPersona],
+      recipientName: contact.name.trim() || undefined,
+      roleTitle: role,
+      company: contact.company.trim() || undefined,
+      technologies: techs,
+      // The research findings + what the student actually pasted about this
+      // person — no invented common ground.
+      sharedAttributes,
+    });
+    const paras = (r?.message ?? "").split(/\n+/).map((p) => p.trim()).filter(Boolean);
+    if (!r) return;
+    if (!paras.length) {
+      setEmptyReply(true);
+      return;
     }
+    s.set({
+      netDraft: {
+        key,
+        paras,
+        followUp: r.followUp?.trim() || null,
+        // The route scores every message it generates; showing the real
+        // verdict is the only honest version of the badge in the header.
+        naturalness: r.naturalness ?? null,
+        questions: r.questions ?? [],
+        topics: r.topics ?? [],
+      },
+    });
+    s.emit("AiConsulted", "networking", `Drafted outreach to ${recipientLabel}`, { kind: "outreach" });
   };
 
-  const pickPersona = (p: OutreachPersona) => {
-    setAiMsg(null);
-    s.set({ netPersona: p, netFollow: false });
-  };
+  const pickPersona = (p: OutreachPersona) => s.set({ netPersona: p, netFollow: false });
+
+  // Say what is actually on screen after a failure: the last real draft, or the template.
+  const kept = aiMsg ? "Your previous draft is kept below." : "Here's the structural template instead: fill in the bracketed parts.";
+  const outreachError = outreach.error
+    ? outreach.needsAuth ? outreach.error : `${outreach.error} ${kept}`
+    : emptyReply ? `The AI writer came back with an empty message. ${kept}` : null;
 
   const followMsg = aiMsg?.followUp ?? followUpMessage(contact.name);
 
@@ -132,10 +143,13 @@ export default function NetworkingPage() {
 
       <ProfileResearch
         contact={contact}
-        onContactChange={(c) => { setContact(c); setAiMsg(null); }}
-        onResult={({ data }) => { setResearch(data); setAiMsg(null); }}
+        onContactChange={(c) => s.set({ netContact: c })}
+        onResult={({ contact: c, data }) => s.set({ netResearch: { key: netContactKey(c), name: c.name.trim(), data }, netDraft: null })}
       />
-      <ContactWorkspace />
+      <ContactWorkspace
+        contact={{ name: contact.name, company: contact.company }}
+        onContactChange={editContact}
+      />
       <StartupPanel />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 18 }}>
@@ -188,6 +202,20 @@ export default function NetworkingPage() {
         <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, marginBottom: 14 }}>
           Prep, ~30 min: re-read their profile + one recent thing · 30-second intro ready · 5–6 open questions prepared (you&apos;ll use 3–4) · video on · you watch the clock.
         </div>
+        {aiMsg && (aiMsg.questions.length > 0 || aiMsg.topics.length > 0) && (
+          <div style={{ border: "1px dashed var(--lineStrong)", borderRadius: 12, padding: "4px 16px 14px", marginBottom: 14 }}>
+            {aiMsg.questions.length > 0 && (
+              <AiSection title={`Questions for ${recipientLabel}`}><AiList items={aiMsg.questions} /></AiSection>
+            )}
+            {aiMsg.topics.length > 0 && (
+              <AiSection title="Topics to raise"><AiList items={aiMsg.topics} /></AiSection>
+            )}
+            <AiCaveat>
+              Drafted alongside your outreach from what you entered about {recipientLabel}. Keep the ones that
+              fit what you actually know about them, and drop the rest.
+            </AiCaveat>
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
           {COFFEE_CHAT_FRAMEWORK.map((c) => (
             <div key={c.n} style={{ border: "1px solid var(--line2)", borderRadius: 12, background: "var(--panel2)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
@@ -254,7 +282,12 @@ export default function NetworkingPage() {
                 style={{ height: 40, padding: "0 13px", flex: "1 1 160px", minWidth: 0, fontSize: 13 }}
               />
             </div>
-            {research ? (
+            {staleResearch ? (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5 }}>
+                Your research was on {s.netResearch?.name || "a different contact"}, so it isn&apos;t used here.
+                Research {contact.name.trim() || "this contact"} above to personalise this draft.
+              </div>
+            ) : research ? (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--strong)", lineHeight: 1.5 }}>
                 ✓ Personalising on your research of {contact.name.trim() || "this contact"}
                 {researchBits.length ? ` — ${researchBits.length} connection point${researchBits.length > 1 ? "s" : ""} to draw on` : ""}.
@@ -269,9 +302,14 @@ export default function NetworkingPage() {
           <div style={{ padding: "16px 24px" }}>
             <div className="pf-mono" style={{ fontSize: 11, color: "var(--faint)", marginBottom: 12 }}>Subject · {subject}</div>
             {aiMsg ? (
-              aiMsg.paras.map((p, i) => (
-                <p key={i} style={{ fontSize: 13.5, lineHeight: 1.7, color: i === aiMsg.paras.length - 1 ? "var(--muted)" : "var(--fg)", margin: i === aiMsg.paras.length - 1 ? "0 0 16px" : "0 0 12px" }}>{p}</p>
-              ))
+              <>
+                {aiMsg.paras.map((p, i) => (
+                  <p key={i} style={{ fontSize: 13.5, lineHeight: 1.7, color: i === aiMsg.paras.length - 1 ? "var(--muted)" : "var(--fg)", margin: i === aiMsg.paras.length - 1 ? "0 0 4px" : "0 0 12px" }}>{p}</p>
+                ))}
+                <div style={{ marginBottom: 14 }}>
+                  <AiCaveat>A first draft from what you entered. Check every detail is true and put it in your own voice before sending.</AiCaveat>
+                </div>
+              </>
             ) : (
               <>
                 <div className="pf-mono" style={{ fontSize: 9.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 8 }}>
@@ -292,13 +330,9 @@ export default function NetworkingPage() {
               >
                 Mark as sent &amp; log it →
               </button>
-              <button
-                onClick={() => void regenerate()}
-                disabled={generating}
-                style={{ cursor: generating ? "default" : "pointer", height: 42, padding: "0 18px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: generating ? "var(--faint)" : "var(--fg)", fontSize: 13, fontWeight: 600 }}
-              >
-                {generating ? "Generating…" : "Regenerate with AI"}
-              </button>
+              <GenerateButton onClick={() => void regenerate()} loading={outreach.loading} variant="ghost">
+                {aiMsg ? "Regenerate with AI" : "Generate with AI"}
+              </GenerateButton>
               {!s.netFollow && (
                 <button
                   onClick={() => s.set({ netFollow: true })}
@@ -310,12 +344,15 @@ export default function NetworkingPage() {
               <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10.5, color: "var(--muted)" }}>{s.netSent} outreach messages logged → tracker stat</span>
             </div>
 
+            <AiError message={outreachError} needsAuth={outreach.needsAuth} />
+
             {s.netFollow && (
               <div style={{ marginTop: 14, border: "1px dashed var(--lineStrong)", borderRadius: 12, padding: "14px 16px", background: "var(--panel2)" }}>
                 <div className="pf-mono" style={{ fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 7 }}>
                   Follow-up · send 4–10 days after, with proof of action
                 </div>
                 <p style={{ fontSize: 13, lineHeight: 1.65, margin: 0 }}>{followMsg}</p>
+                {aiMsg?.followUp && <AiCaveat>Drafted with your outreach. Swap in the real thing you did since, before sending.</AiCaveat>}
               </div>
             )}
           </div>

@@ -57,7 +57,7 @@ describe("StartupPanel", () => {
     fireEvent.click(btn);
 
     await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Acme", companyDetail: DETAIL, studentProfile: expect.any(String) })));
-    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("Acme")));
+    await waitFor(() => expect(emit).toHaveBeenCalledWith("AiConsulted", "networking", expect.stringContaining("Acme"), { kind: "startup-outreach" }));
   });
 
   it("renders the generated message when present", () => {
