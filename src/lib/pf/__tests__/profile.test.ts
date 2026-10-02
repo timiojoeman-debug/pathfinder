@@ -31,6 +31,34 @@ function makeInput(overrides: Partial<ProfileInput> = {}): ProfileInput {
   };
 }
 
+describe('deriveProfile — AI-read skills', () => {
+  const cvText = 'Built a payments service in Go with Kafka and Postgres. Good team player.';
+
+  it('adds skills the AI read named when the CV text evidences them', () => {
+    const p = deriveProfile(makeInput({ cvText, cvAiSkills: ['Kafka'] }));
+    expect(p.currentSkills).toContain('Kafka');
+  });
+
+  it('drops AI-named skills the CV text does not contain', () => {
+    const p = deriveProfile(makeInput({ cvText, cvAiSkills: ['Rust', 'Kubernetes'] }));
+    expect(p.currentSkills).not.toContain('Rust');
+    expect(p.currentSkills).not.toContain('Kubernetes');
+  });
+
+  it('matches whole words only and never lists a skill twice', () => {
+    const p = deriveProfile(makeInput({ cvText: 'Led a helmet safety campaign.', cvAiSkills: ['Elm'] }));
+    expect(p.currentSkills).not.toContain('Elm');
+    const q = deriveProfile(makeInput({ cvText, cvAiSkills: ['postgres', 'Postgres'] }));
+    expect(q.currentSkills.filter((s) => s.toLowerCase() === 'postgres')).toHaveLength(1);
+  });
+
+  it('keeps current and missing skills disjoint', () => {
+    const p = deriveProfile(makeInput({ cvText, dirStack: ['Go', 'Kafka'], cvAiSkills: ['Kafka'] }));
+    const have = new Set(p.currentSkills.map((s) => s.toLowerCase()));
+    expect(p.missingSkills.some((s) => have.has(s.toLowerCase()))).toBe(false);
+  });
+});
+
 const savedJob = (company: string, fit = 70): SavedJob => ({
   company, role: 'SWE Intern', meta: '', fit, dash: 0, tone: '', tags: [], verdict: '', action: '',
 });

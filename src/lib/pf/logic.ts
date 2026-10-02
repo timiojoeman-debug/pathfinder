@@ -344,6 +344,15 @@ export function trackCardKey(company: string, role: string): string {
   return `${company.trim().toLowerCase()}::${role.trim().toLowerCase()}`;
 }
 
+/** Identifies the posting a cover letter was written for: the role plus a hash
+ *  of the advert, so editing the JD makes an older letter stale. */
+export function postingKey(company: string, role: string, jd: string): string {
+  const text = jd.trim();
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;
+  return `${trackCardKey(company, role)}::${text.length}:${h}`;
+}
+
 export function columnCount(board: BoardColumn[], id: string): number {
   const col = board.find((c) => c.id === id);
   return col ? col.cards.length : 0;

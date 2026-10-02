@@ -1,10 +1,37 @@
 import { NextResponse } from "next/server";
-import { generateWithAI, AIError } from "@/lib/ai";
+import { z } from "zod";
+import { AIError, callAIValidated } from "@/lib/ai";
 import { buildCVAnalysisPrompt } from "@/lib/prompts";
 import mammoth from "mammoth";
 import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
+
+/** `buildCVAnalysisPrompt` asks for the methodology envelope: feedback,
+ *  strengths and next steps at the root, the parsed CV under `data`. A read
+ *  with nothing in any of them is a failed read, not an empty one. */
+const CvReadResponse = z
+  .object({
+    feedback: z
+      .array(
+        z
+          .object({
+            issue: z.string().default(""),
+            severity: z.string().optional(),
+            suggestedFix: z.string().default(""),
+          })
+          .catchall(z.unknown()),
+      )
+      .default([]),
+    strengths: z.array(z.string()).default([]),
+    nextSteps: z.array(z.string()).default([]),
+    data: z.object({ skills: z.array(z.string()).default([]) }).catchall(z.unknown()),
+  })
+  .catchall(z.unknown())
+  .refine(
+    (r) => r.feedback.length + r.strengths.length + r.nextSteps.length + r.data.skills.length > 0,
+    "the CV read came back empty",
+  );
 
 async function extractTextFromFile(file: File): Promise<string> {
   const name = file.name.toLowerCase();
@@ -82,76 +109,35 @@ export async function POST(req: Request) {
   }
 
   const trimmed = rawText.slice(0, 8000);
+  const parsed = { fileName: originalName, rawPreview: trimmed.slice(0, 1000), rawText: trimmed };
 
+  // Parsing and the AI read share one call, so an AI failure must not throw
+  // away the text just extracted. This used to serve a canned read ("Your
+  // University", Python/JS/React/SQL, generic tips) that the page showed as a
+  // reading of the student's own CV. Now the text comes back with an explicit
+  // flag, and the page says the AI read is unavailable.
   try {
-    const { content } = await generateWithAI(
+    const read = await callAIValidated(
       {
         systemPrompt: buildCVAnalysisPrompt(),
-        userPrompt: `CV filename: ${originalName}\n\nRaw content (may be noisy if PDF/DOCX):\n${trimmed}`,
+        userMessage: `CV filename: ${originalName}\n\nRaw content (may be noisy if PDF/DOCX):\n${trimmed}`,
       },
-      () =>
-        JSON.stringify({
-          education: [
-            {
-              institution: "Your University",
-              degree: "BSc Computer Science",
-              period: "2023 – 2026",
-            },
-          ],
-          experience: [],
-          projects: [],
-          skills: ["Python", "JavaScript", "React", "SQL"],
-          suggestions: {
-            bulletPoints: [
-              "Start bullets with strong action verbs and quantify your impact (e.g. 'Reduced page load time by 30% by optimizing API calls').",
-            ],
-            keywords: [
-              "APIs",
-              "databases",
-              "unit testing",
-              "cloud platforms (AWS / GCP / Azure)",
-            ],
-            formatting: [
-              "Keep your CV to one page for internships and align dates on the right for easy scanning.",
-            ],
-            extraQualifications: [
-              "Consider a cloud fundamentals certificate and one or two LeetCode-style problem solving badges.",
-            ],
-          },
-        }),
+      CvReadResponse,
+      "cv/analyze",
     );
-
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      parsed = {
-        education: [],
-        experience: [],
-        projects: [],
-        skills: [],
-        suggestions: {
-          bulletPoints: [],
-          keywords: [],
-          formatting: [],
-          extraQualifications: [],
-        },
-      };
-    }
-
-    return NextResponse.json({
-      fileName: originalName,
-      rawPreview: trimmed.slice(0, 1000),
-      rawText: trimmed,
-      ...parsed,
-    });
+    return NextResponse.json({ ...parsed, ...read });
   } catch (err) {
-    if (err instanceof AIError) {
-      return NextResponse.json(
-        { error: err.message, retryable: err.retryable, available: err.available },
-        { status: err.status === 0 ? 503 : err.status }
-      );
-    }
-    throw err;
+    logger.error("cv/analyze — AI read unavailable", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return NextResponse.json({
+      ...parsed,
+      aiUnavailable: true,
+      aiMessage:
+        err instanceof AIError && !err.available
+          ? "The AI read isn't set up on this server, so only the local read is shown."
+          : "The AI read didn't come back this time. Your text is safe; try again in a minute.",
+    });
   }
 }
+

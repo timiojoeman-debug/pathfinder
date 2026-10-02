@@ -150,6 +150,28 @@ describe('POST /api/jobs/search', () => {
     expectNothingInvented(body);
   });
 
+  it('sends Adzuna the expanded role, not the abbreviation', async () => {
+    process.env.ADZUNA_APP_ID = 'id';
+    process.env.ADZUNA_APP_KEY = 'key';
+    const fn = stubFetch({ github: [], adzuna: [] });
+    await POST(post({ roleType: 'SWE intern', industry: 'fintech', workMode: 'remote' }));
+    const adzunaUrl = fn.mock.calls.map((c) => String(c[0])).find((u) => u.includes('adzuna'))!;
+    expect(new URL(adzunaUrl).searchParams.get('what')).toBe('software engineer intern fintech remote');
+  });
+
+  it('applies industry and work mode to GitHub listings too', async () => {
+    stubFetch({
+      github: [
+        GH({ id: 'a', url: 'https://x/a', locations: ['Remote, UK'] }),
+        GH({ id: 'b', url: 'https://x/b', company_name: 'Acme Fintech', locations: ['London, UK'] }),
+      ],
+    });
+    const remote = await (await POST(post({ roleType: 'software', workMode: 'remote' }))).json();
+    expect(remote.jobs.map((j: { url: string }) => j.url)).toEqual(['https://x/a']);
+    const fintech = await (await POST(post({ roleType: 'software', industry: 'fintech' }))).json();
+    expect(fintech.jobs.map((j: { url: string }) => j.url)).toEqual(['https://x/b']);
+  });
+
   it('sorts scored (Adzuna) listings above unscored (GitHub) ones', async () => {
     process.env.ADZUNA_APP_ID = 'id';
     process.env.ADZUNA_APP_KEY = 'key';

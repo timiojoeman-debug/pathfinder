@@ -15,7 +15,6 @@
  * that requires three years of professional experience is not a 78% chance.
  */
 
-import { useState } from "react";
 import { usePfStore } from "@/lib/pf/store";
 import { useAiTask, type AiEnvelope } from "@/lib/pf/use-ai";
 import { Reveal } from "@/components/pf/ui";
@@ -58,11 +57,13 @@ interface NonNegotiable {
 
 /** The match route adds its blocker verdict alongside the envelope, not inside
  *  `data` — see `buildMatchScorePrompt`. */
-type MatchEnvelope = AiEnvelope<MatchData> & {
+export type MatchEnvelope = AiEnvelope<MatchData> & {
   nonNegotiables?: NonNegotiable[];
   hasBlockers?: boolean;
   blockerWarning?: string | null;
 };
+
+export type AtsEnvelope = AiEnvelope<AtsData>;
 
 const PRIORITY_TONE = {
   critical: "var(--risk)",
@@ -79,10 +80,15 @@ function scoreTone(n: number): string {
 export function TailorPanel() {
   const cvText = usePfStore((s) => s.cvText);
   const emit = usePfStore((s) => s.emit);
+  const set = usePfStore((s) => s.set);
+  // The advert and the results run against it live in the store, so leaving the
+  // page doesn't lose them, and the job drawer can hand an advert over.
+  const jd = usePfStore((s) => s.cvTailorJD);
+  const setJd = usePfStore((s) => s.setTailorJD);
+  const atsResult = usePfStore((s) => s.cvTailorAts);
+  const matchResult = usePfStore((s) => s.cvTailorMatch);
 
-  const [jd, setJd] = useState("");
-
-  const ats = useAiTask<AiEnvelope<AtsData>>("/api/cv/ats-audit");
+  const ats = useAiTask<AtsEnvelope>("/api/cv/ats-audit");
   const match = useAiTask<MatchEnvelope>("/api/cv/match");
 
   const jobDescription = jd.trim();
@@ -90,17 +96,23 @@ export function TailorPanel() {
 
   const runAts = async () => {
     const result = await ats.run({ jobDescription, cvData: cvText });
-    if (result?.data) emit("AiConsulted", "cv", "Ran an ATS audit against a job description");
+    if (result?.data) {
+      set({ cvTailorAts: result });
+      emit("AiConsulted", "cv", "Ran an ATS audit against a job description");
+    }
   };
 
   const runMatch = async () => {
     const result = await match.run({ jobDescription, cvData: cvText });
-    if (result?.data) emit("AiConsulted", "cv", "Scored the CV against a job description");
+    if (result?.data) {
+      set({ cvTailorMatch: result });
+      emit("AiConsulted", "cv", "Scored the CV against a job description");
+    }
   };
 
-  const audit = ats.data?.data;
-  const score = match.data?.data;
-  const blockers = match.data?.nonNegotiables?.filter((n) => !n.studentMeets) ?? [];
+  const audit = atsResult?.data;
+  const score = matchResult?.data;
+  const blockers = matchResult?.nonNegotiables?.filter((n) => !n.studentMeets) ?? [];
 
   return (
     <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 18 }}>
@@ -231,7 +243,7 @@ export function TailorPanel() {
               }}
             >
               <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--fg)", marginBottom: 7 }}>
-                {match.data?.blockerWarning || "Hard requirements you may not meet"}
+                {matchResult?.blockerWarning || "Hard requirements you may not meet"}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {blockers.map((n) => (
@@ -266,8 +278,8 @@ export function TailorPanel() {
             </AiSection>
           ) : null}
 
-          {match.data?.nextSteps?.length ? (
-            <AiSection title="Next steps"><AiList items={match.data.nextSteps} /></AiSection>
+          {matchResult?.nextSteps?.length ? (
+            <AiSection title="Next steps"><AiList items={matchResult.nextSteps} /></AiSection>
           ) : null}
 
           <AiCaveat>

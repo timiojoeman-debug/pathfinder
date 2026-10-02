@@ -75,10 +75,13 @@ export function useAiTask<T>(endpoint: string): AiTask<T> {
       setNeedsAuth(false);
 
       try {
+        // FormData (a file upload) goes as multipart: the browser sets the
+        // boundary header itself, so no Content-Type here.
+        const multipart = typeof FormData !== "undefined" && body instanceof FormData;
         const res = await fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          ...(multipart ? {} : { headers: { "Content-Type": "application/json" } }),
+          body: multipart ? body : JSON.stringify(body),
           signal: controller.signal,
         });
 
