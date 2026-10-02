@@ -75,6 +75,12 @@ describe('deriveProfile — a new user starts blank', () => {
     expect(p.leetSolved).toBe(0);
   });
 
+  it('reports LeetCode as one not-started gap, not every category as weak', () => {
+    expect(p.weakPatterns).toEqual([]);
+    expect(p.weaknesses).toContain('LeetCode practice not started');
+    expect(p.weaknesses.some((w) => w.startsWith('Weak LeetCode patterns'))).toBe(false);
+  });
+
   it('has no target companies (no seeded market prospects)', () => {
     expect(p.targetCompanies).toHaveLength(0);
   });
@@ -121,6 +127,15 @@ describe('deriveProfile — reflects real activity only', () => {
     // unclamped (unlike a value above a small category's size).
     const p = deriveProfile(makeInput({ ivSolved: { 'Trees': 5 } }));
     expect(p.leetSolved).toBe(5);
+  });
+
+  it('names weak patterns once practice has started', () => {
+    // 6 of Trees' 11 is past half, so Trees is not weak; untouched Graphs is.
+    const p = deriveProfile(makeInput({ ivSolved: { 'Trees': 6 } }));
+    expect(p.weakPatterns).toContain('Graphs');
+    expect(p.weakPatterns).not.toContain('Trees');
+    expect(p.weaknesses).not.toContain('LeetCode practice not started');
+    expect(p.weaknesses.some((w) => w.startsWith('Weak LeetCode patterns: '))).toBe(true);
   });
 
   it('turns saved jobs into target companies without counting them as submissions', () => {
