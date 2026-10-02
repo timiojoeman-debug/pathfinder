@@ -436,17 +436,21 @@ export function callbackSummary(submitted: number, interviews: number): { value:
   return { value: pct + "%", note: submitted < 5 ? `${of} · early, small numbers swing` : of };
 }
 
+/** The rejection timing behind at least half (and at least two) of the diagnosed rejections, if any. */
+export function dominantRejectionTiming(diags: Record<string, string>): { timing: string; share: number } | null {
+  const vals = Object.values(diags);
+  for (const t of ["Within hours", "1–2 days", "1–2 weeks", "Never"]) {
+    const n = vals.filter((v) => v === t).length;
+    if (vals.length >= 2 && n / vals.length >= 0.5 && n >= 2) return { timing: t, share: n / vals.length };
+  }
+  return null;
+}
+
 /** Rejection-pattern insight over the diagnosed timings map. */
 export function rejectionInsight(diags: Record<string, string>, diagCauses: Record<string, string>): string | null {
-  const vals = Object.values(diags);
-  let insight: string | null = null;
-  ["Within hours", "1–2 days", "1–2 weeks", "Never"].forEach((t) => {
-    const n = vals.filter((v) => v === t).length;
-    if (!insight && vals.length >= 2 && n / vals.length >= 0.5 && n >= 2) {
-      insight = Math.round((n / vals.length) * 100) + "% of your diagnosed rejections came \"" + t.toLowerCase() + "\" — " + diagCauses[t];
-    }
-  });
-  return insight;
+  const d = dominantRejectionTiming(diags);
+  if (!d) return null;
+  return Math.round(d.share * 100) + "% of your diagnosed rejections came \"" + d.timing.toLowerCase() + "\" — " + diagCauses[d.timing];
 }
 
 /* ── Misc ──────────────────────────────────────────────────────────── */

@@ -12,6 +12,8 @@ import { cardWhen, formatReminder, trackCardKey } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
 import { safeHttpUrl } from "@/lib/jobs/types";
 import { Kicker } from "./ui";
+import { FollowUpDraft } from "./tracker/follow-up-draft";
+import { useEffect, useRef, useState } from "react";
 
 function Scrim({ onClose }: { onClose: () => void }) {
   return (
@@ -177,6 +179,31 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
   const setRemind = usePfStore((s) => s.setRemind);
   const setCardDate = usePfStore((s) => s.setCardDate);
   const setDiag = usePfStore((s) => s.setDiag);
+  const setCardNote = usePfStore((s) => s.setCardNote);
+  const setStore = usePfStore((s) => s.set);
+  const router = useRouter();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  // Notes are controlled and saved on a short debounce and on unmount, so an edit
+  // survives Escape, a click on the scrim or a card swap. The draft-follow-up
+  // panel reads this live text, not the last saved copy.
+  const storedNote = board.flatMap((col) => col.cards).find((x) => x.key === cardKey)?.note ?? "";
+  const [noteDraft, setNoteDraft] = useState(storedNote);
+  const pendingNote = useRef<string | null>(null);
+  useEffect(() => {
+    if (pendingNote.current === null) return;
+    const t = setTimeout(() => {
+      if (pendingNote.current !== null) setCardNote(cardKey, pendingNote.current.trim());
+      pendingNote.current = null;
+    }, 600);
+    return () => clearTimeout(t);
+  }, [noteDraft, cardKey, setCardNote]);
+  useEffect(
+    () => () => {
+      if (pendingNote.current !== null) setCardNote(cardKey, pendingNote.current.trim());
+    },
+    [cardKey, setCardNote],
+  );
 
   let colIdx = -1;
   let card = null as (typeof board)[number]["cards"][number] | null;
@@ -264,10 +291,44 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
           </div>
         )}
 
+        {colIdx === 2 && (
+          <button
+            onClick={() => {
+              setStore({ ivTab: "briefing", ivBriefingFor: { company: c.company, role: c.role } });
+              closeDrawers();
+              router.push("/interview");
+            }}
+            style={{ cursor: "pointer", width: "100%", marginTop: 14, height: 42, borderRadius: 11, border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", background: "var(--accentSoft)", color: "var(--accentText)", fontSize: 13.5, fontWeight: 600 }}
+          >
+            Prep for this interview: open the {c.company} briefing →
+          </button>
+        )}
+
+        {c.link && (
+          <a href={c.link} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 14, fontSize: 12.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
+            Open the posting ↗
+          </a>
+        )}
+
         <Kicker style={{ fontSize: 9.5, margin: "18px 0 8px" }}>Notes</Kicker>
-        <p style={{ fontSize: 13.5, lineHeight: 1.65, color: "var(--muted)", margin: "0 0 18px", border: "1px dashed var(--lineStrong)", borderRadius: 12, padding: "13px 15px" }}>
-          {c.note || "No notes yet."}
-        </p>
+        <textarea
+          value={noteDraft}
+          onChange={(e) => {
+            pendingNote.current = e.target.value;
+            setNoteDraft(e.target.value);
+          }}
+          placeholder="Who you spoke to, what they said, what's next. Saves as you type."
+          aria-label="Notes"
+          className="pf-input"
+          style={{ width: "100%", minHeight: 80, fontSize: 13.5, lineHeight: 1.65, margin: "0 0 18px", padding: "13px 15px", resize: "vertical" }}
+        />
+
+        {colIdx === 1 && (
+          <>
+            <Kicker style={{ fontSize: 9.5, margin: "0 0 8px" }}>Follow up</Kicker>
+            <FollowUpDraft cardKey={cardKey} company={c.company} role={c.role} appliedDate={c.appliedDate} followedUpAt={c.followedUpAt} note={noteDraft} />
+          </>
+        )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
           <Kicker style={{ fontSize: 9.5 }}>Reminder</Kicker>
@@ -320,13 +381,32 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
               Mark rejected
             </button>
           )}
-          <button
-            onClick={() => removeCard(cardKey)}
-            style={{ cursor: "pointer", height: 44, padding: "0 18px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: "var(--risk)", fontSize: 13.5, fontWeight: 600 }}
-          >
-            Remove
-          </button>
+          {!confirmRemove && (
+            <button
+              onClick={() => setConfirmRemove(true)}
+              style={{ cursor: "pointer", height: 44, padding: "0 18px", borderRadius: 11, border: "1px solid var(--lineStrong)", background: "var(--panel)", color: "var(--risk)", fontSize: 13.5, fontWeight: 600 }}
+            >
+              Remove
+            </button>
+          )}
         </div>
+        {confirmRemove && (
+          <div role="alertdialog" aria-label="Confirm removal" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12, border: "1px solid color-mix(in srgb,var(--risk) 30%,transparent)", borderRadius: 12, padding: "12px 14px" }}>
+            <span style={{ fontSize: 13, flex: "1 1 200px" }}>Remove {c.company} from the tracker? Its notes and dates go with it.</span>
+            <button
+              onClick={() => removeCard(cardKey)}
+              style={{ cursor: "pointer", height: 38, padding: "0 14px", borderRadius: 10, border: "none", background: "var(--risk)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+            >
+              Yes, remove
+            </button>
+            <button
+              onClick={() => setConfirmRemove(false)}
+              style={{ cursor: "pointer", height: 38, padding: "0 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--fg)", fontSize: 13, fontWeight: 600 }}
+            >
+              Keep it
+            </button>
+          </div>
+        )}
       </div>
     </DrawerShell>
   );
@@ -339,6 +419,6 @@ export function Drawers() {
   const appDetail = usePfStore((s) => s.appDetail);
 
   if (jobDetail) return <JobDrawer jobKey={jobDetail} />;
-  if (appDetail) return <AppDrawer cardKey={appDetail} />;
+  if (appDetail) return <AppDrawer key={appDetail} cardKey={appDetail} />;
   return null;
 }

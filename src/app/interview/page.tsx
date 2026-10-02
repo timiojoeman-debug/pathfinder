@@ -7,6 +7,7 @@
 
 import { IV_TABS } from "@/lib/pf/data";
 import { usePfStore } from "@/lib/pf/store";
+import { STORY_TARGET } from "@/lib/pf/progress";
 import { PageHeader, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
 import { StarTab } from "@/components/pf/interview/star-tab";
@@ -19,11 +20,36 @@ import { FeedbackAnalysis } from "@/components/pf/interview/feedback-analysis";
 function FeedbackTab() {
   const s = usePfStore();
   const canSave = !!(s.fbCompany.trim() && s.fbRating);
+  // Interview-stage tracker cards, so the reflection names the same company the board does.
+  const interviewCards = s.board.flatMap((col) => col.cards.filter((c) => col.id === "interview" || c.reachedInterview));
   return (
     <Reveal style={{ maxWidth: 720 }}>
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 16 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Log a post-interview reflection</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Captured while it&apos;s fresh — patterns emerge after 3+ entries</span>
+        {interviewCards.length > 0 && (
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 14 }}>
+            {interviewCards.map((c) => {
+              const label = `${c.company} · ${c.role}`;
+              const on = s.fbCompany === label;
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => s.set({ fbCompany: label })}
+                  style={{
+                    cursor: "pointer", height: 30, padding: "0 12px", borderRadius: 9,
+                    border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
+                    background: on ? "var(--accentSoft)" : "var(--panel2)",
+                    color: on ? "var(--accentText)" : "var(--muted)",
+                    fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+                  }}
+                >
+                  {c.company}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, margin: "16px 0 12px", alignItems: "center" }}>
           <input
             value={s.fbCompany}
@@ -86,12 +112,14 @@ function FeedbackTab() {
 export default function InterviewPage() {
   const ivTab = usePfStore((s) => s.ivTab);
   const set = usePfStore((s) => s.set);
+  const stories = usePfStore((s) => s.savedStories.length);
 
   return (
     <div>
       <PageHeader label="Phase 05 · Mastery" title="Interview Preparation">
         <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "56ch" }}>
-          Pattern-based technical prep plus five prepared <span style={{ color: "var(--fg)", fontWeight: 600 }}>STAR</span> stories. Confidence is built, not summoned.
+          Pattern-based technical prep plus {STORY_TARGET} prepared <span style={{ color: "var(--fg)", fontWeight: 600 }}>STAR</span> stories
+          {" "}(<span className="pf-mono" style={{ color: "var(--fg)" }}>{stories} of {STORY_TARGET}</span> saved so far). Confidence is built, not summoned.
         </p>
       </PageHeader>
 

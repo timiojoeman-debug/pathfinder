@@ -42,7 +42,7 @@ function profileInput(): ProfileInput {
     cvLinkedIn: s.cvLinkedIn, cvScores: s.cvScores,
     savedJobs: s.savedJobs,
     netPersona: s.netPersona, netSent: s.netSent, netGenerated: s.netGenerated,
-    ivSolved: s.ivSolved, ivFeedback: s.ivFeedback,
+    ivSolved: s.ivSolved, ivFeedback: s.ivFeedback, savedStories: s.savedStories,
     board: s.board, diags: s.diags, events: s.events,
   };
 }

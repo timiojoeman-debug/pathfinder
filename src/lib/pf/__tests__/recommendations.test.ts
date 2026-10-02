@@ -19,7 +19,7 @@ function mkProfile(overrides: Partial<CareerProfile> = {}): CareerProfile {
     cvAnalyzed: false, cvHasContent: false, atsScore: null, atsHistory: [], atsDelta: null, projectsGenerated: false,
     targetCompanies: [], applicationsSubmitted: 0, interviewsLanded: 0, offers: 0, interviewRate: 0, schemeWindows: [],
     outreachSent: 0, contactedCompanies: [],
-    leetSolved: 0, weakPatterns: [], interviewsLogged: 0,
+    leetSolved: 0, weakPatterns: [], interviewsLogged: 0, storiesPrepared: 0, trackedCards: [],
     strengths: [], weaknesses: [], currentPhase: "direction",
     events: [],
     ...overrides,
@@ -120,5 +120,51 @@ describe("recommend — scheme timing", () => {
     const recs = recommend(p, mkProgress(), "2026-11-18");
     expect(recs[0]).toMatchObject({ id: "timing-stripe-apply", priority: 95 });
     expect(recommend(p, mkProgress(), "2026-09-01").some((r) => r.id.startsWith("timing-"))).toBe(false);
+  });
+});
+
+describe("recommend — tracker reminders and follow-ups", () => {
+  const day = (iso: string) => new Date(`${iso}T00:00:00`).getTime();
+  const card = (over: Partial<CareerProfile["trackedCards"][number]>) => ({ key: "monzo::backend intern", company: "Monzo", role: "Backend Intern", column: "applied" as const, ...over });
+
+  it("raises a reminder on or after its date, opening the card, and not before", () => {
+    const p = mkProfile({ directionSet: true, trackedCards: [card({ remind: "2026-10-02" })] });
+    expect(recommend(p, mkProgress(), "2026-10-01").some((r) => r.id.startsWith("remind-"))).toBe(false);
+    const due = recommend(p, mkProgress(), "2026-10-02").find((r) => r.id.startsWith("remind-"));
+    expect(due).toMatchObject({ href: "/tracker", cardKey: "monzo::backend intern", impact: "due today" });
+    expect(recommend(p, mkProgress(), "2026-10-05").find((r) => r.id.startsWith("remind-"))!.impact).toBe("overdue");
+  });
+
+  it("nudges a follow-up once an Applied card is 14 days old, and not for one that moved on", () => {
+    const applied = mkProfile({ directionSet: true, trackedCards: [card({ appliedDate: day("2026-09-18") })] });
+    expect(recommend(applied, mkProgress(), "2026-10-01").some((r) => r.id.startsWith("follow-up-"))).toBe(false);
+    const nudge = recommend(applied, mkProgress(), "2026-10-02").find((r) => r.id.startsWith("follow-up-"));
+    expect(nudge).toMatchObject({ href: "/tracker", cardKey: "monzo::backend intern" });
+    expect(nudge!.why).toContain("14 days");
+
+    const interviewing = mkProfile({ directionSet: true, trackedCards: [card({ column: "interview", appliedDate: day("2026-08-01") })] });
+    expect(recommend(interviewing, mkProgress(), "2026-10-02").some((r) => r.id.startsWith("follow-up-"))).toBe(false);
+  });
+
+  it("rests the nudge for 14 days after a follow-up is marked sent", () => {
+    const p = (sent: string) => mkProfile({ directionSet: true, trackedCards: [card({ appliedDate: day("2026-08-01"), followedUpAt: day(sent) })] });
+    expect(recommend(p("2026-09-25"), mkProgress(), "2026-10-02").some((r) => r.id.startsWith("follow-up-"))).toBe(false);
+    expect(recommend(p("2026-09-18"), mkProgress(), "2026-10-02").some((r) => r.id.startsWith("follow-up-"))).toBe(true);
+  });
+
+  it("only nudges follow-ups in Applied, but honours reminders on any live column", () => {
+    for (const column of ["saved", "interview", "offer"] as const) {
+      const p = mkProfile({ directionSet: true, trackedCards: [card({ column, appliedDate: day("2026-08-01"), remind: "2026-10-01" })] });
+      const ids = recommend(p, mkProgress(), "2026-10-02").map((r) => r.id);
+      expect(ids.some((id) => id.startsWith("follow-up-"))).toBe(false);
+      expect(ids).toContain("remind-monzo::backend intern");
+    }
+  });
+
+  it("does not stack a follow-up on top of a due reminder for the same card", () => {
+    const p = mkProfile({ directionSet: true, trackedCards: [card({ remind: "2026-10-01", appliedDate: day("2026-08-01") })] });
+    const ids = recommend(p, mkProgress(), "2026-10-02").map((r) => r.id);
+    expect(ids).toContain("remind-monzo::backend intern");
+    expect(ids.some((id) => id.startsWith("follow-up-"))).toBe(false);
   });
 });

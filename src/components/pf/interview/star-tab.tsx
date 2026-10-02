@@ -9,10 +9,15 @@
  * `/api/interview/star-builder` builds its prompt from `rawStory.situation`
  * etc., so the body must carry the four beats as an object. Sending a single
  * string produces a prompt full of "undefined" and a confidently wrong result.
+ *
+ * Saved stories are the evidence behind "stories prepared": the page header
+ * counts them and they feed interview readiness. A story is saveable only with
+ * all four beats written, either the student's draft or the tightened version.
  */
 
 import { useState } from "react";
 import { usePfStore } from "@/lib/pf/store";
+import { STORY_TARGET } from "@/lib/pf/progress";
 import { useAiTask, type AiEnvelope } from "@/lib/pf/use-ai";
 import { Reveal } from "@/components/pf/ui";
 import { AiCaveat, AiError, AiList, AiSection, AiTag, GenerateButton } from "@/components/pf/ai-panel";
@@ -62,10 +67,63 @@ function toneFor(quality: string | undefined): string {
   return key ? QUALITY_TONE[key] : "var(--muted)";
 }
 
+const complete = (s: Partial<RawStory>): s is RawStory => BEATS.every((b) => !!s[b.k]?.trim());
+
+function SavedStories() {
+  const savedStories = usePfStore((s) => s.savedStories);
+  const deleteStory = usePfStore((s) => s.deleteStory);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  return (
+    <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginTop: 14 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Your prepared stories</h3>
+        <span className="pf-mono" style={{ fontSize: 11, color: "var(--faint)" }}>{savedStories.length} / {STORY_TARGET}</span>
+      </div>
+      {savedStories.length === 0 && (
+        <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, margin: "8px 0 0" }}>
+          None saved yet. Write all four beats and save it: aim for {STORY_TARGET} stories that cover different questions.
+        </p>
+      )}
+      {savedStories.map((st) => (
+        <details key={st.id} style={{ borderTop: "1px solid var(--line2)", padding: "11px 0 3px", marginTop: 10 }}>
+          <summary style={{ cursor: "pointer", fontSize: 13.5, fontWeight: 600 }}>{st.title}</summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, margin: "10px 0" }}>
+            {BEATS.map((b) => (
+              <div key={b.k} style={{ fontSize: 12.5, lineHeight: 1.6 }}>
+                <strong>{b.mark}.</strong> <span style={{ color: "var(--muted)" }}>{st[b.k]}</span>
+              </div>
+            ))}
+          </div>
+          {confirmId === st.id ? (
+            <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
+              Delete this story?
+              <button onClick={() => deleteStory(st.id)} style={{ cursor: "pointer", border: "none", background: "var(--risk)", color: "#F7F1E4", borderRadius: 8, height: 28, padding: "0 11px", fontSize: 12, fontWeight: 600 }}>Delete</button>
+              <button onClick={() => setConfirmId(null)} style={{ cursor: "pointer", border: "1px solid var(--line)", background: "var(--panel)", color: "var(--fg)", borderRadius: 8, height: 28, padding: "0 11px", fontSize: 12, fontWeight: 600 }}>Keep</button>
+            </span>
+          ) : (
+            <button onClick={() => setConfirmId(st.id)} style={{ cursor: "pointer", border: "1px solid var(--line)", background: "var(--panel)", color: "var(--risk)", borderRadius: 8, height: 28, padding: "0 11px", fontSize: 12, fontWeight: 600 }}>
+              Delete
+            </button>
+          )}
+        </details>
+      ))}
+    </div>
+  );
+}
+
 export function StarTab() {
   const emit = usePfStore((s) => s.emit);
+  const saveStory = usePfStore((s) => s.saveStory);
   const [story, setStory] = useState<RawStory>(EMPTY_STORY);
   const [category, setCategory] = useState<string>(CATEGORIES[0].id);
+  const [title, setTitle] = useState("");
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+
+  const categoryName = CATEGORIES.find((c) => c.id === category)?.name ?? category;
+  const save = (beats: RawStory, which: string) => {
+    if (saveStory({ title: title.trim() || categoryName, ...beats })) setSavedMsg(`Saved ${which}.`);
+  };
 
   const { data, loading, error, needsAuth, run } = useAiTask<
     AiEnvelope<StarData> & { inputQuality?: string; inputQualityExplanation?: string }
@@ -139,6 +197,15 @@ export function StarTab() {
           ))}
         </div>
 
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={`Title (defaults to "${categoryName}")`}
+          aria-label="Story title"
+          className="pf-input"
+          style={{ width: "100%", height: 40, padding: "0 13px", fontSize: 12.5, marginTop: 10 }}
+        />
+
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 14 }}>
           <GenerateButton onClick={build} loading={loading} disabled={!hasEnough} loadingLabel="Structuring…">
             {built ? "Rebuild story" : "Build my story"}
@@ -149,7 +216,16 @@ export function StarTab() {
           {hasEnough && !story.result.trim() && (
             <span style={{ fontSize: 12, color: "var(--warn)" }}>No result yet — that&apos;s the beat interviewers remember.</span>
           )}
+          <button
+            onClick={() => save(story, "your draft")}
+            disabled={!complete(story)}
+            title={complete(story) ? undefined : "Write all four beats to save"}
+            style={{ cursor: complete(story) ? "pointer" : "default", height: 40, padding: "0 16px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: complete(story) ? "var(--fg)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}
+          >
+            Save my draft
+          </button>
         </div>
+        {savedMsg && <div role="status" style={{ fontSize: 12, color: "var(--strong)", marginTop: 8 }}>{savedMsg}</div>}
 
         <AiError message={error} needsAuth={needsAuth} />
       </div>
@@ -205,11 +281,22 @@ export function StarTab() {
 
           {built.tips?.length ? <AiSection title="Delivery"><AiList items={built.tips} /></AiSection> : null}
 
+          {complete(built) && (
+            <button
+              onClick={() => save({ situation: built.situation!, task: built.task!, action: built.action!, result: built.result! }, "the tightened version")}
+              style={{ cursor: "pointer", marginTop: 14, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600 }}
+            >
+              Save the tightened version
+            </button>
+          )}
+
           <AiCaveat>
             Say it out loud once before you accept it — if a phrase isn&apos;t yours, it will sound like it isn&apos;t yours.
           </AiCaveat>
         </div>
       )}
+
+      <SavedStories />
     </Reveal>
   );
 }
