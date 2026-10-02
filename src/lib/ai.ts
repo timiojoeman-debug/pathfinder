@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { headers } from "next/headers";
 import { logger } from "@/lib/logger";
-import { recordAiUsage } from "@/lib/db/ai-usage";
+import { keepAlive, recordAiUsage } from "@/lib/db/ai-usage";
 
 export type AIRequest = {
   systemPrompt: string;
@@ -40,13 +40,15 @@ export function isAIAvailable(): boolean {
  * is simply recorded without a user. Never throws, never awaited.
  */
 function trackUsage(model: string, data: { usage?: unknown }, route?: string, userId?: string | null) {
-  void (async () => {
-    let uid = userId ?? null;
-    if (!uid) {
-      try { uid = (await headers()).get("x-user-id"); } catch { /* no request scope */ }
-    }
-    await recordAiUsage({ userId: uid, route, model, usage: data?.usage as never });
-  })();
+  // Read the header now, while the request scope is certainly live; the insert
+  // itself runs in after() so the platform keeps the invocation alive for it.
+  let uidP: Promise<string | null> = Promise.resolve(userId ?? null);
+  if (!userId) {
+    try { uidP = headers().then((h) => h.get("x-user-id"), () => null); } catch { /* no request scope */ }
+  }
+  keepAlive(async () => {
+    await recordAiUsage({ userId: await uidP, route, model, usage: data?.usage as never });
+  });
 }
 
 function handleOpenAIErrorResponse(res: Response, errText: string): never {

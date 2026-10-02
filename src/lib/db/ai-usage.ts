@@ -1,3 +1,4 @@
+import { after } from 'next/server';
 import { getServerDb } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
 
@@ -8,6 +9,20 @@ export type AiUsageEntry = {
   /** The `usage` object of an OpenAI response (chat or embeddings). */
   usage: { prompt_tokens?: number; completion_tokens?: number } | null | undefined;
 };
+
+/**
+ * Run `task` after the response is sent, keeping the serverless invocation
+ * alive until it finishes (a bare floating promise can be frozen mid-insert on
+ * Vercel). `after` throws outside a request scope (tests, scripts), where a
+ * plain fire-and-forget is fine.
+ */
+export function keepAlive(task: () => Promise<void>): void {
+  try {
+    after(task);
+  } catch {
+    void task();
+  }
+}
 
 /**
  * Record the cost of one OpenAI call: model + token counts, nothing else.

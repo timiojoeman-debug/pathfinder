@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/client';
 import { AIError } from '@/lib/ai';
 import { renderKnowledgeBlock, type Domain } from '@/lib/knowledge';
 import { logger } from '@/lib/logger';
-import { recordAiUsage } from '@/lib/db/ai-usage';
+import { keepAlive, recordAiUsage } from '@/lib/db/ai-usage';
 import { LEETCODE_TOTAL } from '@/lib/pf/leetcode';
 import { factsFromClientState } from './client-state-context';
 import type {
@@ -208,7 +208,7 @@ async function retrieveMethodology(feature: string, userInput: string, userId?: 
 
     if (!embeddingRes.ok) return '';
     const embeddingData = await embeddingRes.json();
-    void recordAiUsage({ userId, route: `mentor/${feature}/embedding`, model: 'text-embedding-3-small', usage: embeddingData?.usage });
+    keepAlive(() => recordAiUsage({ userId, route: `mentor/${feature}/embedding`, model: 'text-embedding-3-small', usage: embeddingData?.usage }));
     const embedding = embeddingData.data?.[0]?.embedding;
     if (!embedding) return '';
 
@@ -382,7 +382,7 @@ async function callOpenAI(systemPrompt: string, userMessage: string, temperature
   }
 
   const data = await res.json();
-  void recordAiUsage({ userId, route: `mentor/${feature}`, model: 'gpt-4o', usage: data?.usage });
+  keepAlive(() => recordAiUsage({ userId, route: `mentor/${feature}`, model: 'gpt-4o', usage: data?.usage }));
   let content = data?.choices?.[0]?.message?.content ?? '';
   if (typeof content !== 'string') content = String(content);
 
