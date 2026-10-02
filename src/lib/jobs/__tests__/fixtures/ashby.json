@@ -1,0 +1,8 @@
+{
+  "jobs": [
+    { "id": "b-1", "title": "Summer Analyst, Operations", "location": "London", "secondaryLocations": [{ "location": "Paris" }], "publishedAt": "2026-09-21T15:54:55.609+00:00", "isListed": true, "workplaceType": "Hybrid", "jobUrl": "https://jobs.ashbyhq.com/acme/b-1" },
+    { "id": "b-2", "title": "Industrial Placement, Data", "location": "London", "publishedAt": "2026-09-20T10:00:00.000+00:00", "isListed": true, "jobUrl": "https://jobs.ashbyhq.com/acme/b-2" },
+    { "id": "b-3", "title": "Machine Learning Intern", "location": "London", "isListed": false, "jobUrl": "https://jobs.ashbyhq.com/acme/b-3" },
+    { "id": "b-4", "title": "Proposal Manager", "location": "London", "isListed": true, "jobUrl": "https://jobs.ashbyhq.com/acme/b-4" }
+  ]
+}

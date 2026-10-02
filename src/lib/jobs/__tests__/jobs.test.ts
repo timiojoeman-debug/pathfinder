@@ -74,6 +74,19 @@ describe('dedupeListings', () => {
     expect(dedupeListings(dupes)).toHaveLength(1);
   });
 
+  it('ignores tracking params and a trailing slash in the URL', () => {
+    const out = dedupeListings([
+      job({ url: 'https://boards.example/acme/jobs/1' }),
+      job({ url: 'https://boards.example/acme/jobs/1/?utm_source=x&gh_src=y&source=Simplify&ref=r&lever-source=l' }),
+    ]);
+    expect(out).toHaveLength(1);
+  });
+
+  it('keeps URLs that differ in a meaningful param', () => {
+    const out = dedupeListings([job({ url: 'https://x/apply?id=1' }), job({ url: 'https://x/apply?id=2' })]);
+    expect(out).toHaveLength(2);
+  });
+
   it('keeps distinct roles at the same company', () => {
     const out = dedupeListings([job({ url: 'https://x/1' }), job({ url: 'https://x/2', title: 'Data Intern' })]);
     expect(out).toHaveLength(2);

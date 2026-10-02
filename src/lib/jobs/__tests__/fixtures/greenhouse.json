@@ -1,0 +1,10 @@
+{
+  "jobs": [
+    { "id": 101, "title": "Software Engineer Intern", "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/101", "location": { "name": "London, UK" }, "first_published": "2026-08-24T09:04:42-04:00", "updated_at": "2026-09-25T05:17:09-04:00" },
+    { "id": 102, "title": "Graduate Data Analyst", "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/102", "location": { "name": "Cardiff or Remote (UK)" }, "updated_at": "2026-09-01T10:00:00Z" },
+    { "id": 103, "title": "Internal Tools Engineer", "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/103", "location": { "name": "London" } },
+    { "id": 104, "title": "International Payments Lead", "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/104", "location": { "name": "London" } },
+    { "id": 105, "title": "Backend Engineer", "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/105", "location": { "name": "London" } },
+    { "id": 106, "title": "Placement Student, Platform", "absolute_url": "javascript:alert(1)", "location": { "name": "London" } }
+  ]
+}

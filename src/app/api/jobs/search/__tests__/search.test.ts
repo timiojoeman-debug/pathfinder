@@ -5,6 +5,9 @@ vi.mock('@/lib/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
+const getActiveListings = vi.fn();
+vi.mock('@/lib/db/job-listings', () => ({ getActiveListings: (...a: unknown[]) => getActiveListings(...a) }));
+
 import { POST } from '../route';
 import { _resetGithubCache } from '@/lib/jobs/github';
 
@@ -59,6 +62,8 @@ describe('POST /api/jobs/search', () => {
   const saved = { ...process.env };
 
   beforeEach(() => {
+    getActiveListings.mockReset();
+    getActiveListings.mockResolvedValue([]);
     delete process.env.ADZUNA_APP_ID;
     delete process.env.ADZUNA_APP_KEY;
     _resetGithubCache();
@@ -202,5 +207,60 @@ describe('POST /api/jobs/search', () => {
     expect(body.jobs[0].company).toBe('AZ Co');
     expect(body.jobs[0].matchScore).toBe(100);
     expect(body.jobs[body.jobs.length - 1].matchScore).toBeNull();
+  });
+
+  describe('employer-feed cache', () => {
+    const CACHED = (over: Record<string, unknown> = {}) => ({
+      id: 'c1', title: 'Software Engineer Intern', company: 'Monzo', location: 'London, UK', workMode: 'Not stated',
+      source: 'Monzo careers', description: '', url: 'https://job-boards.greenhouse.io/monzo/jobs/1',
+      matchScore: null, atsKeywords: [], postedAt: '2026-09-20T00:00:00.000Z', ...over,
+    });
+
+    it('returns cached employer roles, filtered by the query, ahead of GitHub', async () => {
+      getActiveListings.mockResolvedValue([CACHED(), CACHED({ id: 'c2', title: 'Graduate Chef', url: 'https://x/2' })]);
+      stubFetch({ github: [GH()] });
+      const body = await (await POST(post({ roleType: 'software engineer intern' }))).json();
+      expect(body.jobs[0]).toMatchObject({ company: 'Monzo', source: 'Monzo careers', postedAt: '2026-09-20T00:00:00.000Z' });
+      expect(body.jobs.map((j: { title: string }) => j.title)).not.toContain('Graduate Chef');
+      expect(body.sources.employers).toBe(1);
+      expect(body.jobs.some((j: { company: string }) => j.company === 'Skyscanner')).toBe(true);
+    });
+
+    it('passes the location to the cache read and interleaves sources so one cannot crowd out the rest', async () => {
+      getActiveListings.mockResolvedValue([
+        CACHED({ id: 'e1', url: 'https://e/1' }),
+        CACHED({ id: 'e2', url: 'https://e/2' }),
+        CACHED({ id: 'e3', url: 'https://e/3' }),
+      ]);
+      stubFetch({ github: [GH({ id: 'g1', url: 'https://g/1', locations: ['London, UK'] })] });
+      const body = await (await POST(post({ roleType: 'software engineer intern', location: 'London' }))).json();
+      expect(getActiveListings).toHaveBeenCalledWith({ location: 'London' });
+      const urls = body.jobs.map((j: { url: string }) => j.url);
+      expect(urls.indexOf('https://g/1')).toBe(1); // second, not last
+    });
+
+    it('dedupes a role present in the cache and on GitHub', async () => {
+      getActiveListings.mockResolvedValue([CACHED({ company: 'Skyscanner', url: 'https://careers.skyscanner.net/1' })]);
+      stubFetch({ github: [GH()] });
+      const body = await (await POST(post({ roleType: 'software engineer intern' }))).json();
+      expect(body.jobs.filter((j: { url: string }) => j.url === 'https://careers.skyscanner.net/1')).toHaveLength(1);
+    });
+
+    it('falls through to GitHub when the cache throws', async () => {
+      getActiveListings.mockRejectedValue(new Error('db down'));
+      stubFetch({ github: [GH()] });
+      const res = await POST(post({ roleType: 'software engineer intern' }));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.jobs[0].company).toBe('Skyscanner');
+      expect(body.sources.employers).toBe(0);
+    });
+
+    it('an empty cache and empty sources return no listings, nothing invented', async () => {
+      stubFetch({});
+      const body = await (await POST(post({ roleType: 'intern' }))).json();
+      expect(body.jobs).toEqual([]);
+      expectNothingInvented(body);
+    });
   });
 });

@@ -19,6 +19,8 @@ export interface JobListing {
   /** null when the listing gave us nothing to score against — never a guess. */
   matchScore: number | null;
   atsKeywords: string[];
+  /** ISO timestamp the employer published it, when the source says. Never guessed. */
+  postedAt?: string | null;
 }
 
 /**
@@ -66,12 +68,28 @@ export function computeMatchScore(cv: string, jobDescription: string): { score: 
   return { score, keywords: keywords.slice(0, 5) };
 }
 
+const TRACKING_PARAMS = new Set(["gh_src", "source", "ref", "lever-source"]);
+
+/** A posting URL without tracking params or a trailing slash, so the same role linked from two sources compares equal. */
+function canonicalUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    for (const k of [...u.searchParams.keys()]) {
+      if (k.startsWith("utm_") || TRACKING_PARAMS.has(k)) u.searchParams.delete(k);
+    }
+    u.pathname = u.pathname.replace(/\/+$/, "") || "/";
+    return u.href;
+  } catch {
+    return raw;
+  }
+}
+
 /** Drop duplicate listings that appear in more than one source. */
 export function dedupeListings(listings: JobListing[]): JobListing[] {
   const seen = new Set<string>();
   const out: JobListing[] = [];
   for (const j of listings) {
-    const key = `${j.company.toLowerCase()}|${j.title.toLowerCase()}|${j.url}`;
+    const key = `${j.company.toLowerCase()}|${j.title.toLowerCase()}|${canonicalUrl(j.url)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(j);
