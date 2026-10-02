@@ -612,3 +612,49 @@ export function composeSharedAttributes(
   ].filter(Boolean);
   return bits.join(" | ") || fallback;
 }
+
+/* ── Role / Bridge / Problem one-liners ───────────────────────────── */
+
+export interface OneLiner {
+  id: "role" | "bridge" | "problem";
+  name: string;
+  /** Who the template suits, as the TechTalk events deck labels it. */
+  bestFor: string;
+  /** The generic template as the deck gives it. */
+  template: string;
+  /** The template filled from the student's direction, with [brackets] where the app does not know. */
+  line: string;
+}
+
+const listJoin = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+
+/** Composes the three one-liner templates from the direction answers. Anything the
+ *  app does not know stays a visible [bracket]; "Open" is a non-answer, not an industry. */
+export function composeOneLiners(d: { dirRole: string | null; dirStack: string[]; dirIndustry: string | null }): OneLiner[] {
+  const role = d.dirRole?.trim() || "";
+  const stack = d.dirStack.slice(0, 3);
+  const industry = d.dirIndustry && d.dirIndustry.trim() && d.dirIndustry !== "Open" ? d.dirIndustry.trim() : "";
+  return [
+    {
+      id: "role",
+      name: "The Role",
+      bestFor: "Job seeker",
+      template: "What you do + who for + what you're focused on now",
+      line: `I'm a student aiming for ${role ? `${role} roles` : "[the role you want]"}${industry ? ` in ${industry}` : ""}, and right now I'm working on [what you're building or learning]${stack.length ? `, using ${listJoin(stack)}` : ""}.`,
+    },
+    {
+      id: "bridge",
+      name: "The Bridge",
+      bestFor: "Career switcher",
+      template: "I used to [old thing]. Now I do [skill] in [new place].",
+      line: `I used to [what you did before]. Now I do ${stack.length ? listJoin(stack) : "[skill]"} in ${industry || "[new place]"}.`,
+    },
+    {
+      id: "problem",
+      name: "The Problem",
+      bestFor: "Founder",
+      template: "I help [who] with [problem].",
+      line: `I help [who]${industry ? ` in ${industry}` : ""} with [problem].`,
+    },
+  ];
+}

@@ -70,6 +70,56 @@ export const NETWORKING_STRATEGY = {
     refusalCondition: 'If company-specific detail is empty or generic, REFUSE to generate and explain why',
   } as const,
 
+  /**
+   * Who to ask for what (TechTalk, above/below the line of decision-making power).
+   * Nobody in this matrix is asked for a job. Peers and alumni can refer you once
+   * they know you; recruiters give insight; hiring managers decide on fit.
+   */
+  whoToAsk: [
+    { who: 'Peers and alumni', line: 'below', referral: true, insight: true, style: 'Trust-driven', ask: 'Their story and advice first. A referral can follow once they know you.' },
+    { who: 'Recruiters', line: 'above', referral: false, insight: true, style: 'Fit-driven', ask: 'Insight on the role and the process. Never a referral.' },
+    { who: 'Hiring managers', line: 'above', referral: false, insight: false, style: 'Fit-driven', ask: 'They decide on fit. Show fit; do not ask for a referral or a job.' },
+  ] as const,
+
+  /** Anatomy of a LinkedIn connection note. Both must fit the 300-character limit. */
+  connectionRequests: {
+    charLimit: 300,
+    peer: {
+      parts: ['A personalised intro that shows you did your research', 'What you would like to learn from them, so it is clear what they would bring'],
+      note: 'Short and warm. Cite one real thing from their profile or a real shared link.',
+    },
+    recruiter: {
+      parts: [
+        'Purpose: you saw they are hiring for a specific role at their company',
+        'Pulled from the job description: one requirement you genuinely meet',
+        'A personalised intro: a portfolio or project link they can open',
+        'A light close, such as asking what they think',
+      ],
+      note: 'Fit-driven. Name the role and your matching proof. Do not ask for a referral.',
+    },
+  } as const,
+
+  /** Nine things worth noticing on a profile before you personalise a message. */
+  personalisationSignals: [
+    { signal: 'Recent move', look: 'New role, promotion, team change' },
+    { signal: 'Education', look: 'University, bootcamp, certification' },
+    { signal: 'Headline keywords', look: 'What they do day to day' },
+    { signal: 'Current company or team', look: 'Hiring, growing, new function' },
+    { signal: 'Location', look: 'Studied abroad, relocated, same background' },
+    { signal: 'Recent activity', look: 'Posts, comments, reports' },
+    { signal: 'Career transitions', look: 'Industry switch, role pivot, seniority jump' },
+    { signal: 'Featured section', look: 'Talks, posts, projects, videos' },
+    { signal: 'Shared connection', look: 'Mutuals, past teams or companies' },
+  ] as const,
+
+  /** Guidance only: how a transactional message differs from a relationship one. */
+  transactionalVsRelationship: [
+    { row: 'The message says', transactional: '"Can you refer me?"', relationship: '"Can I learn from you?"' },
+    { row: 'Focus', transactional: 'Getting something', relationship: 'Building a connection' },
+    { row: 'Tone', transactional: 'Cold, rushed, generic', relationship: 'Warm, personal, intentional' },
+    { row: 'Outcome', transactional: 'Ignored or declined', relationship: 'A conversation, trust, then a referral' },
+  ] as const,
+
   weeklyCadence: {
     connectionRequests: 3,
     coffeeChats: '1 per week',

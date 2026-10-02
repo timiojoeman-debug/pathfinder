@@ -188,6 +188,50 @@ export const NETWORK_RESEARCH_STEPS = [
   "For the role itself: read the JD twice, skim the company's engineering blog, and check Glassdoor for the interview format, then map your evidence to their requirements.",
 ];
 
+/** In-person events playbook. Every number here is a TechTalk rule of thumb from the
+ *  "network at events" deck, not a study; the page labels it that way. */
+export const EVENT_PLAYBOOK = {
+  finding: [
+    { group: "Platforms", items: ["Luma", "Eventbrite", "Meetup", "LinkedIn Events"] },
+    { group: "Communities", items: ["Slack and Discord groups", "Alumni networks", "Women in tech groups", "Student and career communities"] },
+    { group: "Hiding in plain sight", items: ["Company careers pages", "Conference side events", "Speakers you follow"] },
+  ],
+  worthGoing: [
+    "30 to 80 people if you want to network; 80 or more if you want to learn (a TechTalk rule of thumb).",
+    "Think about who will be in the room.",
+    "Think about the format: roundtables, workshops, a seated dinner or something sporty make talking easier.",
+    "Try recurring events, so faces become familiar. TechTalk suggests picking one series and going three times.",
+  ],
+  prep: [
+    { step: "Read the guest list", note: "Some platforms show who is attending. At minimum, check the speakers." },
+    { step: "Tidy your LinkedIn", note: "People will look you up that night." },
+    { step: "Think of a one-liner intro", note: "A clear one-line story. The card below builds three." },
+    { step: "Have questions ready", note: "One about the event, one about their work." },
+    { step: "Arrive in the first 10 minutes", note: "Joining five people is easy; joining fifty is not." },
+    { step: "Take a breath", note: "Everyone there feels just like you." },
+  ],
+  openers: [
+    "What brought you to this one?",
+    "What are you working on at the moment?",
+    "Mind if I join you? I'm [your name].",
+    "Have you been to one of these before?",
+    "What did you make of that last point about [topic]?",
+    "What are you hoping to get out of tonight?",
+  ],
+  exits: [
+    "I'm going to grab a drink, but this was great. Are you on LinkedIn?",
+    "I want to let you meet a few more people, but let's keep talking.",
+    "Before I go, I would love to connect.",
+  ],
+  exitTip: "Connect with them there and then, before you walk away.",
+  followUp: [
+    { when: "That night", note: "Send the connection request at the event.", now: true },
+    { when: "Within 48 hours", note: "A short message that says where you met and one specific detail from the conversation.", now: true },
+    { when: "The next few weeks", note: "Engage with what they post and comment where you can, so you stay visible.", now: false },
+    { when: "The next few months", note: "Send something useful with no ask attached: an article, an intro, a resource.", now: false },
+  ],
+};
+
 export const COFFEE_CHAT_FRAMEWORK = [
   { n: "1", label: "Opening", time: "~1 min", note: "Intro + gratitude + set a light agenda. Setting the agenda reads as leadership.", script: "Would it be OK to spend most of the time on your path into the team, and grab any advice for my next year at the end?" },
   { n: "2", label: "Their story", time: "10–15 min", note: "Your prepared questions: about them, never “what should I do”.", script: "What actually separated strong interns from average ones on your team?" },

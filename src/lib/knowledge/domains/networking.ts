@@ -122,6 +122,34 @@ export const NETWORKING_KNOWLEDGE: DomainKnowledge = {
       ],
       sourceIds: ['wiki-networking', 'doc-linkedin-checklist'],
     },
+    {
+      id: 'f-who-to-ask',
+      domain: D,
+      name: 'Who to Ask for What',
+      purpose:
+        'Match the ask to the person. Nobody is asked for a job; peers and alumni can refer you once they know you, recruiters give insight, hiring managers decide on fit.',
+      appliesWhen: 'Before writing any connection note or message, once you know who the contact is.',
+      steps: [
+        { label: 'Peers and alumni (below the line)', detail: 'Trust-driven. Ask for their story and advice. A referral can follow once they know you.' },
+        { label: 'Recruiters (above the line)', detail: 'Fit-driven. Name the role and one matching requirement. Ask for insight, never a referral.' },
+        { label: 'Hiring managers (above the line)', detail: 'Fit-driven. They decide on fit, so show fit. Do not ask them for a referral or a job.' },
+      ],
+      sourceIds: ['deck-september-surge', 'deck-june-day2', 'deck-network-at-events'],
+    },
+    {
+      id: 'f-transactional-vs-relationship',
+      domain: D,
+      name: 'Transactional vs Relationship Messages (guidance only)',
+      purpose:
+        'A check on the tone of a message before you send it. The aim is a coffee chat that can lead to a referral, not a referral request.',
+      appliesWhen: 'Reviewing a draft message to a peer or alumnus.',
+      steps: [
+        { label: 'What it says', detail: '"Can you refer me?" is transactional. "Can I learn from you?" is relationship-based.' },
+        { label: 'Focus and tone', detail: 'Getting something, cold, rushed and generic, versus building a connection, warm, personal and intentional.' },
+        { label: 'Likely outcome', detail: 'Transactional messages tend to be ignored or declined. Relationship messages tend to lead to a conversation, trust, and then a referral.' },
+      ],
+      sourceIds: ['deck-network-at-events'],
+    },
   ],
 
   // ── CONCEPTS — atomic teachable ideas ─────────────────────────────────
@@ -253,6 +281,27 @@ export const NETWORKING_KNOWLEDGE: DomainKnowledge = {
       ],
       conceptIds: ['c-coffee-chat', 'c-referral-leverage'],
       sourceIds: ['wiki-networking', 'doc-coffee-chat'],
+    },
+    {
+      id: 'pb-network-at-events',
+      domain: D,
+      name: 'Networking at In-Person Events',
+      goal: 'Walk into a room knowing who to approach, what to say, and how to follow up without being forgotten.',
+      whenToUse: 'Before and after any meetup, talk, dinner or conference where people from your target field will be.',
+      steps: [
+        { action: 'Find the right rooms: platforms (Luma, Eventbrite, Meetup, LinkedIn Events), communities (Slack and Discord groups, alumni networks), and company careers pages, conference side events and speakers you follow.', why: 'Most events are never in front of you unless you look in these places.', learn: 'c-coffee-chat' },
+        { action: 'Choose events worth the evening: roughly 30 to 80 people to network, more to learn; check who will be there; prefer small formats and recurring series (TechTalk rules of thumb).', why: 'Small, repeated rooms make it easier to start conversations and be remembered.', learn: 'c-coffee-chat' },
+        { action: 'Spend 15 minutes on prep: read the guest list or speakers, tidy your LinkedIn, write a one-liner (Role, Bridge or Problem), prepare one question about the event and one about their work.', why: 'People will look you up that night, and a ready one-liner removes the hardest first moment.', learn: 'c-coffee-chat' },
+        { action: 'Arrive in the first 10 minutes and open with a question that is not small talk, such as "What brought you to this one?" or "What are you working on at the moment?".', why: 'Joining five people is easier than joining fifty.', learn: 'c-coffee-chat' },
+        { action: 'Leave well and connect there and then: "I want to let you meet a few more people, but let\'s keep talking. Are you on LinkedIn?".', why: 'A connection made in the room beats one you promise to send later.', learn: 'c-referral-leverage' },
+        { action: 'Follow up: the connection request that night, a short message within 48 hours naming where you met and one specific detail, engagement over the next weeks, something useful with no ask over the next months.', why: 'The longer you wait, the faster you are forgotten.', learn: 'c-referral-leverage' },
+      ],
+      successCriteria: [
+        'You connected with at least one person before you left the room.',
+        'Your follow-up message went out within 48 hours and cited one real detail from the conversation.',
+      ],
+      conceptIds: ['c-coffee-chat', 'c-referral-leverage'],
+      sourceIds: ['deck-network-at-events'],
     },
   ],
 

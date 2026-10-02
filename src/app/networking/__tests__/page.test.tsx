@@ -80,3 +80,15 @@ describe("NetworkingPage — failure copy matches what is shown", () => {
     expect(usePfStore.getState().netDraft).toBeNull();
   });
 });
+
+describe("NetworkingPage — playbooks", () => {
+  it("renders the events playbook, the matrix, the signals and a one-liner from the direction", () => {
+    usePfStore.setState({ dirRole: "Backend", dirStack: ["Go"], dirIndustry: "Fintech" });
+    render(<NetworkingPage />);
+    expect(screen.getByText("Networking at events")).toBeInTheDocument();
+    expect(screen.getByText("Who to ask for what")).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(9);
+    expect(screen.getByText(/aiming for Backend roles in Fintech/)).toBeInTheDocument();
+    expect(screen.getByText(/What brought you to this one/)).toBeInTheDocument();
+  });
+});
