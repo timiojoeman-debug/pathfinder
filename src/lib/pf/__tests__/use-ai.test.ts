@@ -58,6 +58,22 @@ describe('useAiTask', () => {
     expect(JSON.parse(String(init.body))).toEqual({ category: 'challenge' });
   });
 
+  it('sends FormData as multipart, without a JSON content type', async () => {
+    const fetchSpy = vi.fn(async () => jsonResponse(200, {}));
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const fd = new FormData();
+    fd.append('text', 'cv');
+    const { result } = renderHook(() => useAiTask('/api/cv/analyze'));
+    await act(async () => {
+      await result.current.run(fd);
+    });
+
+    const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+    expect(init.body).toBe(fd);
+    expect(init.headers).toBeUndefined();
+  });
+
   it('flags a 401 as needing sign-in rather than as a failure to retry', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(401, { error: 'Authentication required' })));
 

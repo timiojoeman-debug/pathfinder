@@ -7,10 +7,10 @@
  */
 
 import { useRouter } from "next/navigation";
-import { DIAG_TIMINGS, JOB_DETAILS, REJECTION_DIAGNOSIS } from "@/lib/pf/data";
+import { DIAG_TIMINGS, REJECTION_DIAGNOSIS } from "@/lib/pf/data";
 import { cardWhen, formatReminder, trackCardKey } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
-import { Kicker, MarkDot } from "./ui";
+import { Kicker } from "./ui";
 
 function Scrim({ onClose }: { onClose: () => void }) {
   return (
@@ -50,22 +50,28 @@ function CloseBtn({ onClose }: { onClose: () => void }) {
 
 /* ── Job drawer ────────────────────────────────────────────────────── */
 
-function JobDrawer({ company }: { company: string }) {
+function JobDrawer({ jobKey }: { jobKey: string }) {
   const router = useRouter();
   const savedJobs = usePfStore((s) => s.savedJobs);
   const board = usePfStore((s) => s.board);
   const closeDrawers = usePfStore((s) => s.closeDrawers);
   const trackJob = usePfStore((s) => s.trackJob);
+  const setTailorJD = usePfStore((s) => s.setTailorJD);
 
-  const jd = savedJobs.find((j) => j.company === company);
+  // Keyed on company + role; a bare company name still resolves for older callers.
+  const jd = savedJobs.find((j) => trackCardKey(j.company, j.role) === jobKey) ?? savedJobs.find((j) => j.company === jobKey);
   if (!jd) return null;
 
-  const det = JOB_DETAILS[jd.company] ?? {
-    chips: [["Added by you", "var(--accent)"], ["Fit estimated from your baseline", "var(--muted)"]] as [string, string][],
-    desc: "jdText" in jd && jd.jdText ? [jd.jdText] : ["No description stored for this role yet — paste one in the add-role form to unlock the full analysis."],
-    resp: [],
-    reqs: [] as [string, boolean][],
-  };
+  // Every chip states where this role and its number actually came from.
+  const chips: [string, string][] = [
+    ...(jd.meta.startsWith("Added by you") ? [["Added by you", "var(--accent)"] as [string, string]] : []),
+    jd.fitKnown === false ? ["Not scored", "var(--faint)"] : ["Scored from your CV", "var(--strong)"],
+  ];
+  const desc = jd.jdText?.trim()
+    ? jd.jdText.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+    : [jd.url
+        ? "This listing came without a description. Open the original posting to read it, or paste the advert into the add-role form to score it."
+        : "No description stored for this role yet. Paste one into the add-role form to score it."];
   const slug = trackCardKey(jd.company, jd.role);
   const tracked = board.some((col) => col.cards.some((c) => c.key === slug || trackCardKey(c.company, c.role) === slug));
 
@@ -77,7 +83,9 @@ function JobDrawer({ company }: { company: string }) {
       trackJob({ company: jd.company, role: jd.role, fit: jd.fit, tone: jd.tone });
     }
   };
+  // Carry the advert into the CV Tailor panel, so the student lands ready to audit against it.
   const onTailor = () => {
+    if (jd.jdText?.trim()) setTailorJD(jd.jdText.trim());
     closeDrawers();
     router.push("/cv");
   };
@@ -104,7 +112,7 @@ function JobDrawer({ company }: { company: string }) {
         </div>
 
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap", margin: "14px 0 20px" }}>
-          {det.chips.map(([label, col]) => (
+          {chips.map(([label, col]) => (
             <span key={label} className="pf-mono" style={{ whiteSpace: "nowrap", fontSize: 10, fontWeight: 600, color: col, border: `1px solid color-mix(in srgb, ${col} 28%, transparent)`, background: `color-mix(in srgb, ${col} 7%, transparent)`, borderRadius: 6, padding: "4px 9px" }}>
               {label}
             </span>
@@ -127,38 +135,27 @@ function JobDrawer({ company }: { company: string }) {
         </div>
 
         <Kicker style={{ fontSize: 9.5, marginBottom: 10 }}>About the role</Kicker>
-        {det.desc.map((d) => (
-          <p key={d.slice(0, 40)} style={{ fontSize: 13.5, lineHeight: 1.7, color: "var(--fg)", margin: "0 0 12px" }}>{d}</p>
+        {desc.map((d, i) => (
+          <p key={i} style={{ fontSize: 13.5, lineHeight: 1.7, color: "var(--fg)", margin: "0 0 12px", whiteSpace: "pre-line" }}>{d}</p>
         ))}
 
-        {det.resp.length > 0 && (
+        {jd.coverLetter && (
           <>
-            <Kicker style={{ fontSize: 9.5, margin: "20px 0 10px" }}>What you&apos;ll do</Kicker>
-            {det.resp.map((r) => (
-              <div key={r} style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: "1px solid var(--line2)" }}>
-                <span style={{ color: "var(--accent)" }}>·</span>
-                <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)" }}>{r}</span>
-              </div>
+            <Kicker style={{ fontSize: 9.5, margin: "20px 0 10px" }}>Your cover letter draft</Kicker>
+            {jd.coverLetter.split(/\n{2,}/).map((p, i) => (
+              <p key={i} style={{ fontSize: 13, lineHeight: 1.7, color: "var(--muted)", margin: "0 0 10px" }}>{p}</p>
             ))}
+            <p style={{ fontSize: 11.5, color: "var(--faint)", fontStyle: "italic", margin: 0 }}>
+              An AI first draft. Review and personalise it before sending.
+            </p>
           </>
         )}
 
-        {det.reqs.length > 0 && (
-          <>
-            <Kicker style={{ fontSize: 9.5, margin: "20px 0 10px" }}>Requirements vs your profile</Kicker>
-            {det.reqs.map(([text, have]) => (
-              <div key={text} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 0", borderBottom: "1px solid var(--line2)" }}>
-                <MarkDot mark={have ? "✓" : "!"} bg={have ? "var(--strong)" : "var(--warn)"} />
-                <span style={{ flex: 1, fontSize: 13 }}>{text}</span>
-                <span className="pf-mono" style={{ fontSize: 10, color: have ? "var(--strong)" : "var(--warn)" }}>{have ? "you have this" : "gap"}</span>
-              </div>
-            ))}
-          </>
+        {jd.url && (
+          <a href={jd.url} target="_blank" rel="noopener noreferrer" className="pf-mono" style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 20, fontSize: 11, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
+            Open original posting ↗
+          </a>
         )}
-
-        <a href="#" onClick={(e) => e.preventDefault()} className="pf-mono" style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 20, fontSize: 11, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
-          Open original posting ↗
-        </a>
       </div>
     </DrawerShell>
   );
@@ -337,7 +334,7 @@ export function Drawers() {
   const jobDetail = usePfStore((s) => s.jobDetail);
   const appDetail = usePfStore((s) => s.appDetail);
 
-  if (jobDetail) return <JobDrawer company={jobDetail} />;
+  if (jobDetail) return <JobDrawer jobKey={jobDetail} />;
   if (appDetail) return <AppDrawer cardKey={appDetail} />;
   return null;
 }

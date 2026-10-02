@@ -52,6 +52,52 @@ describe("pf store — shell + drawers", () => {
   });
 });
 
+describe("pf store — Opportunity Discovery saves", () => {
+  beforeEach(reset);
+
+  const listing = (role: string) => ({
+    company: "Monzo", role, meta: "London · Adzuna", fit: 0, fitKnown: false, dash: 144, tone: "var(--faint)",
+    tags: ["Not scored"], verdict: "", action: "+ Save", jdText: "", url: "https://example.org/apply",
+  });
+
+  it("saves a live listing once, keeps its link, and logs JobSaved", () => {
+    s().saveListing(listing("Backend Intern"));
+    s().saveListing(listing("Backend Intern"));
+    expect(s().savedJobs).toHaveLength(1);
+    expect(s().savedJobs[0].url).toBe("https://example.org/apply");
+    expect(s().savedJobs[0].action).toBe("Open");
+    expect(lastEvent().type).toBe("JobSaved");
+    // Unscored roles log no fit number.
+    expect(lastEvent().meta).toEqual({ company: "Monzo" });
+  });
+
+  it("keeps two roles at one company apart, in the list and in the drawer key", () => {
+    s().saveListing(listing("Backend Intern"));
+    s().saveListing(listing("Data Intern"));
+    expect(s().savedJobs).toHaveLength(2);
+    s().openJob("Monzo", "Data Intern");
+    expect(s().jobDetail).toBe("monzo::data intern");
+  });
+
+  it("attaches a kept cover letter to the matching saved role only", () => {
+    s().saveListing(listing("Backend Intern"));
+    s().saveListing(listing("Data Intern"));
+    s().keepCoverLetter({ key: "k", paras: ["Dear team,", "Thanks."], assumptions: [], words: 3 }, "Monzo", "Data Intern");
+    const byRole = Object.fromEntries(s().savedJobs.map((j) => [j.role, j.coverLetter]));
+    expect(byRole["Data Intern"]).toBe("Dear team,\n\nThanks.");
+    expect(byRole["Backend Intern"]).toBeUndefined();
+    expect(s().jfCoverLetter?.key).toBe("k");
+  });
+
+  it("hands an advert to the tailor panel and clears results run against the old one", () => {
+    usePfStore.setState({ cvTailorJD: "old", cvTailorAts: { data: {} }, cvTailorMatch: { data: {} } });
+    s().setTailorJD("new advert");
+    expect(s().cvTailorJD).toBe("new advert");
+    expect(s().cvTailorAts).toBeNull();
+    expect(s().cvTailorMatch).toBeNull();
+  });
+});
+
 describe("pf store — event log + AI memory", () => {
   beforeEach(reset);
 

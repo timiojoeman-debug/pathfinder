@@ -27,6 +27,7 @@ import {
   extractChatPatch,
   fitTone,
   readinessFrom,
+  postingKey,
   roleFit,
   trackCardKey,
   targetKeywords,
@@ -39,6 +40,7 @@ import { deriveProfile, type CareerProfile, type ProfileInput } from "./profile"
 import { computeProgress, type ProgressReport } from "./progress";
 import { recommend, type Recommendation } from "./recommendations";
 import type { AiInteraction } from "./orchestrator";
+import type { AtsEnvelope as TailorAts, MatchEnvelope as TailorMatch } from "@/components/pf/cv/tailor-panel";
 
 export interface ChatMsg { who: "you" | "ai"; text: string }
 /** A turn in the cross-page mentor conversation. */
@@ -59,7 +61,22 @@ export interface SavedJob {
   verdict: string;
   action: string;
   jdText?: string;
+  /** The listing's own apply link. Absent for roles the student added by hand. */
+  url?: string;
+  /** The last cover letter generated for this role, so it survives navigation. */
+  coverLetter?: string;
 }
+
+/** The AI mentor read of the CV text (/api/cv/analyze), kept so it survives navigation. */
+export interface CvAiRead {
+  skills: string[];
+  strengths: string[];
+  feedback: { issue: string; suggestedFix: string }[];
+  nextSteps: string[];
+}
+
+/** The last AI cover letter, keyed on the posting it was written for (see `postingKey`). */
+export interface JfCoverLetter { key: string; paras: string[]; assumptions: string[]; words: number }
 
 export interface InterviewFeedback { company: string; rating: number; note: string; date: string }
 
@@ -68,7 +85,7 @@ interface PfState {
   collapsed: boolean;
   paletteOpen: boolean;
   paletteQ: string;
-  jobDetail: string | null; // company name
+  jobDetail: string | null; // trackCardKey(company, role), or a bare company name from older callers
   appDetail: string | null; // board card key
 
   /* onboarding */
@@ -102,6 +119,11 @@ interface PfState {
   cvAnalyzed: boolean;
   cvProjects: boolean;
   cvLinkedIn: boolean;
+  cvAiRead: CvAiRead | null;
+  /** Tailor panel: the last pasted advert and the results run against it. */
+  cvTailorJD: string;
+  cvTailorAts: TailorAts | null;
+  cvTailorMatch: TailorMatch | null;
 
   /* jobs */
   jfTitle: string;
@@ -110,6 +132,7 @@ interface PfState {
   jfAnalyzing: boolean;
   jfResult: JfResult | null;
   jfLetter: boolean;
+  jfCoverLetter: JfCoverLetter | null;
   savedJobs: SavedJob[];
 
   /* networking */
@@ -148,7 +171,8 @@ interface PfState {
   openPalette: () => void;
   closePalette: () => void;
   closeDrawers: () => void;
-  openJob: (company: string) => void;
+  /** With a role, keys the drawer on company + role so two roles at one company don't collide. */
+  openJob: (company: string, role?: string) => void;
   openApp: (key: string) => void;
 
   setOnb: (patch: Partial<OnbState>) => void;
@@ -168,6 +192,12 @@ interface PfState {
 
   saveJfJob: () => void;
   analyzeJf: () => void;
+  /** Save a live search result (deduped on company + role) and log it. */
+  saveListing: (job: SavedJob) => void;
+  /** Keep a generated cover letter, and attach it to the saved role it was written for. */
+  keepCoverLetter: (letter: JfCoverLetter, company: string, role: string) => void;
+  /** Hand an advert to the CV Tailor panel, clearing results run against the old one. */
+  setTailorJD: (jd: string) => void;
 
   /** Log a sent message. Returns false (and logs nothing) without a real recipient and message. */
   generateOutreach: (contact: { name: string; company?: string; message: string }) => boolean;
@@ -252,6 +282,10 @@ export const usePfStore = create<PfState>()(
       cvAnalyzed: false,
       cvProjects: false,
       cvLinkedIn: false,
+      cvAiRead: null,
+      cvTailorJD: "",
+      cvTailorAts: null,
+      cvTailorMatch: null,
 
       jfTitle: "",
       jfCompany: "",
@@ -259,6 +293,7 @@ export const usePfStore = create<PfState>()(
       jfAnalyzing: false,
       jfResult: null,
       jfLetter: false,
+      jfCoverLetter: null,
       savedJobs: [],
 
       netPersona: "Recruiter",
@@ -290,7 +325,7 @@ export const usePfStore = create<PfState>()(
       openPalette: () => set({ paletteOpen: true, paletteQ: "" }),
       closePalette: () => set({ paletteOpen: false }),
       closeDrawers: () => set({ jobDetail: null, appDetail: null }),
-      openJob: (company) => set({ jobDetail: company, appDetail: null }),
+      openJob: (company, role) => set({ jobDetail: role === undefined ? company : trackCardKey(company, role), appDetail: null }),
       openApp: (key) => set({ appDetail: key, jobDetail: null }),
 
       setOnb: (patch) => set((s) => ({ onb: { ...s.onb, ...patch } })),
@@ -408,6 +443,7 @@ export const usePfStore = create<PfState>()(
         if (!(s.jfTitle.trim() && s.jfCompany.trim())) return;
         const scored = roleFit(s.jfJD, s.cvText);
         const fit = scored ?? 0;
+        const letter = s.jfCoverLetter?.key === postingKey(s.jfCompany, s.jfTitle, s.jfJD) ? s.jfCoverLetter : null;
         const jdLower = s.jfJD.toLowerCase();
         const found = ["React", "TypeScript", "JavaScript", "Next.js", "Node", "Express", "Python", "Go", "Java", "C++", "SQL", "PostgreSQL", "MongoDB", "AWS", "Docker", "Kubernetes", "GraphQL", "REST", "CI/CD", "Testing", "Git", "Linux"]
           .filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0)
@@ -424,8 +460,9 @@ export const usePfStore = create<PfState>()(
               tone: scored === null ? "var(--faint)" : fitTone(fit),
               tags: found.length ? found : ["Manual"],
               verdict: scored === null ? (s.cvText.trim() ? "Not scored: the posting names no tech" : "Not scored: add your CV first") : fit >= 70 ? "Strong match" : fit >= 55 ? "Reach, tailor hard" : "Long shot",
-              action: "Analyze",
+              action: "Open",
               jdText: s.jfJD.trim(),
+              ...(letter ? { coverLetter: letter.paras.join("\n\n") } : {}),
             },
             ...s.savedJobs,
           ],
@@ -439,6 +476,21 @@ export const usePfStore = create<PfState>()(
         set({ jfResult: result });
         get().emit("JobMatched", "jobs", `Matched ${s.jfCompany.trim() || "a role"}, ${result.compat}% compatible`, { company: s.jfCompany.trim(), compat: result.compat });
       },
+      saveListing: (job) => {
+        const key = trackCardKey(job.company, job.role);
+        if (get().savedJobs.some((j) => trackCardKey(j.company, j.role) === key)) return;
+        set((s) => ({ savedJobs: [{ ...job, action: "Open" }, ...s.savedJobs] }));
+        get().emit("JobSaved", "jobs", `Saved ${job.role} at ${job.company}${job.fitKnown === false ? "" : ` (fit ${job.fit})`}`, job.fitKnown === false ? { company: job.company } : { company: job.company, fit: job.fit });
+      },
+      keepCoverLetter: (letter, company, role) => {
+        const key = trackCardKey(company, role);
+        const text = letter.paras.join("\n\n");
+        set((s) => ({
+          jfCoverLetter: letter,
+          savedJobs: s.savedJobs.map((j) => (trackCardKey(j.company, j.role) === key ? { ...j, coverLetter: text } : j)),
+        }));
+      },
+      setTailorJD: (jd) => set({ cvTailorJD: jd, cvTailorAts: null, cvTailorMatch: null }),
 
       // Networking progress is counted from this, so it needs a real recipient and a real
       // message: a blank form used to log "a contact" and could be clicked up to 80%.
@@ -638,6 +690,11 @@ export const usePfStore = create<PfState>()(
         cvAnalyzed: s.cvAnalyzed,
         cvProjects: s.cvProjects,
         cvLinkedIn: s.cvLinkedIn,
+        cvAiRead: s.cvAiRead,
+        cvTailorJD: s.cvTailorJD,
+        cvTailorAts: s.cvTailorAts,
+        cvTailorMatch: s.cvTailorMatch,
+        jfCoverLetter: s.jfCoverLetter,
         jfTitle: s.jfTitle,
         jfCompany: s.jfCompany,
         jfJD: s.jfJD,
@@ -689,6 +746,7 @@ function toProfileInput(s: PfState): ProfileInput {
     dirRole: s.dirRole, dirStack: s.dirStack, dirIndustry: s.dirIndustry, dirSize: s.dirSize, dirSetting: s.dirSetting, dirGenerated: s.dirGenerated,
     chat: s.chat,
     cvText: s.cvText, cvAnalyzed: s.cvAnalyzed, cvProjects: s.cvProjects, cvLinkedIn: s.cvLinkedIn, cvScores: s.cvScores,
+    cvAiSkills: s.cvAiRead?.skills,
     savedJobs: s.savedJobs,
     netPersona: s.netPersona, netSent: s.netSent, netGenerated: s.netGenerated,
     ivSolved: s.ivSolved, ivFeedback: s.ivFeedback,

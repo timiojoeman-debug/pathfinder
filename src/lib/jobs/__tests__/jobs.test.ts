@@ -8,6 +8,7 @@ vi.mock('@/lib/logger', () => ({
 import {
   computeMatchScore,
   dedupeListings,
+  expandRoleQuery,
   filterListings,
   sortByFit,
   type JobListing,
@@ -35,6 +36,15 @@ describe('computeMatchScore', () => {
   it('caps the reported keyword list at five', () => {
     const desc = 'react node typescript python java sql aws';
     expect(computeMatchScore('', desc).keywords).toHaveLength(5);
+  });
+});
+
+describe('expandRoleQuery', () => {
+  it('turns shorthand into the phrase adverts use and leaves other words alone', () => {
+    expect(expandRoleQuery('SWE intern')).toBe('software engineer intern');
+    expect(expandRoleQuery('ML  research')).toBe('machine learning research');
+    expect(expandRoleQuery('Backend')).toBe('Backend');
+    expect(expandRoleQuery('')).toBe('');
   });
 });
 
@@ -66,6 +76,17 @@ describe('filterListings', () => {
   it('passes everything through when filters are empty', () => {
     const listings = [job(), job({ url: 'https://x/2' })];
     expect(filterListings(listings, {})).toHaveLength(2);
+  });
+
+  it('narrows by industry and work mode keywords in title, company or location', () => {
+    const listings = [
+      job({ company: 'Monzo Fintech', url: 'https://x/1' }),
+      job({ location: 'Remote', url: 'https://x/2' }),
+      job({ url: 'https://x/3' }),
+    ];
+    expect(filterListings(listings, { industry: 'fintech' }).map((j) => j.url)).toEqual(['https://x/1']);
+    expect(filterListings(listings, { workMode: 'remote' }).map((j) => j.url)).toEqual(['https://x/2']);
+    expect(filterListings(listings, { industry: '', workMode: undefined })).toHaveLength(3);
   });
 
   it('expands a 3-letter abbreviation to the words in the title (SWE → Software Engineer)', () => {

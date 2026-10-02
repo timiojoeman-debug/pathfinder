@@ -11,8 +11,9 @@ import { POST } from "../route";
 /**
  * `/jobs/analyze` fires the ATS audit and match score in parallel, then merges
  * them; on any AI failure it degrades to a deterministic keyword-overlap score
- * (never an error). These tests hold both: a real analysis passes through, and
- * a model outage returns the heuristic fallback rather than 500-ing.
+ * flagged `source: "heuristic"` (never an error, never labelled AI). These tests
+ * hold both: a real analysis passes through, and a model outage returns the
+ * flagged estimate rather than 500-ing.
  */
 
 function req(body: unknown): Request {
@@ -69,19 +70,35 @@ describe("POST /api/jobs/analyze", () => {
     const res = await POST(req({ jobDescription: "React + Node + TypeScript role", cvSummary: "React, TypeScript" }));
     expect(res.status).toBe(200);
     const json = await res.json();
+    expect(json.source).toBe("ai");
     expect(json.matchScore).toBe(68);
     expect(json.atsKeywords).toContain("React");
     expect(json.auditChecklist[0]).toContain("One page");
   });
 
-  it("degrades to the deterministic keyword score when the model is unreachable", async () => {
+  it("returns an empty checklist when the model checked nothing, never a canned one", async () => {
+    mockOpenAI({ ...COMBINED, atsChecklist: [] });
+    const json = await (await POST(req({ jobDescription: "React + Node + TypeScript role", cvSummary: "React" }))).json();
+    expect(json.source).toBe("ai");
+    expect(json.auditChecklist).toEqual([]);
+  });
+
+  it("degrades to a flagged keyword estimate when the model is unreachable", async () => {
     mockOpenAI(null, 500);
     const res = await POST(req({ jobDescription: "React and Node and TypeScript backend role", cvSummary: "" }));
     expect(res.status).toBe(200);
     const json = await res.json();
+    expect(json.source).toBe("heuristic");
     expect(typeof json.matchScore).toBe("number");
     // The fallback keywords come from the job description overlap.
     expect(json.atsKeywords).toContain("react");
-    expect(json.auditChecklist).toHaveLength(4);
+    expect(json.auditChecklist).toEqual([]);
+  });
+
+  it("gives no score at all when the JD names nothing it can match", async () => {
+    mockOpenAI(null, 500);
+    const json = await (await POST(req({ jobDescription: "A friendly team that loves learning", cvSummary: "React" }))).json();
+    expect(json.source).toBe("heuristic");
+    expect(json.matchScore).toBeNull();
   });
 });

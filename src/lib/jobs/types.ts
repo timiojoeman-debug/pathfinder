@@ -72,28 +72,50 @@ export function dedupeListings(listings: JobListing[]): JobListing[] {
  * posting spells the abbreviation out. Two-letter entries matter especially —
  * the tokenizer drops sub-3-char tokens as noise, so without expansion "ML" or
  * "PM" would vanish before matching.
+ *
+ * The first entry is the phrase a job board's full-text search should get
+ * (`expandRoleQuery`); it is also a title token, which only ever adds matches.
  */
 const ROLE_ABBREVIATIONS: Record<string, string[]> = {
-  swe: ["software", "engineer"],
-  sde: ["software", "engineer"],
-  se: ["software", "engineer"],
-  sre: ["site", "reliability", "engineer"],
-  ml: ["machine", "learning"],
-  ai: ["artificial", "intelligence"],
-  nlp: ["natural", "language"],
-  ds: ["data", "science", "scientist"],
-  da: ["data", "analyst", "analytics"],
-  de: ["data", "engineer"],
-  pm: ["product", "manager", "management"],
-  po: ["product", "owner"],
-  qa: ["quality", "assurance", "test"],
+  swe: ["software engineer", "software", "engineer"],
+  sde: ["software engineer", "software", "engineer"],
+  se: ["software engineer", "software", "engineer"],
+  sre: ["site reliability engineer", "site", "reliability", "engineer"],
+  ml: ["machine learning", "machine", "learning"],
+  ai: ["ai", "artificial", "intelligence"],
+  nlp: ["nlp", "natural", "language"],
+  ds: ["data scientist", "data", "science", "scientist"],
+  da: ["data analyst", "data", "analyst", "analytics"],
+  de: ["data engineer", "data", "engineer"],
+  pm: ["product manager", "product", "manager", "management"],
+  po: ["product owner", "product", "owner"],
+  qa: ["qa", "quality", "assurance", "test"],
   ux: ["ux", "designer", "design", "experience"],
   ui: ["ui", "designer", "design", "interface"],
   fe: ["frontend", "front-end"],
   be: ["backend", "back-end"],
-  fs: ["fullstack", "full-stack"],
+  fs: ["full stack", "fullstack", "full-stack"],
   devops: ["devops", "platform", "infrastructure"],
 };
+
+/**
+ * A role query rewritten for a job board's full-text search: shorthand becomes
+ * the phrase adverts use ("SWE intern" → "software engineer intern"). Adzuna
+ * matches every word in `what`, so sending "SWE" literally found almost nothing.
+ */
+export function expandRoleQuery(roleType: string): string {
+  return (roleType ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => ROLE_ABBREVIATIONS[w.toLowerCase()]?.[0] ?? w)
+    .join(" ");
+}
+
+/** Lower-case words of a free-text filter worth matching (sub-3-char noise dropped). */
+function keywordTokens(text: string | undefined): string[] {
+  return (text ?? "").toLowerCase().split(/[^a-z0-9+#.]+/).filter((t) => t.length > 2);
+}
 
 /** Split a role query into title-matchable tokens, expanding known abbreviations. */
 function roleQueryTokens(roleType: string): string[] {
@@ -128,19 +150,28 @@ function titleMatchesToken(title: string, token: string): boolean {
  * GitHub lists). A role token matches if it appears in the title (abbreviations
  * expanded to their title words); a location matches as a substring. Empty
  * filters pass everything.
+ *
+ * Industry and work mode are keyword narrowing, the same as on Adzuna, but
+ * these lists carry no advert text, so the word has to appear in the title,
+ * company or location. That is a much smaller haystack, and the UI says so.
  */
 export function filterListings(
   listings: JobListing[],
-  opts: { roleType?: string; location?: string },
+  opts: { roleType?: string; location?: string; industry?: string; workMode?: string },
 ): JobListing[] {
   const roleTokens = roleQueryTokens(opts.roleType ?? "");
   const loc = (opts.location ?? "").trim().toLowerCase();
+  const industryTokens = keywordTokens(opts.industry);
+  const modeTokens = keywordTokens(opts.workMode);
 
   return listings.filter((j) => {
     const title = j.title.toLowerCase();
+    const text = `${title} ${j.company} ${j.location} ${j.workMode}`.toLowerCase();
     const roleOk = roleTokens.length === 0 || roleTokens.some((t) => titleMatchesToken(title, t));
     const locOk = !loc || j.location.toLowerCase().includes(loc);
-    return roleOk && locOk;
+    const industryOk = industryTokens.length === 0 || industryTokens.some((t) => text.includes(t));
+    const modeOk = modeTokens.length === 0 || modeTokens.some((t) => text.includes(t));
+    return roleOk && locOk && industryOk && modeOk;
   });
 }
 

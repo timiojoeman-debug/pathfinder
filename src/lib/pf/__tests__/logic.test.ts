@@ -9,9 +9,18 @@ import {
   buildCoverLetter, followUpMessage,
   trackerDerived,
   roleFamiliesFor, outreachSubject, buildOutreachTemplate,
-  jobPassesFit, composeSharedAttributes,
+  jobPassesFit, composeSharedAttributes, postingKey,
   type OnbState, type DirectionFields,
 } from '../logic';
+
+describe('postingKey', () => {
+  it('changes when the advert changes, so an older letter goes stale', () => {
+    const a = postingKey('Monzo', 'Backend Intern', 'We use Go and Kafka.');
+    expect(postingKey(' monzo ', 'backend intern', 'We use Go and Kafka.  ')).toBe(a);
+    expect(postingKey('Monzo', 'Backend Intern', 'We use Go and Postgres.')).not.toBe(a);
+    expect(postingKey('Wise', 'Backend Intern', 'We use Go and Kafka.')).not.toBe(a);
+  });
+});
 import { DIR_ROLE_OPTS, EMPTY_BOARD, DEFAULT_TARGET_KEYWORDS, OUTREACH_PERSONAS, type BoardCard } from '../data';
 
 /* ── helpers ──────────────────────────────────────────────────────── */
