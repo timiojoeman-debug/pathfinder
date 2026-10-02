@@ -94,10 +94,29 @@ export function sanitizeContacts(raw: unknown): Contact[] {
   return [...byId.values()];
 }
 
-const norm = (s: string) => s.trim().toLowerCase();
+const LEGAL_SUFFIX = new Set(["ltd", "limited", "plc", "llp", "inc", "llc", "gmbh", "uk", "group"]);
 
-/** People the student knows at a company, ignoring case and stray spaces. An empty company matches nobody. */
-export function contactsAtCompany(contacts: Contact[], company: string): Contact[] {
+/** Company key for matching: case, diacritics, punctuation, "&" vs "and", inner spacing and
+ *  trailing legal suffixes are ignored ("Stripe, Inc." = "Stripe"). Suffixes only go while
+ *  something is left, so "UK Ltd" keeps "uk" rather than becoming empty. The suffix rule is
+ *  deliberately literal: "Barclays Bank PLC" still differs from "Barclays". */
+export function normCompany(s: string): string {
+  const words = s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/['’`]/g, "")
+    .replace(/[.,;:"()\[\]{}!?*#@/\\|_~+-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  while (words.length > 1 && LEGAL_SUFFIX.has(words[words.length - 1])) words.pop();
+  return words.join(" ");
+}
+const norm = normCompany;
+
+/** People the student knows at a company, ignoring case, punctuation and legal suffixes (see normCompany). An empty company matches nobody. */
+export function contactsAtCompany<T extends { company: string }>(contacts: T[], company: string): T[] {
   const co = norm(company);
   return co ? contacts.filter((c) => norm(c.company) === co) : [];
 }

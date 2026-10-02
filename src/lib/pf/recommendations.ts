@@ -13,6 +13,7 @@ import type { ProgressReport } from "./progress";
 import type { PfPhase } from "./events";
 import { formatReminder, isoToday, timingPlan } from "./logic";
 import { LEET_ON_TRACK } from "./leetcode";
+import { contactsAtCompany, normCompany } from "./contacts";
 
 export interface Recommendation {
   id: string;
@@ -109,6 +110,54 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
       impactTone: "var(--warn)",
       priority: 92,
       contactId: c.id,
+    });
+  }
+
+  // 0e. Warm path before a cold application. Matching uses contactsAtCompany, the same
+  // normalisation as the drawers. These titles name a contact, so they are rendered
+  // locally only (NextStep, Journey): the mentor's context is built from event labels
+  // and progress lines in assistant.tsx and never includes recommendations.
+  // A stage before "chatted" means the student knows someone there but hasn't talked yet;
+  // a contact already chatted or referred (or parked as not-now) ends the nudge for that company.
+  const PRE_CHAT = ["researched", "messaged", "replied"];
+  const seenCo = new Set<string>();
+  let warmPathOffered = false;
+  for (const c of p.trackedCards) {
+    if (c.column === "offer" || c.column === "rejected" || !c.company.trim()) continue;
+    const co = normCompany(c.company);
+    if (seenCo.has(co)) continue;
+    seenCo.add(co);
+    const people = contactsAtCompany(p.contactNudges, c.company);
+    if (people.length === 0) {
+      // One lower-priority link offer at a time, so a long tracker doesn't flood the list.
+      if (warmPathOffered) continue;
+      warmPathOffered = true;
+      recs.push({
+        id: `warm-path-${c.key}`,
+        title: `Look for alumni at ${c.company}${c.column === "saved" ? " before applying" : ""}`,
+        why: `You're tracking ${c.role} at ${c.company}. You haven't added anyone at ${c.company} yet. Open the card and use "Find alumni" to search LinkedIn for someone to talk to; a referral beats a cold application.`,
+        href: "/tracker",
+        phase: "networking",
+        impact: "warm path",
+        impactTone: "var(--accent)",
+        priority: 45,
+        cardKey: c.key,
+      });
+      continue;
+    }
+    if (people.some((x) => x.stage === "chatted" || x.stage === "referred")) continue;
+    const who = people.find((x) => PRE_CHAT.includes(x.stage));
+    if (!who) continue;
+    recs.push({
+      id: `referral-nudge-${c.key}`,
+      title: c.column === "saved" ? `Ask ${who.name} for a coffee chat before applying` : `Ask ${who.name} for a coffee chat — a referral can still help at ${c.company}`,
+      why: `You're tracking ${c.role} at ${c.company} and haven't spoken to ${who.name} yet. A chat can turn an application into a referral${c.column === "saved" ? "" : ", even after you've applied"}.`,
+      href: "/networking",
+      phase: "networking",
+      impact: "+referral",
+      impactTone: "var(--strong)",
+      priority: 83,
+      contactId: who.id,
     });
   }
 

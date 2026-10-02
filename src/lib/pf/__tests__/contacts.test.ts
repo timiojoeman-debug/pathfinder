@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getProfile, getProgress, usePfStore } from "../store";
 import { makeEvent } from "../events";
-import { alumniSearchUrl, applicationsAtCompany, contactsAtCompany, sanitizeContacts } from "../contacts";
+import { alumniSearchUrl, normCompany, applicationsAtCompany, contactsAtCompany, sanitizeContacts } from "../contacts";
 
 /**
  * The contacts board holds other people's data and must not become a way to
@@ -388,5 +388,30 @@ describe("alumniSearchUrl", () => {
   });
   it("returns null without a company", () => {
     expect(alumniSearchUrl("   ", "Edinburgh")).toBeNull();
+  });
+});
+
+describe("normCompany", () => {
+  it("ignores case, punctuation, spacing, ampersands and diacritics", () => {
+    expect(normCompany("Stripe, Inc.")).toBe(normCompany("Stripe"));
+    expect(normCompany("  Procter  &  Gamble ")).toBe(normCompany("procter and gamble"));
+    expect(normCompany("McDonald’s")).toBe(normCompany("mcdonalds"));
+    expect(normCompany("Société Générale")).toBe(normCompany("Societe Generale"));
+    expect(normCompany("J.P. Morgan")).toBe(normCompany("j p morgan"));
+  });
+  it("strips trailing legal suffixes, one or several", () => {
+    for (const s of ["Monzo Ltd", "Monzo Limited", "Monzo PLC", "Monzo LLP", "Monzo Inc", "Monzo LLC", "Monzo GmbH", "Monzo UK", "Monzo Group", "Monzo Group UK Ltd"]) {
+      expect(normCompany(s)).toBe("monzo");
+    }
+  });
+  it("never empties the name, and does not match on the suffix alone", () => {
+    expect(normCompany("UK Ltd")).toBe("uk");
+    expect(normCompany("Ltd")).toBe("ltd");
+    expect(normCompany("   ")).toBe("");
+    expect(normCompany("Barclays Bank PLC")).not.toBe(normCompany("Barclays"));
+  });
+  it("is what contactsAtCompany matches on", () => {
+    const sam = { id: "1", name: "Sam", company: "Stripe, Inc." };
+    expect(contactsAtCompany([sam], "stripe")).toEqual([sam]);
   });
 });
