@@ -27,6 +27,8 @@ type InterviewBody = {
   cvSummary?: string;
   targetRole?: string;
   more?: boolean;
+  /** "Give me harder ones" — the prompt raises the bar, not just the count. */
+  difficulty?: "harder";
 };
 
 const FALLBACK_QUESTIONS = {
@@ -51,7 +53,7 @@ const FALLBACK_QUESTIONS = {
     },
     {
       type: "CV-Specific",
-      question: "On your resume you list a project using React. Walk me through one technical challenge you faced.",
+      question: "Pick one project on your CV and walk me through the hardest technical problem in it.",
       answerTemplate:
         "Context, the specific challenge, options considered, decision and outcome. Highlight trade-offs and lessons.",
     },
@@ -65,12 +67,13 @@ export async function POST(req: Request) {
   const count = body.more ? 4 : 2;
   const cvData = body.cvSummary || "N/A";
   const targetRole = body.targetRole || "Software Engineering Intern";
+  const harder = body.difficulty === "harder";
 
   try {
-    const systemPrompt = buildInterviewQuestionsPrompt(cvData, targetRole);
+    const systemPrompt = buildInterviewQuestionsPrompt(cvData, targetRole, harder ? "harder" : "standard");
     const aiResult = await callAIValidated({
       systemPrompt,
-      userMessage: `Generate ${count} random questions per type (${count * 4} total) across Behavioral, Technical, Situational, and CV-Specific. Vary the questions - do not repeat common ones.`,
+      userMessage: `Generate ${count} random questions per type (${count * 4} total) across Behavioral, Technical, Situational, and CV-Specific. Vary the questions - do not repeat common ones.${harder ? " This is the harder round: every question should be tougher than a first-round screen." : ""}`,
       temperature: 0.7,
     },
       QuestionsResponse,
@@ -83,11 +86,12 @@ export async function POST(req: Request) {
       answerTemplate: q.answerTemplate,
     }));
 
-    return NextResponse.json({ questions });
+    return NextResponse.json({ questions, source: "ai" });
   } catch (e) {
     logger.error("interview/questions — AI unusable, serving fallback questions", {
       error: e instanceof Error ? e.message : String(e),
     });
-    return NextResponse.json(FALLBACK_QUESTIONS);
+    // Flagged so the client says these are generic, not generated for this student.
+    return NextResponse.json({ ...FALLBACK_QUESTIONS, source: "fallback" });
   }
 }

@@ -65,6 +65,22 @@ describe("POST /api/interview/feedback", () => {
     expect(json.data.analysis).toContain("system-design");
   });
 
+  it("tells the model this interview's company and rating, not earlier ones", async () => {
+    mockOpenAI(FEEDBACK_ENVELOPE);
+    await POST(req({ interviewType: "technical", company: "Monzo", selfRatings: { overall: 4 }, wentWell: "Clear" }));
+    const sent = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    const prompt = sent.messages.map((m: { content: string }) => m.content).join(" ");
+    expect(prompt).toContain("Company: Monzo");
+    expect(prompt).toContain('self-ratings for this interview (1-5): {"overall":4}');
+  });
+
+  it("asks for a placeholder rather than a guessed company when none is given", async () => {
+    mockOpenAI(FEEDBACK_ENVELOPE);
+    await POST(req({ interviewType: "technical" }));
+    const sent = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    expect(sent.messages.map((m: { content: string }) => m.content).join(" ")).toContain("[Company]");
+  });
+
   it("500s when the model returns an empty payload", async () => {
     mockOpenAI({ feedback: [], data: {} });
     const res = await POST(req({ interviewType: "technical" }));

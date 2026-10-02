@@ -25,7 +25,7 @@ function makeInput(overrides: Partial<ProfileInput> = {}): ProfileInput {
     cvText: '', cvAnalyzed: false, cvProjects: false, cvLinkedIn: false, cvScores: [],
     savedJobs: [],
     netPersona: 'Recruiter', netSent: 0, netGenerated: false,
-    ivSolved: {}, ivFeedback: [],
+    ivSolved: {}, ivFeedback: [], savedStories: [],
     board: EMPTY_BOARD, diags: {}, events: [],
     ...overrides,
   };

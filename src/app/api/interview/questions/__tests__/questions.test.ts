@@ -58,6 +58,24 @@ describe("POST /api/interview/questions", () => {
     const json = await res.json();
     expect(json.questions[0].type).toBe("Behavioral");
     expect(json.questions[1].question).toContain("URL shortener");
+    expect(json.source).toBe("ai");
+  });
+
+  it("asks the model for a harder round when difficulty is 'harder'", async () => {
+    mockOpenAI(QUESTIONS);
+    await POST(req({ more: true, difficulty: "harder" }));
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    const prompt = body.messages.map((m: { content: string }) => m.content).join(" ");
+    expect(prompt).toContain("DIFFICULTY: HARDER");
+    expect(prompt).toContain("harder round");
+  });
+
+  it("does not raise the difficulty for an ordinary request", async () => {
+    mockOpenAI(QUESTIONS);
+    await POST(req({ more: true }));
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    const prompt = body.messages.map((m: { content: string }) => m.content).join(" ");
+    expect(prompt).not.toContain("DIFFICULTY: HARDER");
   });
 
   it("unwraps questions nested under `data` (aiShape)", async () => {
@@ -75,5 +93,8 @@ describe("POST /api/interview/questions", () => {
     // Four generic practice questions, none derived from the student.
     expect(json.questions).toHaveLength(4);
     expect(json.questions.map((q: { type: string }) => q.type)).toContain("Behavioral");
+    // Flagged as degraded, and asserts nothing about a CV it never read.
+    expect(json.source).toBe("fallback");
+    expect(JSON.stringify(json.questions)).not.toMatch(/your resume you list|React/);
   });
 });

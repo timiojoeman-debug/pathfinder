@@ -8,24 +8,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRecommendations } from "@/lib/pf/store";
+import { usePfStore, useRecommendations } from "@/lib/pf/store";
 
 const mono = "var(--font-mono), 'JetBrains Mono', monospace";
 
 export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact" }) {
   const recs = useRecommendations();
   const pathname = usePathname();
+  const openApp = usePfStore((s) => s.openApp);
   if (recs.length === 0) return null;
 
   // Always surface the true #1 action. When it already points at the current
   // page the CTA changes to "You're in the right place" rather than a link away.
   const top = recs[0];
   const onThisPage = top.href === pathname;
+  // A card-specific nudge opens that card's drawer as well as going to the tracker.
+  const openCard = top.cardKey ? () => openApp(top.cardKey!) : undefined;
 
   if (variant === "compact") {
     return (
       <Link
         href={top.href}
+        onClick={openCard}
         className="pf-hover-border"
         style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 12, border: "1px solid color-mix(in srgb,var(--accent) 26%,transparent)", background: "var(--accentSoft)", textDecoration: "none", color: "var(--fg)" }}
       >
@@ -57,13 +61,21 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
         <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-.01em" }}>{top.title}</div>
         <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.55, marginTop: 4 }}>{top.why}</div>
       </div>
-      {onThisPage ? (
+      {onThisPage && openCard ? (
+        <button
+          onClick={openCard}
+          style={{ cursor: "pointer", flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", height: 38, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
+        >
+          Open the card →
+        </button>
+      ) : onThisPage ? (
         <span style={{ flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", height: 38, padding: "0 16px", borderRadius: 10, background: "color-mix(in srgb,var(--strong) 14%,transparent)", color: "var(--strong)", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)" }}>
           You&apos;re in the right place
         </span>
       ) : (
         <Link
           href={top.href}
+          onClick={openCard}
           style={{ flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", height: 38, padding: "0 16px", borderRadius: 10, background: "var(--accent)", color: "#F7F1E4", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
         >
           Do it →
