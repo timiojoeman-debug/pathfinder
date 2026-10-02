@@ -10,46 +10,13 @@ import { useRouter } from "next/navigation";
 import { DIAG_TIMINGS, REJECTION_DIAGNOSIS } from "@/lib/pf/data";
 import { cardWhen, formatReminder, trackCardKey } from "@/lib/pf/logic";
 import { usePfStore } from "@/lib/pf/store";
+import { CONTACT_STAGE_LABEL, contactsAtCompany } from "@/lib/pf/contacts";
 import { safeHttpUrl } from "@/lib/jobs/types";
 import { Kicker } from "./ui";
+import { CloseBtn, DrawerShell } from "./drawer-shell";
+import { ContactDrawer } from "./networking/contact-drawer";
 import { FollowUpDraft } from "./tracker/follow-up-draft";
 import { useEffect, useRef, useState } from "react";
-
-function Scrim({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      onClick={onClose}
-      className="pf-anim-fade"
-      style={{ position: "fixed", inset: 0, background: "var(--scrim)", zIndex: 60, cursor: "pointer" }}
-    />
-  );
-}
-
-function DrawerShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <>
-      <Scrim onClose={onClose} />
-      <div
-        className="pf-anim-slidein"
-        style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,94vw)", zIndex: 61, background: "var(--panelSolid)", borderLeft: "1px solid var(--line)", overflowY: "auto" }}
-      >
-        {children}
-      </div>
-    </>
-  );
-}
-
-function CloseBtn({ onClose }: { onClose: () => void }) {
-  return (
-    <button
-      onClick={onClose}
-      aria-label="Close"
-      style={{ cursor: "pointer", width: 32, height: 32, borderRadius: 9, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--muted)", fontSize: 15, flexShrink: 0 }}
-    >
-      ✕
-    </button>
-  );
-}
 
 /* ── Job drawer ────────────────────────────────────────────────────── */
 
@@ -181,6 +148,8 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
   const setDiag = usePfStore((s) => s.setDiag);
   const setCardNote = usePfStore((s) => s.setCardNote);
   const setStore = usePfStore((s) => s.set);
+  const contacts = usePfStore((s) => s.contacts);
+  const openContact = usePfStore((s) => s.openContact);
   const router = useRouter();
   const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -213,6 +182,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
   });
   if (!card) return null;
   const c = card;
+  const people = contactsAtCompany(contacts, c.company);
 
   const stages = ["Saved", "Applied", "Interview", "Offer"];
   const nextLabels = ["Mark as applied →", "Log interview →", "Log offer →"];
@@ -308,6 +278,24 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
           <a href={c.link} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 14, fontSize: 12.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
             Open the posting ↗
           </a>
+        )}
+
+        {people.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <Kicker style={{ fontSize: 9.5, marginBottom: 8 }}>People you know at {c.company}</Kicker>
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+              {people.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => openContact(p.id)}
+                  className="pf-tap"
+                  style={{ cursor: "pointer", minHeight: 36, padding: "0 12px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--panel)", color: "var(--fg)", fontSize: 13, fontWeight: 600 }}
+                >
+                  {p.name} <span style={{ color: "var(--faint)", fontWeight: 500 }}>&nbsp;· {CONTACT_STAGE_LABEL[p.stage]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         <Kicker style={{ fontSize: 9.5, margin: "18px 0 8px" }}>Notes</Kicker>
@@ -417,8 +405,10 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
 export function Drawers() {
   const jobDetail = usePfStore((s) => s.jobDetail);
   const appDetail = usePfStore((s) => s.appDetail);
+  const contactDetail = usePfStore((s) => s.contactDetail);
 
   if (jobDetail) return <JobDrawer jobKey={jobDetail} />;
   if (appDetail) return <AppDrawer key={appDetail} cardKey={appDetail} />;
+  if (contactDetail) return <ContactDrawer key={contactDetail} id={contactDetail} />;
   return null;
 }

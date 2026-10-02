@@ -14,6 +14,7 @@ import type { PfEvent, PfPhase } from "./events";
 import type { ChatMsg, InterviewFeedback, SavedJob, SavedStory } from "./store";
 import type { OnbState } from "./logic";
 import type { OutreachPersona } from "./data";
+import type { Contact, ContactStage } from "./contacts";
 
 /** The persisted slice the profile is derived from (structural subset of PfState). */
 export interface ProfileInput {
@@ -36,6 +37,8 @@ export interface ProfileInput {
   /** Skills the AI read of the CV named. Only those the CV text evidences are used. */
   cvAiSkills?: string[];
   savedJobs: SavedJob[];
+  /** Optional so older callers and fixtures keep working. */
+  contacts?: Contact[];
   netPersona: OutreachPersona;
   netSent: number;
   netGenerated: boolean;
@@ -64,6 +67,15 @@ export interface TrackedCard {
   remind?: string; // yyyy-mm-dd
   appliedDate?: number;
   followedUpAt?: number;
+}
+
+/** A contact, as far as the follow-up nudge needs it. */
+export interface ContactNudge {
+  id: string;
+  name: string;
+  company: string;
+  stage: ContactStage;
+  followUpOn?: string;
 }
 
 export interface CareerProfile {
@@ -106,6 +118,10 @@ export interface CareerProfile {
   contactedCompanies: string[];
   /** Coffee chats the student marked as held. */
   coffeeChatsDone: number;
+  /** Contacts on the board, for follow-up nudges. */
+  contactNudges: ContactNudge[];
+  /** Distinct people the student marked as having referred them. Self-reported; feeds no progress number. */
+  referralsReceived: number;
 
   /* Interview */
   leetSolved: number;
@@ -276,6 +292,8 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
     outreachSent: s.netSent,
     contactedCompanies,
     coffeeChatsDone: s.events.filter((e) => e.type === "CoffeeChatCompleted").length,
+    contactNudges: (s.contacts ?? []).map(({ id, name, company, stage, followUpOn }) => ({ id, name, company, stage, followUpOn })),
+    referralsReceived: new Set(s.events.filter((e) => e.type === "ReferralReceived").map((e) => `${e.meta?.contact ?? ""}|${e.meta?.company ?? ""}`.toLowerCase())).size,
 
     leetSolved,
     weakPatterns,

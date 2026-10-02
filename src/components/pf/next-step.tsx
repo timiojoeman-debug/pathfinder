@@ -17,6 +17,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
   const recs = useRecommendations();
   const pathname = usePathname();
   const openApp = usePfStore((s) => s.openApp);
+  const openContact = usePfStore((s) => s.openContact);
   if (recs.length === 0) return null;
 
   // Always surface the true #1 action. When it already points at the current
@@ -24,7 +25,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
   const top = recs[0];
   const onThisPage = top.href === pathname;
   // A card-specific nudge opens that card's drawer as well as going to the tracker.
-  const openCard = top.cardKey ? () => openApp(top.cardKey!) : undefined;
+  const openCard = top.cardKey ? () => openApp(top.cardKey!) : top.contactId ? () => openContact(top.contactId!) : undefined;
 
   if (variant === "compact") {
     return (
@@ -68,7 +69,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
           className="pf-nextstep-cta pf-press pf-shine"
           style={{ cursor: "pointer", flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
         >
-          Open the card →
+          {top.contactId ? "Open the contact →" : "Open the card →"}
         </button>
       ) : onThisPage ? (
         <span className="pf-nextstep-cta" style={{ flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, background: "color-mix(in srgb,var(--strong) 14%,transparent)", color: "var(--strongText)", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", border: "1px solid color-mix(in srgb,var(--strong) 30%,transparent)" }}>

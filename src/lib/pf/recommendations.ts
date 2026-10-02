@@ -25,6 +25,8 @@ export interface Recommendation {
   priority: number; // higher = more urgent
   /** A tracker card this action is about; following the link opens its drawer. */
   cardKey?: string;
+  /** A contact this action is about; following the link opens their drawer. */
+  contactId?: string;
 }
 
 /** Days without movement after which an Applied card earns a follow-up nudge. */
@@ -91,6 +93,23 @@ export function recommend(p: CareerProfile, progress: ProgressReport, today = is
         });
       }
     }
+  }
+
+  // 0d. A follow-up date the student set on a contact, once it arrives. Referred and
+  // Not now are finished business, so they never nag.
+  for (const c of p.contactNudges) {
+    if (!c.followUpOn || c.followUpOn > today || c.stage === "referred" || c.stage === "not-now") continue;
+    recs.push({
+      id: `contact-follow-up-${c.id}`,
+      title: `Follow up with ${c.name}${c.company ? ` at ${c.company}` : ""}`,
+      why: `You set a follow-up for ${formatReminder(c.followUpOn)}. Open their card, send the next message or note why you're waiting, then move the date or the stage.`,
+      href: "/networking",
+      phase: "networking",
+      impact: c.followUpOn < today ? "overdue" : "due today",
+      impactTone: "var(--warn)",
+      priority: 92,
+      contactId: c.id,
+    });
   }
 
   // 1. Direction is the prerequisite for everything downstream.

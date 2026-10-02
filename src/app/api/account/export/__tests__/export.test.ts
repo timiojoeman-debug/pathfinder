@@ -51,6 +51,14 @@ describe("GET /api/account/export", () => {
     expect(json.applications).toEqual([]);
   });
 
+  it("includes the contacts board: it lives in profiles.client_state, which is exported whole", async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(USER);
+    const clientState = { contacts: [{ id: "ct-1", name: "Sam Lee", company: "Monzo", stage: "messaged" }] };
+    vi.mocked(getServerDb).mockReturnValue(makeSupabaseMock({ profiles: { data: [{ id: "p1", client_state: clientState }] } }).db as never);
+    const json = JSON.parse(await (await GET()).text());
+    expect(json.profiles[0].client_state.contacts[0].name).toBe("Sam Lee");
+  });
+
   it("500s when the export query throws", async () => {
     vi.mocked(getAuthUser).mockResolvedValue(USER);
     // isSupabaseConfigured is true but getServerDb yields null → db.from throws.

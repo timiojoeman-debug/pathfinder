@@ -36,6 +36,8 @@ import {
 } from "./logic";
 import { categoryOf, LEETCODE_CATEGORIES, LEETCODE_PROBLEMS } from "./leetcode";
 import { makeEvent, nextEventId, type PfEvent, type PfEventType, type PfPhase } from "./events";
+import { CONTACT_STAGE_LABEL, newContactId, sanitizeContacts, validDay, HOW_WE_MET, type Contact, type ContactStage, type HowWeMet } from "./contacts";
+import { safeHttpUrl } from "@/lib/jobs/types";
 import { deriveProfile, type CareerProfile, type ProfileInput } from "./profile";
 import { computeProgress, type ProgressReport } from "./progress";
 import { recommend, type Recommendation } from "./recommendations";
@@ -49,6 +51,7 @@ export interface ChatMsg { who: "you" | "ai"; text: string }
 /** The person the student is currently working on, shared by Research, Outreach
  *  and the Contact workspace so nobody types the same name twice. */
 export interface NetContact { name: string; company: string; about: string; experience: string }
+export type AddContactResult = "added" | "no-name" | "duplicate" | "bad-link";
 /** What `/api/networking/analyze-profile` found in what the student pasted. */
 export interface NetResearch { summary?: string; connectionPoints?: string[]; outreachAngles?: string[]; conversationStarters?: string[] }
 /** Research is about one person: `key` is `netContactKey` of the contact it was run on. */
@@ -215,6 +218,11 @@ interface PfState {
   netContact: NetContact;
   netResearch: NetResearchFor | null;
   netDraft: NetDraft | null;
+  /** Everyone the student is talking to. Private to them: never sent to an AI route
+   *  except through the explicit per-contact actions (outreach, prep). */
+  contacts: Contact[];
+  /** Which contact's drawer is open. Not persisted. */
+  contactDetail: string | null;
 
   /* interview */
   ivTab: string;
@@ -289,7 +297,20 @@ interface PfState {
   /** Log a sent message. Returns false (and logs nothing) without a real recipient and message. */
   generateOutreach: (contact: { name: string; company?: string; message: string }) => boolean;
   /** Logs a coffee chat the student actually held. Needs a named contact. */
-  completeCoffeeChat: (chat: { contact: string; company?: string }) => boolean;
+  completeCoffeeChat: (chat: { contact: string; company?: string; stage?: string }) => boolean;
+
+  /** Add a contact (stage Researched). Deduped on name + company. */
+  addContact: (input: { name: string; company: string; role?: string; howWeMet: HowWeMet; link?: string }) => AddContactResult;
+  /** Edit details. A blank name, a clashing name + company or a non-http(s) link leaves that field as it was. */
+  updateContact: (id: string, patch: Partial<Pick<Contact, "name" | "company" | "role" | "howWeMet" | "link" | "notes">>) => void;
+  /** Change stage. Chatted logs a coffee chat and Referred logs a self-reported referral; neither is progress by hand-waving (see the store). */
+  moveContact: (id: string, stage: ContactStage) => void;
+  setContactFollowUp: (id: string, day: string | undefined) => void;
+  removeContact: (id: string) => void;
+  clearContacts: () => void;
+  /** Make this contact the working contact, so research, outreach and prep apply to them. */
+  selectContact: (id: string) => void;
+  openContact: (id: string) => void;
 
   /** Mark a problem solved, or un-mark it if it already was. */
   toggleProblem: (slug: string) => void;
@@ -399,6 +420,8 @@ export const usePfStore = create<PfState>()(
       netContact: { name: "", company: "", about: "", experience: "" },
       netResearch: null,
       netDraft: null,
+      contacts: [],
+      contactDetail: null,
 
       ivTab: "leetcode",
       ivSolved: {},
@@ -426,9 +449,10 @@ export const usePfStore = create<PfState>()(
       toggleCollapsed: () => set((s) => ({ collapsed: !s.collapsed })),
       openPalette: () => set({ paletteOpen: true, paletteQ: "" }),
       closePalette: () => set({ paletteOpen: false }),
-      closeDrawers: () => set({ jobDetail: null, appDetail: null }),
-      openJob: (company, role) => set({ jobDetail: role === undefined ? company : trackCardKey(company, role), appDetail: null }),
-      openApp: (key) => set({ appDetail: key, jobDetail: null }),
+      closeDrawers: () => set({ jobDetail: null, appDetail: null, contactDetail: null }),
+      openJob: (company, role) => set({ jobDetail: role === undefined ? company : trackCardKey(company, role), appDetail: null, contactDetail: null }),
+      openApp: (key) => set({ appDetail: key, jobDetail: null, contactDetail: null }),
+      openContact: (id) => set({ contactDetail: id, appDetail: null, jobDetail: null }),
 
       setOnb: (patch) => set((s) => ({ onb: { ...s.onb, ...patch } })),
       startOnbScan: () => {
@@ -631,19 +655,125 @@ export const usePfStore = create<PfState>()(
         if (!who || !message.trim()) return false;
         const s = get();
         const co = company?.trim();
-        set({ netGenerated: true, netSent: s.netSent + 1 });
-        get().emit("RecruiterContacted", "networking", `Outreach sent to ${who}${co ? ` at ${co}` : ""} (${s.netPersona})`, co ? { company: co, contact: who, persona: s.netPersona } : { contact: who, persona: s.netPersona });
+        // The one door to Messaged that counts: a real message was marked as sent. If this
+        // person is on the board and hasn't got further than Researched, they move with it.
+        const key = netContactKey({ name: who, company: co });
+        const onBoard = s.contacts.find((c) => netContactKey(c) === key && (c.stage === "researched" || c.stage === "not-now"));
+        set({
+          netGenerated: true,
+          netSent: s.netSent + 1,
+          ...(onBoard ? { contacts: s.contacts.map((c) => (c.id === onBoard.id ? { ...c, stage: "messaged" as const, updatedAt: Date.now() } : c)) } : {}),
+        });
+        get().emit(
+          "RecruiterContacted",
+          "networking",
+          `Outreach sent to ${who}${co ? ` at ${co}` : ""} (${s.netPersona})`,
+          { ...(co ? { company: co } : {}), contact: who, persona: s.netPersona, ...(onBoard ? { stage: "messaged" } : {}) },
+        );
         return true;
       },
 
       // Feeds `profile.coffeeChatsDone` and so networking progress: a chat with nobody
       // is not evidence of anything.
-      completeCoffeeChat: ({ contact, company }) => {
+      completeCoffeeChat: ({ contact, company, stage }) => {
         const who = contact.trim();
         if (!who || recentCoffeeChat(get().events, { contact, company })) return false;
         const co = company?.trim();
-        get().emit("CoffeeChatCompleted", "networking", `Coffee chat with ${who}${co ? ` at ${co}` : ""}`, co ? { contact: who, company: co } : { contact: who });
+        get().emit("CoffeeChatCompleted", "networking", `Coffee chat with ${who}${co ? ` at ${co}` : ""}`, { contact: who, ...(co ? { company: co } : {}), ...(stage ? { stage } : {}) });
         return true;
+      },
+
+      /* ── contacts board ──
+         Evidence rules: moving a card by hand is bookkeeping. Only "Mark as sent"
+         (generateOutreach) logs RecruiterContacted, Chatted goes through the guarded
+         completeCoffeeChat, and Referred is self-reported: its event feeds no progress number. */
+      addContact: ({ name, company, role, howWeMet, link }) => {
+        const who = name.trim().slice(0, 120);
+        if (!who) return "no-name";
+        const co = company.trim().slice(0, 120);
+        const url = link?.trim() ? safeHttpUrl(link) : null;
+        if (link?.trim() && !url) return "bad-link";
+        if (get().contacts.some((c) => netContactKey(c) === netContactKey({ name: who, company: co }))) return "duplicate";
+        const now = Date.now();
+        const ro = role?.trim().slice(0, 120);
+        const contact: Contact = {
+          id: newContactId(), name: who, company: co, ...(ro ? { role: ro } : {}),
+          howWeMet: HOW_WE_MET.includes(howWeMet) ? howWeMet : "other", ...(url ? { link: url } : {}),
+          stage: "researched", notes: "", createdAt: now, updatedAt: now,
+        };
+        set((st) => ({ contacts: [contact, ...st.contacts] }));
+        return "added";
+      },
+      updateContact: (id, patch) => {
+        const cur = get().contacts.find((c) => c.id === id);
+        if (!cur) return;
+        const name = patch.name !== undefined ? patch.name.trim().slice(0, 120) : cur.name;
+        const company = patch.company !== undefined ? patch.company.trim().slice(0, 120) : cur.company;
+        const identityOk =
+          !!name && (netContactKey({ name, company }) === netContactKey(cur) || !get().contacts.some((c) => c.id !== id && netContactKey(c) === netContactKey({ name, company })));
+        const role = patch.role !== undefined ? patch.role.trim().slice(0, 120) : cur.role;
+        const linkRaw = patch.link !== undefined ? patch.link.trim() : cur.link;
+        const linkOk = linkRaw === undefined || linkRaw === "" || !!safeHttpUrl(linkRaw);
+        const next: Contact = {
+          ...cur,
+          name: identityOk ? name : cur.name,
+          company: identityOk ? company : cur.company,
+          howWeMet: patch.howWeMet !== undefined && HOW_WE_MET.includes(patch.howWeMet) ? patch.howWeMet : cur.howWeMet,
+          notes: patch.notes !== undefined ? patch.notes.slice(0, 4000) : cur.notes,
+          updatedAt: Date.now(),
+        };
+        if (role) next.role = role; else delete next.role;
+        const url = linkOk ? (linkRaw ? safeHttpUrl(linkRaw) : null) : (cur.link ?? null);
+        if (url) next.link = url; else delete next.link;
+        if (JSON.stringify({ ...next, updatedAt: 0 }) === JSON.stringify({ ...cur, updatedAt: 0 })) return;
+        set((st) => ({ contacts: st.contacts.map((c) => (c.id === id ? next : c)) }));
+      },
+      moveContact: (id, stage) => {
+        const cur = get().contacts.find((c) => c.id === id);
+        if (!cur || cur.stage === stage) return;
+        set((st) => ({ contacts: st.contacts.map((c) => (c.id === id ? { ...c, stage, updatedAt: Date.now() } : c)) }));
+        const meta = { contact: cur.name, company: cur.company, stage };
+        if (stage === "referred") {
+          get().emit("ReferralReceived", "networking", `Referral received${cur.company ? ` at ${cur.company}` : ""} (self-reported)`, meta);
+        } else if (stage === "chatted" && get().completeCoffeeChat({ contact: cur.name, company: cur.company, stage })) {
+          // CoffeeChatCompleted is this move's event.
+        } else {
+          // Names stay out of the label: labels travel to the mentor as recent activity.
+          get().emit("ContactStageChanged", "networking", `Moved a contact to ${CONTACT_STAGE_LABEL[stage]}`, meta);
+        }
+      },
+      setContactFollowUp: (id, day) => {
+        const when = validDay(day) ? day : undefined;
+        set((st) => ({
+          contacts: st.contacts.map((c) => {
+            if (c.id !== id) return c;
+            const next: Contact = { ...c, updatedAt: Date.now() };
+            if (when) next.followUpOn = when; else delete next.followUpOn;
+            return next;
+          }),
+        }));
+      },
+      removeContact: (id) => {
+        const cur = get().contacts.find((c) => c.id === id);
+        if (!cur) return;
+        const key = netContactKey(cur);
+        set((st) => ({
+          contacts: st.contacts.filter((c) => c.id !== id),
+          contactDetail: st.contactDetail === id ? null : st.contactDetail,
+          // The bookkeeping events name the person in their meta; the evidence events
+          // (messages sent, chats, referrals) stay so progress doesn't fall.
+          events: st.events.filter((e) => !(e.type === "ContactStageChanged" && netContactKey({ name: String(e.meta?.contact ?? ""), company: String(e.meta?.company ?? "") }) === key)),
+        }));
+      },
+      clearContacts: () =>
+        set((st) => ({ contacts: [], contactDetail: null, events: st.events.filter((e) => e.type !== "ContactStageChanged") })),
+      selectContact: (id) => {
+        const c = get().contacts.find((x) => x.id === id);
+        if (!c) return;
+        const cur = get().netContact;
+        // Pasted profile text belongs to the person it was pasted for.
+        const same = netContactKey(cur) === netContactKey(c);
+        set({ netContact: { name: c.name, company: c.company, about: same ? cur.about : "", experience: same ? cur.experience : "" } });
       },
 
       toggleProblem: (slug) => {
@@ -905,6 +1035,7 @@ export const usePfStore = create<PfState>()(
         netContact: s.netContact,
         netResearch: s.netResearch,
         netDraft: s.netDraft,
+        contacts: s.contacts,
         ivTab: s.ivTab,
         ivSolved: s.ivSolved,
         ivProblems: s.ivProblems,
@@ -934,8 +1065,17 @@ export const usePfStore = create<PfState>()(
         const ivSolved: Record<string, number> = {};
         for (const c of LEETCODE_CATEGORIES) ivSolved[c.name] = c.problems.filter((x) => ivProblems[x.slug]).length;
         const diags = p.diags ? migrateDiags(p.diags) : current.diags;
+        // Contacts: sanitised (they may come from a synced snapshot). The single working
+        // contact from before the board existed becomes one Researched contact, so
+        // nobody loses the person they were working on.
+        const contacts = sanitizeContacts(p.contacts);
+        const working = p.netContact;
+        if (working?.name?.trim() && !contacts.some((c) => netContactKey(c) === netContactKey(working))) {
+          const now = Date.now();
+          contacts.unshift({ id: newContactId(), name: working.name.trim(), company: (working.company ?? "").trim(), howWeMet: "other", stage: "researched", notes: "", createdAt: now, updatedAt: now });
+        }
         // Direction values saved before the shared taxonomy move onto the current labels.
-        return { ...current, ...p, ...migrateDirection(p), board, ivProblems, ivSolved, diags };
+        return { ...current, ...p, ...migrateDirection(p), board, ivProblems, ivSolved, diags, contacts, contactDetail: null };
       },
     },
   ),
@@ -954,6 +1094,7 @@ function toProfileInput(s: PfState): ProfileInput {
     cvText: s.cvText, cvAnalyzed: s.cvAnalyzed, cvProjects: s.cvProjects, cvLinkedIn: s.cvLinkedIn, cvScores: s.cvScores,
     cvAiSkills: s.cvAiRead?.skills,
     savedJobs: s.savedJobs,
+    contacts: s.contacts,
     netPersona: s.netPersona, netSent: s.netSent, netGenerated: s.netGenerated,
     ivSolved: s.ivSolved, ivFeedback: s.ivFeedback, savedStories: s.savedStories,
     board: s.board, diags: s.diags, events: s.events,

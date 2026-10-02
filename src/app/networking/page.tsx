@@ -22,6 +22,7 @@ import { useAiTask } from "@/lib/pf/use-ai";
 import { Chip, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { AiCaveat, AiError, AiList, AiSection, GenerateButton } from "@/components/pf/ai-panel";
 import { NextStep } from "@/components/pf/next-step";
+import { ContactsBoard } from "@/components/pf/networking/contacts-board";
 import { ContactWorkspace } from "@/components/pf/networking/contact-workspace";
 import { ProfileResearch } from "@/components/pf/networking/profile-research";
 import { StartupPanel } from "@/components/pf/networking/startup-panel";
@@ -143,7 +144,9 @@ export default function NetworkingPage() {
 
       <NextStep />
 
-      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "flex-start" }}>
+      <ContactsBoard />
+
+      <div id="net-research" style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "flex-start", scrollMarginTop: 16 }}>
         <div style={{ flex: "2 1 460px", minWidth: 0 }}>
           <ProfileResearch
             contact={contact}
