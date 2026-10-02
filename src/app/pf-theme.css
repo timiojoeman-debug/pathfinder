@@ -26,12 +26,14 @@
   --line: rgba(56, 44, 32, .14);
   --line2: rgba(56, 44, 32, .07);
   --lineStrong: rgba(56, 44, 32, .26);
-  --accent: #B0673C;
-  /* Nudged from #8f4f2b. That cleared 4.5:1 on plain paper but landed at
+  /* Was #B0673C: cream button text on it measured 3.85:1, under the 4.5 floor for
+     13px labels. Same hue, darker: 4.88:1 with --onAccent. */
+  --accent: #9C5730;
+  /* --accentText: nudged from #8f4f2b. That cleared 4.5:1 on plain paper but landed at
      4.32:1 on a chip whose --accentSoft background sits inside a row that also
      carries --accentSoft, tinting it twice. */
   --accentText: #854826;
-  --accentSoft: rgba(176, 103, 60, .12);
+  --accentSoft: rgba(156, 87, 48, .12);
   /* Text and icons drawn on a saturated fill (--accent, --risk, --strong).
      Cream on paper; at night the fills are lighter, so it flips to ink: cream
      on the night accent measured about 2.5:1, ink is about 6:1. */

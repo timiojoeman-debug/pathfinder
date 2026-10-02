@@ -160,6 +160,34 @@ describe('filterListings', () => {
   });
 });
 
+describe('filterListings — specific matching', () => {
+  it('does not match SWE on a generic word alone (Engineer ≠ Software Engineer)', () => {
+    const listings = [
+      job({ title: 'Software Engineer Intern', url: 'https://x/1' }),
+      job({ title: 'Chassis Validation Engineer Intern', url: 'https://x/2' }),
+      job({ title: 'Machine Learning Engineer Intern', url: 'https://x/3' }),
+      job({ title: 'Software Developer Intern', url: 'https://x/4' }),
+    ];
+    expect(filterListings(listings, { roleType: 'SWE intern' }).map((j) => j.url)).toEqual(['https://x/1', 'https://x/4']);
+  });
+
+  it('lets the specific word decide in a mixed query', () => {
+    const listings = [
+      job({ title: 'Frontend Engineer Intern', url: 'https://x/1' }),
+      job({ title: 'Backend Engineer Intern', url: 'https://x/2' }),
+    ];
+    expect(filterListings(listings, { roleType: 'frontend engineer' }).map((j) => j.url)).toEqual(['https://x/1']);
+  });
+
+  it('falls back to the generic words when that is all the query has', () => {
+    const listings = [
+      job({ title: 'Chassis Validation Engineer Intern', url: 'https://x/1' }),
+      job({ title: 'Marketing Intern', url: 'https://x/2' }),
+    ];
+    expect(filterListings(listings, { roleType: 'engineer intern' }).map((j) => j.url)).toEqual(['https://x/1']);
+  });
+});
+
 describe('sortByFit', () => {
   it('orders scored listings above unscored ones, highest first', () => {
     const out = sortByFit([job({ matchScore: null }), job({ matchScore: 40 }), job({ matchScore: 90 })]);

@@ -86,10 +86,10 @@ function applicationsPct(p: CareerProfile): number {
 }
 
 function bandFor(overall: number): string {
-  if (overall < 45) return "Early stage — build the base";
-  if (overall < 65) return "Competitive — closing fast";
-  if (overall < 80) return "Strong — start applying hard";
-  return "Top decile — convert offers";
+  if (overall < 45) return "Early stage, build the base";
+  if (overall < 65) return "Competitive, closing fast";
+  if (overall < 80) return "Strong, start applying hard";
+  return "Top decile, convert offers";
 }
 
 export function computeProgress(p: CareerProfile): ProgressReport {

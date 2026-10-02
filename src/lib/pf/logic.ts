@@ -77,7 +77,7 @@ export function directionStatement(d: DirectionFields): string {
     d.dirRole +
     " internships in " + d.dirIndustry!.toLowerCase() +
     " at " + d.dirSize!.toLowerCase() +
-    (d.dirSetting ? " — " + d.dirSetting.toLowerCase() : "") +
+    (d.dirSetting ? ", " + d.dirSetting.toLowerCase() : "") +
     (d.dirStack.length ? ", working in " + d.dirStack.slice(0, 3).join(" / ") : "") +
     "."
   );
@@ -94,9 +94,9 @@ export function directionSpecificity(d: DirectionFields): { label: string; tone:
 
 export function directionSuggestions(d: DirectionFields): string[] {
   const out: string[] = [];
-  if (!d.dirSetting) out.push("Add a work setting (remote / hybrid / on-site) — it changes which boards you should watch.");
-  if (d.dirStack.length < 3) out.push("Name at least 3 stack technologies — they become your ATS keywords downstream.");
-  if (d.dirIndustry === "Open") out.push("“Open” is honest but weak — shortlist 2 industries and compare postings for a week.");
+  if (!d.dirSetting) out.push("Add a work setting (remote / hybrid / on-site). It changes which boards you should watch.");
+  if (d.dirStack.length < 3) out.push("Name at least 3 stack technologies: they become your ATS keywords downstream.");
+  if (d.dirIndustry === "Open") out.push("“Open” is honest but weak. Shortlist 2 industries and compare postings for a week.");
   if (out.length === 0) out.push("Sharp. Next: mine the title variants below so you don’t miss postings under other names.");
   return out;
 }
@@ -172,24 +172,24 @@ export interface RoleFamily {
 
 const ROLE_FAMILIES: Record<string, RoleFamily[]> = {
   "Full-Stack SWE": [
-    { title: "Full-Stack Engineer Intern", note: "Your core target — front end and back end in one role.", relation: "Primary", tone: "var(--strong)" },
-    { title: "Frontend Engineer Intern", note: "Narrows to the UI half of your stack — a natural second search.", relation: "Adjacent", tone: "var(--strong)" },
-    { title: "Backend Engineer Intern", note: "Narrows to services and data — worth searching under this name too.", relation: "Adjacent", tone: "var(--warn)" },
+    { title: "Full-Stack Engineer Intern", note: "Your core target: front end and back end in one role.", relation: "Primary", tone: "var(--strong)" },
+    { title: "Frontend Engineer Intern", note: "Narrows to the UI half of your stack, a natural second search.", relation: "Adjacent", tone: "var(--strong)" },
+    { title: "Backend Engineer Intern", note: "Narrows to services and data. Worth searching under this name too.", relation: "Adjacent", tone: "var(--warn)" },
   ],
   "Frontend": [
-    { title: "Frontend Engineer Intern", note: "Your core target — UI, components and browser work.", relation: "Primary", tone: "var(--strong)" },
-    { title: "Full-Stack Engineer Intern", note: "Widens to the back end — many front-end interns are hired under this title.", relation: "Adjacent", tone: "var(--strong)" },
-    { title: "Design Engineer Intern", note: "Front end with a design-systems slant — a stretch if you have UI work to show.", relation: "Stretch", tone: "var(--warn)" },
+    { title: "Frontend Engineer Intern", note: "Your core target: UI, components and browser work.", relation: "Primary", tone: "var(--strong)" },
+    { title: "Full-Stack Engineer Intern", note: "Widens to the back end. Many front-end interns are hired under this title.", relation: "Adjacent", tone: "var(--strong)" },
+    { title: "Design Engineer Intern", note: "Front end with a design-systems slant. A stretch if you have UI work to show.", relation: "Stretch", tone: "var(--warn)" },
   ],
   "Backend": [
-    { title: "Backend Engineer Intern", note: "Your core target — APIs, services and data.", relation: "Primary", tone: "var(--strong)" },
-    { title: "Full-Stack Engineer Intern", note: "Widens to the UI — a common title for backend-leaning interns.", relation: "Adjacent", tone: "var(--strong)" },
-    { title: "Platform / Infrastructure Intern", note: "Deeper into systems — a stretch that rewards a deployed, operable project.", relation: "Stretch", tone: "var(--warn)" },
+    { title: "Backend Engineer Intern", note: "Your core target: APIs, services and data.", relation: "Primary", tone: "var(--strong)" },
+    { title: "Full-Stack Engineer Intern", note: "Widens to the UI. A common title for backend-leaning interns.", relation: "Adjacent", tone: "var(--strong)" },
+    { title: "Platform / Infrastructure Intern", note: "Deeper into systems. A stretch that rewards a deployed, operable project.", relation: "Stretch", tone: "var(--warn)" },
   ],
   "Data / ML": [
-    { title: "Data / ML Engineer Intern", note: "Your core target — models and the pipelines around them.", relation: "Primary", tone: "var(--strong)" },
-    { title: "Data Engineer Intern", note: "The pipelines without the modelling — often more intern openings.", relation: "Adjacent", tone: "var(--strong)" },
-    { title: "Backend Engineer Intern", note: "Software-heavy roles value ML-adjacent skills — a stretch worth searching.", relation: "Stretch", tone: "var(--warn)" },
+    { title: "Data / ML Engineer Intern", note: "Your core target: models and the pipelines around them.", relation: "Primary", tone: "var(--strong)" },
+    { title: "Data Engineer Intern", note: "The pipelines without the modelling, often with more intern openings.", relation: "Adjacent", tone: "var(--strong)" },
+    { title: "Backend Engineer Intern", note: "Software-heavy roles value ML-adjacent skills. A stretch worth searching.", relation: "Stretch", tone: "var(--warn)" },
   ],
 };
 
@@ -252,7 +252,7 @@ export function analyzeCvText(cvText: string, dirStack: string[]): CvAnalysis {
     score,
     tone: score >= 75 ? "var(--strong)" : score >= 55 ? "var(--warn)" : "var(--risk)",
     dash: Math.round(402 * (1 - score / 100)),
-    verdict: score >= 75 ? "Strong — tailor per role" : score >= 55 ? "Working — needs tailoring" : "Rebuild the top third",
+    verdict: score >= 75 ? "Strong, tailor per role" : score >= 55 ? "Working, needs tailoring" : "Rebuild the top third",
     sub: vague.length + " vague terms · " + missing.length + " missing keywords for your target stack",
     vague,
     missing,
@@ -300,11 +300,11 @@ export function analyzeJobDescription(jd: string, cvText: string, targetKw: stri
 
   const blockers: { text: string; ok: boolean }[] = [];
   if (/no (visa )?sponsor|unable to sponsor|cannot sponsor/i.test(jd)) blockers.push({ text: "No visa sponsorship offered", ok: false });
-  else if (/visa|sponsor/i.test(jd)) blockers.push({ text: "Visa sponsorship mentioned — check the licensed-sponsor register", ok: true });
+  else if (/visa|sponsor/i.test(jd)) blockers.push({ text: "Visa sponsorship mentioned: check the licensed-sponsor register", ok: true });
   if (/security clearance/i.test(jd)) blockers.push({ text: "Security clearance required", ok: false });
   const yoe = jd.match(/(\d)\s*\+?\s*years/i);
   if (yoe) blockers.push({ text: yoe[0] + " experience requested", ok: parseInt(yoe[1], 10) <= 1 });
-  if (/penultimate|final year|graduating/i.test(jd)) blockers.push({ text: "Year-of-study restriction — check eligibility", ok: true });
+  if (/penultimate|final year|graduating/i.test(jd)) blockers.push({ text: "Year-of-study restriction: check eligibility", ok: true });
 
   const compat = rows.length ? Math.round(38 + 57 * (foundN / rows.length)) : 62;
   return {
@@ -328,7 +328,7 @@ export function buildCoverLetter(company: string, role: string, jd: string, targ
     ? KEYWORD_VOCAB.filter((k) => jdLower.indexOf(k.toLowerCase()) >= 0).slice(0, 2).join(" and ") || "engineering rigour"
     : "engineering rigour";
   const p1 = "Dear hiring team, I’m writing to apply for the " + letterRole + " position at " + letterCompany + ". I build with " + targetKw.slice(0, 3).join(", ") + ", and I’d welcome the chance to contribute this summer.";
-  const p2 = "Your posting emphasises " + emphasis + " — the same things I focused on in a recent project, where I owned the work end to end and wrote the tests that kept it shipping.";
+  const p2 = "Your posting emphasises " + emphasis + ", the same things I focused on in a recent project, where I owned the work end to end and wrote the tests that kept it shipping.";
   const p3 = "I’d value the chance to bring that to " + letterCompany + " this summer. Thank you for your consideration.";
   return {
     p1, p2, p3,
@@ -390,10 +390,10 @@ export function trackerDerived(board: BoardColumn[], netSent: number) {
   const weeklyTone = weeklyCount > weeklyMax ? "var(--risk)" : weeklyCount >= weeklyGoal ? "var(--strong)" : "var(--warn)";
   const weeklyNote =
     weeklyCount > weeklyMax
-      ? "Over " + weeklyMax + " this week — slow down. Quality over quantity: tailor harder, apply less."
+      ? "Over " + weeklyMax + " this week. Slow down: quality over quantity: tailor harder, apply less."
       : weeklyCount >= weeklyGoal
         ? "On target. 5–8 tailored applications a week keeps you in the top consistency band."
-        : "Aim for 5–8 tailored applications a week — you need " + (weeklyGoal - weeklyCount) + " more by Sunday.";
+        : "Aim for 5–8 tailored applications a week. You need " + (weeklyGoal - weeklyCount) + " more by Sunday.";
 
   const stats = [
     { label: "Applications sent", value: submitted, color: "var(--fg)" },
@@ -410,10 +410,10 @@ export function trackerDerived(board: BoardColumn[], netSent: number) {
   ];
   let leakLabel: string;
   let leakHref: string;
-  if (submitted < 5) { leakLabel = "Diagnose: too few submissions — keep the cadence"; leakHref = "/jobs"; }
-  else if (ivRate < 0.10) { leakLabel = "Diagnose: interview rate < 10% — fix your CV"; leakHref = "/cv"; }
-  else if (interviews > 0 && offers / interviews < 0.25) { leakLabel = "Diagnose: offers lagging — prep interviews"; leakHref = "/interview"; }
-  else { leakLabel = "Pipeline healthy — keep the cadence"; leakHref = "/jobs"; }
+  if (submitted < 5) { leakLabel = "Diagnose: too few submissions, keep the cadence"; leakHref = "/jobs"; }
+  else if (ivRate < 0.10) { leakLabel = "Diagnose: interview rate under 10%, fix your CV"; leakHref = "/cv"; }
+  else if (interviews > 0 && offers / interviews < 0.25) { leakLabel = "Diagnose: offers lagging, prep interviews"; leakHref = "/interview"; }
+  else { leakLabel = "Pipeline healthy, keep the cadence"; leakHref = "/jobs"; }
 
   return { submitted, interviews, offers, weeklyCount, weeklyGoal, weeklyPct, weeklyTone, weeklyNote, stats, funnel, leakLabel, leakHref };
 }
@@ -450,7 +450,7 @@ export function dominantRejectionTiming(diags: Record<string, string>): { timing
 export function rejectionInsight(diags: Record<string, string>, diagCauses: Record<string, string>): string | null {
   const d = dominantRejectionTiming(diags);
   if (!d) return null;
-  return Math.round(d.share * 100) + "% of your diagnosed rejections came \"" + d.timing.toLowerCase() + "\" — " + diagCauses[d.timing];
+  return Math.round(d.share * 100) + "% of your diagnosed rejections came \"" + d.timing.toLowerCase() + "\". " + diagCauses[d.timing];
 }
 
 /* ── Misc ──────────────────────────────────────────────────────────── */
@@ -539,13 +539,13 @@ export function followUpMessage(to: string): string {
 export function outreachSubject(persona: OutreachPersona, role: string): string {
   switch (persona) {
     case "Recruiter":
-      return `CS student — quick question on your ${role.toLowerCase()} track`;
+      return `CS student: quick question on your ${role.toLowerCase()} track`;
     case "Hiring manager":
       return "A question about your team's work";
     case "Peer / alumnus":
-      return "Fellow student — 15-min coffee chat?";
+      return "Fellow student: 15-min coffee chat?";
     case "Startup founder":
-      return "I tried your product — and a question";
+      return "I tried your product, and a question";
   }
 }
 
@@ -561,26 +561,26 @@ export function buildOutreachTemplate(
     case "Recruiter":
       return [
         `${hi} I'm a CS student focused on ${role} work (${stack}). I saw the ${role} opening${at} and wanted to reach out directly.`,
-        "[Name one real project you can point to, with a link.] I'd value 15 minutes to learn what a strong application looks like to your team — no ask beyond that.",
+        "[Name one real project you can point to, with a link.] I'd value 15 minutes to learn what a strong application looks like to your team. No ask beyond that.",
         "[Add one specific thing you noticed about the team or a recent post before sending.] Thanks either way. [Your name]",
       ];
     case "Hiring manager":
       return [
         `${hi} I'm a CS student working in ${stack}, aiming at ${role} internships${at}.`,
-        "[Reference one concrete thing their team built or wrote about — this is what earns the reply.] I hit a related problem in a recent project and would value your read on it.",
+        "[Reference one concrete thing their team built or wrote about. This is what earns the reply.] I hit a related problem in a recent project and would value your read on it.",
         "One sharp question, not a pitch: [ask something specific about how they work]. Thank you. [Your name]",
       ];
     case "Peer / alumnus":
       return [
         `${hi} I'm a CS student aiming at ${role} internships${at ? `, and${at} is top of my list` : ""}.`,
-        "Could I buy you a virtual coffee for 15 minutes? I'd love to hear what the intern experience is actually like — and what you wish you'd known applying.",
+        "Could I buy you a virtual coffee for 15 minutes? I'd love to hear what the intern experience is actually like, and what you wish you'd known applying.",
         "No agenda beyond that. Happy to work around your week. [Your name]",
       ];
     case "Startup founder":
       return [
-        `${hi} I'm a CS student. [Say what you built or tried with their product — one honest sentence.]`,
-        `I'm looking for a summer internship where I'd ship real product${at ? ` — ${o.company.trim()} is exactly the kind of team I mean` : ""}. If you're taking anyone on, I'd love to show you what I've built.`,
-        "[Add one specific, useful observation about their product.] Either way — thanks for building it. [Your name]",
+        `${hi} I'm a CS student. [Say what you built or tried with their product, in one honest sentence.]`,
+        `I'm looking for a summer internship where I'd ship real product${at ? `, and ${o.company.trim()} is exactly the kind of team I mean` : ""}. If you're taking anyone on, I'd love to show you what I've built.`,
+        "[Add one specific, useful observation about their product.] Either way, thanks for building it. [Your name]",
       ];
   }
 }

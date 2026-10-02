@@ -98,32 +98,6 @@ export const KEYWORD_VOCAB = [
 
 export const DEFAULT_TARGET_KEYWORDS = ["React", "TypeScript", "Node", "SQL"];
 
-export const ATS_CHECKS = [
-  { label: "Single-column, no tables or text boxes", mark: "✓", bg: "var(--strong)", note: "pass", noteColor: "var(--strong)" },
-  { label: "Standard section headings", mark: "✓", bg: "var(--strong)", note: "pass", noteColor: "var(--strong)" },
-  { label: "No icons, graphics or photos", mark: "✓", bg: "var(--strong)", note: "pass", noteColor: "var(--strong)" },
-  { label: "Role keywords in top third", mark: "!", bg: "var(--warn)", note: "4 missing", noteColor: "var(--warn)" },
-  { label: "Every bullet quantified", mark: "!", bg: "var(--warn)", note: "5 of 11", noteColor: "var(--warn)" },
-  { label: "File named Firstname_Lastname_CV.pdf", mark: "✕", bg: "var(--risk)", note: "rename", noteColor: "var(--risk)" },
-];
-
-export const CV_LINES = [
-  { tag: "Quantify", tagColor: "var(--warn)", reason: "No measurable result — add scale or impact", before: "Built a web app for tracking tasks using React.", after: "Shipped a React task-tracker used by 40+ classmates, cutting planning time ~30%." },
-  { tag: "Keyword", tagColor: "var(--accent)", reason: "Missing target-role keywords (Node, Postgres, REST)", before: "Made the backend and connected a database.", after: "Built a Node/Express REST API backed by PostgreSQL, serving 12 endpoints." },
-  { tag: "Verb", tagColor: "var(--active)", reason: "Weak opener — lead with an action verb", before: "Was responsible for helping fix bugs.", after: "Resolved 30+ triaged issues, raising test coverage from 48% to 76%." },
-];
-
-export const CV_MATCH = [
-  { role: "Full-Stack Engineer Intern", pct: "81%", score: 81, tone: "var(--strong)" },
-  { role: "Frontend Engineer Intern", pct: "73%", score: 73, tone: "var(--strong)" },
-  { role: "Data / ML Engineer Intern", pct: "54%", score: 54, tone: "var(--warn)" },
-];
-
-export const PROJECT_IDEAS = [
-  { name: "Distributed rate-limiter service", stack: "Go or Node · Redis · Docker", features: "Token-bucket algorithm, per-client quotas, metrics endpoint, load-tested to 5k rps.", talk: "Why token bucket over sliding window; how you measured p99 latency under load." },
-  { name: "Realtime collaborative task board", stack: "React · WebSockets · PostgreSQL", features: "Optimistic updates, presence cursors, conflict resolution, deployed with CI.", talk: "The consistency trade-off you chose and the race condition you actually fixed." },
-];
-
 /* ── Direction ─────────────────────────────────────────────────────── */
 
 export const DIR_ROLE_OPTS = ["Full-Stack SWE", "Frontend", "Backend", "Data / ML"];
@@ -140,41 +114,10 @@ export const TITLE_VARIANTS: Record<string, string[]> = {
 };
 
 export const HIRE_FRAMEWORK = [
-  { k: "H", label: "Hone direction", note: "Direction statement + 3 target roles", status: "Done", statusColor: "var(--strong)", bg: "var(--strong)", fg: "#fff" },
-  { k: "I", label: "Intensify profile", note: "CV, LinkedIn, GitHub aligned", status: "In progress", statusColor: "var(--warn)", bg: "var(--warn)", fg: "#fff" },
-  { k: "R", label: "Raise reach", note: "Warm paths into target tiers", status: "Next", statusColor: "var(--faint)", bg: "var(--panel3)", fg: "var(--muted)" },
-  { k: "E", label: "Excel in interviews", note: "STAR + technical patterns", status: "Later", statusColor: "var(--faint)", bg: "var(--panel3)", fg: "var(--muted)" },
-];
-
-/* ── Command Centre ────────────────────────────────────────────────── */
-
-export const INTEL_FACTORS = [
-  { label: "Academic alignment", value: 78, pct: "78%", color: "var(--strong)" },
-  { label: "Technical skills", value: 71, pct: "71%", color: "var(--strong)" },
-  { label: "Portfolio strength", value: 64, pct: "64%", color: "var(--warn)" },
-  { label: "Industry experience", value: 52, pct: "52%", color: "var(--warn)" },
-];
-
-export const INTEL_MOVES = [
-  { n: "01", action: "Tailor & apply to Northwind Travel", why: "Highest fit (86) with 6 alumni inside — best odds available today.", impact: "act now", color: "var(--strong)", href: "/jobs" },
-  { n: "02", action: "Open a warm path to a target", why: "Zero referrals logged — referrals convert ~4× cold applications.", impact: "4× odds", color: "var(--accent)", href: "/networking" },
-  { n: "03", action: "Raise ATS readiness on reach targets", why: "2 roles are filtered by ATS before a human reads your CV.", impact: "+14%", color: "var(--warn)", href: "/cv" },
-];
-
-export const INTEL_STATS = [
-  { label: "Strong matches", value: "3", note: "≥ 60 fit", color: "var(--strong)" },
-  { label: "Reach targets", value: "2", note: "build prereqs", color: "var(--risk)" },
-  { label: "Warm paths", value: "1", note: "intro ready", color: "var(--active)" },
-  { label: "Active pipeline", value: "12", note: "applications", color: "var(--fg)" },
-];
-
-export const OPPORTUNITY_MATRIX = [
-  { company: "Northwind Travel", role: "SWE Intern", fit: 86, fitpct: "86%", tone: "var(--strong)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+8 / 30d", warmText: "● intro", warmColor: "var(--active)", move: "Tailor & apply" },
-  { company: "Fairway Sports", role: "Backend Intern", fit: 79, fitpct: "79%", tone: "var(--strong)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+3 / 30d", warmText: "—", warmColor: "var(--faint)", move: "Tailor & apply" },
-  { company: "Edgeline", role: "Frontend Intern", fit: 74, fitpct: "74%", tone: "var(--strong)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+4 / 30d", warmText: "—", warmColor: "var(--faint)", move: "Tailor & apply" },
-  { company: "Kestrel Bank", role: "Backend Intern", fit: 66, fitpct: "66%", tone: "var(--warn)", sigarrow: "↑", sigcolor: "var(--strong)", trend: "+5 / 30d", warmText: "—", warmColor: "var(--faint)", move: "Tailor CV hard" },
-  { company: "Ledgerline", role: "SWE Intern", fit: 58, fitpct: "58%", tone: "var(--warn)", sigarrow: "→", sigcolor: "var(--muted)", trend: "steady", warmText: "—", warmColor: "var(--faint)", move: "Tailor CV hard" },
-  { company: "Lakemont Data", role: "SWE Intern", fit: 34, fitpct: "34%", tone: "var(--risk)", sigarrow: "→", sigcolor: "var(--muted)", trend: "steady", warmText: "—", warmColor: "var(--faint)", move: "Build prereq" },
+  { k: "H", label: "Hone direction", note: "Direction statement + 3 target roles" },
+  { k: "I", label: "Intensify profile", note: "CV, LinkedIn, GitHub aligned" },
+  { k: "R", label: "Raise reach", note: "Warm paths into target tiers" },
+  { k: "E", label: "Excel in interviews", note: "STAR + technical patterns" },
 ];
 
 /* ── Networking ────────────────────────────────────────────────────── */
@@ -185,7 +128,7 @@ export type OutreachPersona = (typeof OUTREACH_PERSONAS)[number];
 export const NETWORK_PERSONA_ANGLES = [
   { kind: "Recruiter", tone: "var(--active)", title: "Speed & keywords", angle: "Wants fast signal that you match the req. Lead with stack + a quantified win." },
   { kind: "Hiring manager", tone: "var(--accent)", title: "Judgement & fit", angle: "Wants to see how you think. Reference their team’s real work, ask one sharp question." },
-  { kind: "Peer / alumnus", tone: "var(--strong)", title: "Warmth & referral", angle: "Shared background or alumni path. Ask for a coffee chat, never a job — the referral follows." },
+  { kind: "Peer / alumnus", tone: "var(--strong)", title: "Warmth & referral", angle: "Shared background or alumni path. Ask for a coffee chat, never a job. The referral follows." },
 ];
 
 export const FOLLOW_UP_CADENCE = [
@@ -211,8 +154,8 @@ export const STAKEHOLDER_SEARCH: StakeholderSearch[] = [
     kind: "Recruiter",
     tone: "var(--active)",
     goesBy: ["Recruiter", "Talent Acquisition", "Talent Partner", "Talent Sourcer", "Early Careers / University Recruiter", "HR"],
-    where: 'LinkedIn: "talent acquisition" + [company] — or whoever posted the specific role',
-    research: "Check if they posted about this exact role — they're the most responsive. Note the roles they usually hire for.",
+    where: 'LinkedIn: "talent acquisition" + [company], or whoever posted the specific role',
+    research: "Check if they posted about this exact role: they're the most responsive. Note the roles they usually hire for.",
   },
   {
     kind: "Hiring manager",
@@ -225,30 +168,30 @@ export const STAKEHOLDER_SEARCH: StakeholderSearch[] = [
     kind: "Peer / alumnus",
     tone: "var(--strong)",
     goesBy: ["Software Engineer", "Graduate Engineer", "Associate Engineer", "Intern", "Junior Developer"],
-    where: 'LinkedIn: "[your university]" + [company] + software engineer — filter to engineers 1–4 years in',
-    research: "Shared university halves the barrier. Prioritise former interns and recent grads — they remember applying and refer freely.",
+    where: 'LinkedIn: "[your university]" + [company] + software engineer, then filter to engineers 1–4 years in',
+    research: "Shared university halves the barrier. Prioritise former interns and recent grads: they remember applying and refer freely.",
   },
   {
     kind: "Startup founder",
     tone: "var(--warn)",
     goesBy: ["Founder", "Co-founder", "CEO", "CTO", "Founding Engineer"],
-    where: "Their company site, LinkedIn, or AngelList — sub-100-person firms (the Direct Access method)",
-    research: "Read their product, blog, and GitHub. The one specific detail about their work is non-negotiable — a generic email to 50 startups gets zero replies.",
+    where: "Their company site, LinkedIn, or AngelList: sub-100-person firms (the Direct Access method)",
+    research: "Read their product, blog, and GitHub. The one specific detail about their work is non-negotiable. A generic email to 50 startups gets zero replies.",
   },
 ];
 
 export const NETWORK_RESEARCH_STEPS = [
-  "Read their LinkedIn, GitHub, and any blog or talk — about 30 minutes, once.",
+  "Read their LinkedIn, GitHub, and any blog or talk. About 30 minutes, once.",
   "Find ONE specific thing about their work that genuinely interests you (a post, a project, a decision).",
-  "Find ONE real commonality — same university, city, a technology, an event you both attended.",
+  "Find ONE real commonality: same university, city, a technology, an event you both attended.",
   "Note their team's current focus so your questions land on what they actually do.",
-  "For the role itself: read the JD twice, skim the company's engineering blog, and check Glassdoor for the interview format — then map your evidence to their requirements.",
+  "For the role itself: read the JD twice, skim the company's engineering blog, and check Glassdoor for the interview format, then map your evidence to their requirements.",
 ];
 
 export const COFFEE_CHAT_FRAMEWORK = [
-  { n: "1", label: "Opening", time: "~1 min", note: "Intro + gratitude + set a light agenda — setting the agenda reads as leadership.", script: "Would it be OK to spend most of the time on your path into the team, and grab any advice for my next year at the end?" },
-  { n: "2", label: "Their story", time: "10–15 min", note: "Your prepared questions — about them, never “what should I do”.", script: "What actually separated strong interns from average ones on your team?" },
-  { n: "3", label: "Positioning", time: "2–3 min", note: "Mirror their language, then map one concrete thing of yours onto it.", script: "That retrieval problem is close to what I hit building PathFinder’s RAG pipeline — I used pgvector." },
+  { n: "1", label: "Opening", time: "~1 min", note: "Intro + gratitude + set a light agenda. Setting the agenda reads as leadership.", script: "Would it be OK to spend most of the time on your path into the team, and grab any advice for my next year at the end?" },
+  { n: "2", label: "Their story", time: "10–15 min", note: "Your prepared questions: about them, never “what should I do”.", script: "What actually separated strong interns from average ones on your team?" },
+  { n: "3", label: "Positioning", time: "2–3 min", note: "Mirror their language, then map one concrete thing of yours onto it.", script: "That retrieval problem is close to what I hit building PathFinder’s RAG pipeline. I used pgvector." },
   { n: "4", label: "Closing", time: "2 min", note: "One takeaway + continued interest + agree the follow-up channel. The indirect close:", script: "What would you focus on over the next six months, in my position?" },
 ];
 
@@ -262,10 +205,10 @@ export const IV_TABS: [string, string][] = [["leetcode", "LeetCode"], ["star", "
 /* ── Tracker ───────────────────────────────────────────────────────── */
 
 export const REJECTION_DIAGNOSIS: Record<string, string> = {
-  "Within hours": "ATS keyword rejection — your CV never reached a human. Fix keywords before the next application.",
-  "1–2 days": "A human read it and passed — positioning or seniority mismatch. Sharpen the top third of your CV.",
+  "Within hours": "ATS keyword rejection: your CV never reached a human. Fix keywords before the next application.",
+  "1–2 days": "A human read it and passed: positioning or seniority mismatch. Sharpen the top third of your CV.",
   "1–2 weeks": "Likely lost to a stronger shortlist, or the role closed. Not a CV signal.",
-  "Never": "Ghosted — follow up once on LinkedIn, then move on. Open a warm path next time.",
+  "Never": "Ghosted. Follow up once on LinkedIn, then move on. Open a warm path next time.",
 };
 
 export const DIAG_TIMINGS = ["Within hours", "1–2 days", "1–2 weeks", "Never"];
