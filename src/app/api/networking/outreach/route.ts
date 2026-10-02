@@ -49,10 +49,10 @@ const OutreachSchema = z.object({
 
 /** No canned fallback: the old one shipped an empty message and a follow-up
  *  with literal NAME/COMPANY tokens, which the page showed verbatim. The page
- *  already holds a structural template built from the real contact, so a failure
- *  says so and the student keeps that. */
+ *  already holds a structural template built from the real contact (or the last
+ *  real draft), so a failure says so and the page says which one it kept. */
 const AI_UNAVAILABLE =
-  "The AI writer is unavailable right now, so here's the structural template instead. Fill in the bracketed parts, or try again in a minute.";
+  "The AI writer is unavailable right now. Try again in a minute.";
 
 export async function POST(req: Request) {
   const parsed = await readBody(req, OutreachSchema);

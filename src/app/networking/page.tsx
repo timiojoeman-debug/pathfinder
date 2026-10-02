@@ -16,7 +16,8 @@ import {
   type OutreachPersona,
 } from "@/lib/pf/data";
 import { buildOutreachTemplate, composeSharedAttributes, followUpMessage, outreachSubject, targetKeywords } from "@/lib/pf/logic";
-import { netDraftKey, usePfStore, type NetContact } from "@/lib/pf/store";
+import { netContactKey, netDraftKey, usePfStore, type NetContact } from "@/lib/pf/store";
+import { useState } from "react";
 import { useAiTask } from "@/lib/pf/use-ai";
 import { Chip, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { AiCaveat, AiError, AiList, AiSection, GenerateButton } from "@/components/pf/ai-panel";
@@ -51,11 +52,15 @@ export default function NetworkingPage() {
   // No sender name is sent: the account holds only an email, and a name guessed
   // from it signs a university student's messages "s1234567".
   const contact = s.netContact;
-  const research = s.netResearch;
+  // Research belongs to the person it was run on. Once the contact changes, both
+  // the findings and the profile text pasted for them stop being about this person.
+  const staleResearch = !!s.netResearch && s.netResearch.key !== netContactKey(contact);
+  const research = staleResearch ? null : s.netResearch?.data ?? null;
   const draftKey = netDraftKey(s.netPersona, contact);
   // The last draft is shown only for the contact and persona it was written for.
   const aiMsg = s.netDraft?.key === draftKey ? s.netDraft : null;
   const outreach = useAiTask<OutreachResult>("/api/networking/outreach");
+  const [emptyReply, setEmptyReply] = useState(false);
 
   const editContact = (patch: Partial<NetContact>) => s.set({ netContact: { ...contact, ...patch } });
 
@@ -75,7 +80,7 @@ export default function NetworkingPage() {
   const researchBits = [...(research?.connectionPoints ?? []), ...(research?.outreachAngles ?? [])].filter(Boolean);
   const sharedAttributes = composeSharedAttributes(
     research,
-    { about: contact.about, experience: contact.experience },
+    staleResearch ? {} : { about: contact.about, experience: contact.experience },
     s.dirRole ? `${s.dirRole} student targeting internships` : "Student targeting internships",
   );
 
@@ -83,6 +88,7 @@ export default function NetworkingPage() {
   // failure the structural template stays and the reason is shown.
   const regenerate = async () => {
     const key = draftKey;
+    setEmptyReply(false);
     const r = await outreach.run({
       type: PERSONA_API_TYPE[s.netPersona],
       recipientName: contact.name.trim() || undefined,
@@ -94,7 +100,11 @@ export default function NetworkingPage() {
       sharedAttributes,
     });
     const paras = (r?.message ?? "").split(/\n+/).map((p) => p.trim()).filter(Boolean);
-    if (!r || !paras.length) return;
+    if (!r) return;
+    if (!paras.length) {
+      setEmptyReply(true);
+      return;
+    }
     s.set({
       netDraft: {
         key,
@@ -112,6 +122,12 @@ export default function NetworkingPage() {
 
   const pickPersona = (p: OutreachPersona) => s.set({ netPersona: p, netFollow: false });
 
+  // Say what is actually on screen after a failure: the last real draft, or the template.
+  const kept = aiMsg ? "Your previous draft is kept below." : "Here's the structural template instead: fill in the bracketed parts.";
+  const outreachError = outreach.error
+    ? outreach.needsAuth ? outreach.error : `${outreach.error} ${kept}`
+    : emptyReply ? `The AI writer came back with an empty message. ${kept}` : null;
+
   const followMsg = aiMsg?.followUp ?? followUpMessage(contact.name);
 
   return (
@@ -128,7 +144,7 @@ export default function NetworkingPage() {
       <ProfileResearch
         contact={contact}
         onContactChange={(c) => s.set({ netContact: c })}
-        onResult={({ data }) => s.set({ netResearch: data, netDraft: null })}
+        onResult={({ contact: c, data }) => s.set({ netResearch: { key: netContactKey(c), name: c.name.trim(), data }, netDraft: null })}
       />
       <ContactWorkspace
         contact={{ name: contact.name, company: contact.company }}
@@ -266,7 +282,12 @@ export default function NetworkingPage() {
                 style={{ height: 40, padding: "0 13px", flex: "1 1 160px", minWidth: 0, fontSize: 13 }}
               />
             </div>
-            {research ? (
+            {staleResearch ? (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5 }}>
+                Your research was on {s.netResearch?.name || "a different contact"}, so it isn&apos;t used here.
+                Research {contact.name.trim() || "this contact"} above to personalise this draft.
+              </div>
+            ) : research ? (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--strong)", lineHeight: 1.5 }}>
                 ✓ Personalising on your research of {contact.name.trim() || "this contact"}
                 {researchBits.length ? ` — ${researchBits.length} connection point${researchBits.length > 1 ? "s" : ""} to draw on` : ""}.
@@ -323,7 +344,7 @@ export default function NetworkingPage() {
               <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10.5, color: "var(--muted)" }}>{s.netSent} outreach messages logged → tracker stat</span>
             </div>
 
-            <AiError message={outreach.error} needsAuth={outreach.needsAuth} />
+            <AiError message={outreachError} needsAuth={outreach.needsAuth} />
 
             {s.netFollow && (
               <div style={{ marginTop: 14, border: "1px dashed var(--lineStrong)", borderRadius: 12, padding: "14px 16px", background: "var(--panel2)" }}>

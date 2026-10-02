@@ -80,7 +80,7 @@ describe('POST /api/networking/outreach', () => {
     expect(raw).not.toMatch(/\bNAME\b|\bCOMPANY\b/);
     const body = JSON.parse(raw);
     expect(body).not.toHaveProperty('message');
-    expect(body.error).toMatch(/structural template/);
+    expect(body.error).toMatch(/unavailable/);
   });
 
   it('never pads a real answer with canned questions, topics or a placeholder follow-up', async () => {

@@ -557,7 +557,7 @@ export function buildOutreachTemplate(
     case "Recruiter":
       return [
         `${hi} I'm a CS student focused on ${role} work (${stack}). I saw the ${role} opening${at} and wanted to reach out directly.`,
-        "I recently shipped a deployed project I can point to, and I'd value 15 minutes to learn what a strong application looks like to your team — no ask beyond that.",
+        "[Name one real project you can point to, with a link.] I'd value 15 minutes to learn what a strong application looks like to your team — no ask beyond that.",
         "[Add one specific thing you noticed about the team or a recent post before sending.] Thanks either way. [Your name]",
       ];
     case "Hiring manager":

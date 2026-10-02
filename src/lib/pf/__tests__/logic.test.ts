@@ -202,6 +202,8 @@ describe('generated content has no hardcoded identity', () => {
   });
   it('follow-up message is unsigned (no Alex)', () => {
     expect(followUpMessage('Priya · Recruiter')).not.toMatch(/Alex/);
+    // Proof of action is a bracket to fill, never a claim made on the student's behalf.
+    expect(followUpMessage('Priya')).not.toMatch(/I shipped/);
   });
 });
 
@@ -275,6 +277,12 @@ describe('buildOutreachTemplate', () => {
     const paras = buildOutreachTemplate('Recruiter', opts).join(' ');
     expect(paras).toContain('Alex');
     expect(paras).not.toMatch(/Priya|Marc|Tom|Sara/);
+  });
+
+  it('leaves achievements as brackets to fill rather than claiming them', () => {
+    const paras = buildOutreachTemplate('Recruiter', opts).join(' ');
+    expect(paras).not.toMatch(/I recently shipped/);
+    expect(paras).toMatch(/\[Name one real project/);
   });
 
   it('falls back to a neutral greeting when no name is given', () => {

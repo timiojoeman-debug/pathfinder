@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { getProfile, netDraftKey, usePfStore } from "../store";
+import { getProfile, netContactKey, netDraftKey, recentCoffeeChat, usePfStore } from "../store";
 import { MAX_JD_CHARS, postingKey, readinessFrom } from "../logic";
 import { LEETCODE_PROBLEMS } from "../leetcode";
 
@@ -300,6 +300,22 @@ describe("pf store — jobs + networking + interview", () => {
     expect(lastEvent().type).toBe("RecruiterContacted");
   });
 
+  it("completeCoffeeChat counts one chat once: a repeat within 24 hours is refused", () => {
+    expect(s().completeCoffeeChat({ contact: "Sam Lee", company: "Monzo" })).toBe(true);
+    expect(s().completeCoffeeChat({ contact: " sam lee", company: "MONZO" })).toBe(false);
+    // Same person at a different company is a different contact.
+    expect(s().completeCoffeeChat({ contact: "Sam Lee", company: "Stripe" })).toBe(true);
+    expect(getProfile().coffeeChatsDone).toBe(2);
+  });
+
+  it("recentCoffeeChat only matches the same contact + company inside a day", () => {
+    const now = 10 * 86_400_000;
+    const ev = (ts: number, meta: Record<string, string>) => ({ id: "x", type: "CoffeeChatCompleted" as const, phase: "networking" as const, label: "", ts, meta });
+    expect(recentCoffeeChat([ev(now - 1000, { contact: "Sam", company: "Monzo" })], { contact: "sam", company: "monzo" }, now)).toBe(true);
+    expect(recentCoffeeChat([ev(now - 86_400_001, { contact: "Sam", company: "Monzo" })], { contact: "Sam", company: "Monzo" }, now)).toBe(false);
+    expect(recentCoffeeChat([ev(now - 1000, { contact: "Sam" })], { contact: "Sam", company: "Monzo" }, now)).toBe(false);
+  });
+
   it("completeCoffeeChat refuses a chat with nobody named", () => {
     expect(s().completeCoffeeChat({ contact: "   ", company: "Monzo" })).toBe(false);
     expect(s().events).toHaveLength(0);
@@ -317,10 +333,11 @@ describe("pf store — jobs + networking + interview", () => {
   it("persists the working contact, research and last draft, and nothing else new", () => {
     const contact = { name: "Sam Lee", company: "Monzo", about: "Backend at Monzo", experience: "" };
     const draft = { key: netDraftKey("Recruiter", contact), paras: ["Hi Sam"], followUp: null, naturalness: null, questions: ["Q?"], topics: [] };
-    s().set({ netContact: contact, netResearch: { summary: "Backend engineer" }, netDraft: draft });
+    const research = { key: netContactKey(contact), name: "Sam Lee", data: { summary: "Backend engineer" } };
+    s().set({ netContact: contact, netResearch: research, netDraft: draft });
     const saved = JSON.parse(localStorage.getItem("pathfinder-redesign-v1") ?? "{}").state;
     expect(saved.netContact).toEqual(contact);
-    expect(saved.netResearch).toEqual({ summary: "Backend engineer" });
+    expect(saved.netResearch).toEqual(research);
     expect(saved.netDraft).toEqual(draft);
   });
 
