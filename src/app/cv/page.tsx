@@ -172,7 +172,7 @@ export default function CvPage() {
             style={{ width: "100%", minHeight: 180, marginTop: 10, padding: 16, borderRadius: 13, border: "1px dashed var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)", fontSize: 13.5, lineHeight: 1.6, fontFamily: "'Manrope',sans-serif", outline: "none", resize: "vertical" }}
           />
           <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 14, flexWrap: "wrap" }}>
-            <button
+            <button className="pf-shine"
               onClick={handleAnalyze}
               disabled={!cvCanAnalyze}
               style={{ cursor: cvCanAnalyze ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: cvBtnBg, color: cvCanAnalyze ? "var(--onAccent)" : "var(--faint)", fontSize: 14, fontWeight: 600, fontFamily: "'Manrope',sans-serif" }}

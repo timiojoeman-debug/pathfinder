@@ -138,7 +138,7 @@ export default function StartPage() {
             <div style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.5 }}>{statement}</div>
           </div>
 
-          <button
+          <button className="pf-shine"
             onClick={() => { if (step1Ready) s.setOnb({ step: 2 }); }}
             disabled={!step1Ready}
             style={{ cursor: step1Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step1Ready ? "var(--accent)" : "var(--panel3)", color: step1Ready ? "var(--onAccent)" : "var(--faint)", fontSize: 14.5, fontWeight: 600 }}
@@ -180,7 +180,7 @@ export default function StartPage() {
             >
               ← Back
             </button>
-            <button
+            <button className="pf-shine"
               onClick={s.startOnbScan}
               disabled={!step2Ready}
               style={{ cursor: step2Ready ? "pointer" : "default", height: 48, padding: "0 26px", borderRadius: 12, border: "none", background: step2Ready ? "var(--accent)" : "var(--panel3)", color: step2Ready ? "var(--onAccent)" : "var(--faint)", fontSize: 14.5, fontWeight: 600 }}

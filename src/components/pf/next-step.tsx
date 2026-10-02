@@ -65,7 +65,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
       {onThisPage && openCard ? (
         <button
           onClick={openCard}
-          className="pf-nextstep-cta pf-press"
+          className="pf-nextstep-cta pf-press pf-shine"
           style={{ cursor: "pointer", flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
         >
           Open the card →
@@ -78,7 +78,7 @@ export function NextStep({ variant = "banner" }: { variant?: "banner" | "compact
         <Link
           href={top.href}
           onClick={openCard}
-          className="pf-nextstep-cta pf-press"
+          className="pf-nextstep-cta pf-press pf-shine"
           style={{ flexShrink: 0, alignSelf: "center", display: "flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 10, background: "var(--accent)", color: "var(--onAccent)", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
         >
           Do it →

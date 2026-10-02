@@ -94,7 +94,7 @@ export function MentorAssistant() {
 
   if (!open) {
     return (
-      <button
+      <button className="pf-shine"
         onClick={() => set({ asstOpen: true })}
         aria-label="Open the mentor"
         style={{

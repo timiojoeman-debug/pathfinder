@@ -32,6 +32,7 @@ export function GenerateButton({
   const ghost = variant === "ghost";
   return (
     <button
+      className={ghost ? undefined : "pf-shine"}
       onClick={onClick}
       disabled={off}
       aria-busy={loading}

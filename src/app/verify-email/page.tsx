@@ -46,7 +46,7 @@ function Verify() {
     >
       <p style={{ fontSize: 13.5, color: state === "ok" ? "var(--strong)" : state === "fail" ? "var(--risk)" : "var(--muted)", lineHeight: 1.6, marginBottom: state === "ok" ? 16 : 0 }}>{b.text}</p>
       {state === "ok" && (
-        <Link href="/intel" style={{ ...authButtonStyle(true), display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>Continue →</Link>
+        <Link href="/intel" className="pf-shine" style={{ ...authButtonStyle(true), display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>Continue →</Link>
       )}
     </AuthShell>
   );

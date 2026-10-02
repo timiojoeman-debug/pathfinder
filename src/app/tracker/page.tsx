@@ -58,7 +58,7 @@ function AddApplication() {
           <input type="date" value={appliedOn} max={isoToday()} onChange={(e) => setAppliedOn(e.target.value)} aria-label="Applied on" title="When you applied" className="pf-input" style={{ ...field, flex: "0 0 auto" }} />
         )}
         <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link to the posting (optional)" aria-label="Link" className="pf-input" style={{ ...field, flex: "2 1 200px" }} />
-        <button
+        <button className="pf-shine"
           type="submit"
           disabled={!ready}
           style={{ cursor: ready ? "pointer" : "default", height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: ready ? "var(--onAccent)" : "var(--faint)", fontSize: 13, fontWeight: 600 }}

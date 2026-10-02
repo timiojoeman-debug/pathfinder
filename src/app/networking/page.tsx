@@ -336,7 +336,7 @@ export default function NetworkingPage() {
             )}
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: "1px solid var(--line2)", paddingTop: 14 }}>
-              <button
+              <button className="pf-shine"
                 onClick={() => s.generateOutreach({ name: contact.name, company: contact.company, message: (aiMsg ? aiMsg.paras : templateParas).join(" ") })}
                 disabled={!contact.name.trim()}
                 title={contact.name.trim() ? undefined : "Add who you're writing to first"}

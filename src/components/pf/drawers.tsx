@@ -366,7 +366,7 @@ function AppDrawer({ cardKey }: { cardKey: string }) {
 
         <div style={{ display: "flex", gap: 10 }}>
           {colIdx < 3 && (
-            <button
+            <button className="pf-shine"
               onClick={() => advanceCard(cardKey)}
               style={{ cursor: "pointer", flex: 1, height: 44, borderRadius: 11, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13.5, fontWeight: 600 }}
             >

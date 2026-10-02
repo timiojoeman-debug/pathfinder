@@ -289,7 +289,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
         </button>
         <button
           onClick={() => router.push("/start")}
-          className="pf-hide-mobile"
+          className="pf-hide-mobile pf-shine"
           style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, height: 38, padding: "0 16px 0 18px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap" }}
         >
           Re-assess

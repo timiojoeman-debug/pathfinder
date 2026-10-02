@@ -133,7 +133,7 @@ function Wizard({ onGenerate, generating }: { onGenerate: () => void; generating
         </div>
       </div>
 
-      <button
+      <button className="pf-shine"
         onClick={onGenerate}
         disabled={!ready}
         style={{ cursor: ready ? "pointer" : "default", height: 46, padding: "0 24px", borderRadius: 12, border: "none", background: ready ? "var(--accent)" : "var(--panel3)", color: ready ? "var(--onAccent)" : "var(--faint)", fontSize: 14, fontWeight: 600 }}

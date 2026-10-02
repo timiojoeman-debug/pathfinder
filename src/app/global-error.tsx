@@ -18,7 +18,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6, margin: "0 0 20px" }}>
               Try again, or reload the page.
             </p>
-            <button
+            <button className="pf-shine"
               type="button"
               onClick={reset}
               style={{ cursor: "pointer", height: 46, padding: "0 22px", borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--onAccent)", fontSize: 14, fontWeight: 600 }}

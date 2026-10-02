@@ -379,6 +379,26 @@
 .pf-cta:hover::after, .pf-cta:focus-visible::after { animation: pfSheen .9s var(--ease); }
 @keyframes pfSheen { from { transform: translateX(-130%); } to { transform: translateX(130%); } }
 
+/* Primary-button shine: one light sweep across the accent fill on hover. Primary
+   buttons only (they are few per screen); a sweep on every button would be noise
+   on actions people repeat all day. Fine pointers only, none under reduced motion. */
+.pf-shine { position: relative; overflow: hidden; isolation: isolate; }
+.pf-shine::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: linear-gradient(102deg, transparent 30%, rgba(255, 248, 235, .34) 48%, transparent 66%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pf-shine:not(:disabled):hover::after, .pf-shine:focus-visible::after { animation: pfSheen .75s var(--pressEase); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-shine::after { display: none; }
+}
+
 /* Ghost link — the rule draws itself in rather than recolouring. */
 .pf-ghost { position: relative; text-decoration: none !important; }
 .pf-ghost::after {

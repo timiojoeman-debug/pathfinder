@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
             className="pf-input"
             style={authInputStyle}
           />
-          <button type="submit" disabled={busy} style={authButtonStyle(!busy)}>
+          <button type="submit" className="pf-shine" disabled={busy} style={authButtonStyle(!busy)}>
             {busy ? "Sending…" : "Send reset link →"}
           </button>
         </form>
