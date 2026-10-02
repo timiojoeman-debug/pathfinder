@@ -132,6 +132,8 @@ export interface SavedJob {
   jdText?: string;
   /** The listing's own apply link. Absent for roles the student added by hand. */
   url?: string;
+  /** ISO time the employer published it, when the source said. Absent means unknown, never guessed. */
+  postedAt?: string;
   /** The last cover letter generated for this role, so it survives navigation. */
   coverLetter?: string;
 }

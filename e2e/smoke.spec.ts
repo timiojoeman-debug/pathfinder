@@ -115,3 +115,39 @@ test("account lifecycle: work syncs to a second device, exports, and deletes", a
 
   await Promise.all([first.close(), second.close(), third.close()]);
 });
+
+test.describe("jobs search, British English browser", () => {
+  test.use({ locale: "en-GB" });
+
+  test("logged out: search defaults to UK roles, shows the filter, and cards carry source and age", async ({ page }) => {
+    let sent: Record<string, unknown> | null = null;
+    await page.route("**/api/jobs/search", (route) => {
+      sent = route.request().postDataJSON();
+      return route.fulfill({
+        json: {
+          configured: true,
+          jobs: [
+            {
+              id: "e2e-1", title: "Backend Intern", company: "E2E Employer", location: "London, UK", workMode: "Not stated",
+              source: "E2E Employer careers", description: "", url: "https://example.test/e2e-1", matchScore: null, atsKeywords: [],
+              postedAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+            },
+          ],
+        },
+      });
+    });
+
+    await page.goto("/jobs");
+    await expect(page.getByRole("button", { name: "Remove UK filter" })).toBeVisible();
+    await page.getByPlaceholder(/SWE intern/).fill("software intern");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+
+    await expect(page.getByText("E2E Employer careers · posted 3 days ago")).toBeVisible();
+    expect(sent).toMatchObject({ roleType: "software intern", ukOnly: true });
+
+    // The default is visible and removable: without it the next search is not UK-only.
+    await page.getByRole("button", { name: "Remove UK filter" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await expect.poll(() => (sent as Record<string, unknown> | null)?.ukOnly).toBeUndefined();
+  });
+});

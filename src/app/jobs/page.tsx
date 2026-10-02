@@ -6,10 +6,12 @@
  * job cards feeding the detail drawer.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { buildCoverLetter, fitTone, jobPassesFit, MAX_JD_CHARS, postingKey, targetKeywords } from "@/lib/pf/logic";
 import { getProfile, usePfStore, type SavedJob } from "@/lib/pf/store";
 import { safeHttpUrl } from "@/lib/jobs/types";
+import { ukByDefault } from "@/lib/jobs/display";
+import { JobMeta } from "@/components/pf/job-meta";
 import { useAiTask, type AiTask } from "@/lib/pf/use-ai";
 import { AiCaveat, AiError } from "@/components/pf/ai-panel";
 import { Chip, Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
@@ -59,7 +61,7 @@ function toJdRead(j: JdAnalyzeResponse): AiJdRead {
 }
 
 /** Map a /api/jobs/search listing onto the design's job-card shape. */
-function toSavedJob(j: { title?: string; company?: string; location?: string; source?: string; description?: string; url?: string; matchScore?: number | null; atsKeywords?: string[] }): SavedJob {
+function toSavedJob(j: { title?: string; company?: string; location?: string; source?: string; description?: string; url?: string; matchScore?: number | null; atsKeywords?: string[]; postedAt?: string | null }): SavedJob {
   // A job-board snippet often names no requirements at all, so there is nothing
   // to score against. Defaulting to a number labelled genuine roles "Long shot"
   // and talked students out of applying — confidence derived from nothing.
@@ -80,6 +82,7 @@ function toSavedJob(j: { title?: string; company?: string; location?: string; so
     action: "+ Save",
     jdText: (j.description ?? "").slice(0, MAX_JD_CHARS),
     ...(safeHttpUrl(j.url) ? { url: safeHttpUrl(j.url) as string } : {}),
+    ...(j.postedAt ? { postedAt: j.postedAt } : {}),
   };
 }
 
@@ -389,6 +392,13 @@ export default function JobsPage() {
   const [liveJobs, setLiveJobs] = useState<SavedJob[]>([]);
   const [searchNote, setSearchNote] = useState<string | null>(null);
   const [minFit, setMinFit] = useState(0);
+  // UK by default for a British-English browser. There is no stored direction location to read,
+  // so the browser locale is the only signal; the pill makes the default visible and removable.
+  const [ukOn, setUkOn] = useState(false);
+  useEffect(() => {
+    setUkOn(ukByDefault(navigator.languages?.[0] ?? navigator.language));
+  }, []);
+  const ukActive = ukOn && !location.trim();
 
   // The AI read of the pasted posting. Tagged with the posting it was run for,
   // so editing the JD can't leave the previous job's read on screen.
@@ -423,6 +433,7 @@ export default function JobsPage() {
           roleType: q,
           cvSummary: s.cvText,
           location: location.trim() || undefined,
+          ukOnly: ukActive || undefined,
           industry: industry.trim() || undefined,
           workMode: workMode === "any" ? undefined : workMode,
         }),
@@ -539,6 +550,17 @@ export default function JobsPage() {
             <Chip key={value} size="sm" label={label} on={workMode === value} onClick={() => setWorkMode(value)} />
           ))}
         </div>
+        {ukActive && (
+          <button
+            type="button"
+            onClick={() => setUkOn(false)}
+            aria-label="Remove UK filter"
+            className="pf-mono"
+            style={{ cursor: "pointer", border: "1px solid var(--accent)", background: "color-mix(in srgb,var(--accent) 12%,transparent)", color: "var(--accentText)", borderRadius: 999, padding: "7px 12px", fontSize: 12, fontWeight: 600 }}
+          >
+            UK + remote (UK) ×
+          </button>
+        )}
         {(workMode !== "any" || industry.trim()) && (
           <span style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.45, flex: "1 1 100%" }}>
             Industry and work mode narrow by keyword, not by a field. On Adzuna the word is searched in
@@ -589,7 +611,7 @@ export default function JobsPage() {
                   >
                     <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.01em" }}>{j.company}</div>
                     <div style={{ fontSize: 13, color: "var(--muted)" }}>{j.role}</div>
-                    <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 5 }}>{j.meta}</div>
+                    <JobMeta meta={j.meta} postedAt={j.postedAt} />
                   </button>
                   <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
                     <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>
@@ -663,7 +685,7 @@ export default function JobsPage() {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.01em" }}>{j.company}</div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>{j.role}</div>
-                  <div className="pf-mono" style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 5 }}>{j.meta}</div>
+                  <JobMeta meta={j.meta} postedAt={j.postedAt} />
                 </div>
                 <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
                   <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>

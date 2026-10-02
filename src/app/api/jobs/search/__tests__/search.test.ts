@@ -239,6 +239,17 @@ describe('POST /api/jobs/search', () => {
       expect(urls.indexOf('https://g/1')).toBe(1); // second, not last
     });
 
+    it('ukOnly keeps UK and remote-UK roles from the cache and GitHub, and drops the rest', async () => {
+      getActiveListings.mockResolvedValue([
+        CACHED({ id: 'u1', url: 'https://e/uk', location: 'Remote (UK)' }),
+        CACHED({ id: 'u2', url: 'https://e/us', location: 'New York, NY' }),
+        CACHED({ id: 'u3', url: 'https://e/rem', location: 'Remote' }),
+      ]);
+      stubFetch({ github: [GH({ id: 'g1', url: 'https://g/1', locations: ['London, UK'] }), GH({ id: 'g2', url: 'https://g/2', locations: ['Austin, TX'] })] });
+      const body = await (await POST(post({ roleType: 'software engineer intern', ukOnly: true }))).json();
+      expect(body.jobs.map((j: { url: string }) => j.url).sort()).toEqual(['https://e/uk', 'https://g/1']);
+    });
+
     it('dedupes a role present in the cache and on GitHub', async () => {
       getActiveListings.mockResolvedValue([CACHED({ company: 'Skyscanner', url: 'https://careers.skyscanner.net/1' })]);
       stubFetch({ github: [GH()] });

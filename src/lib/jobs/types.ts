@@ -234,6 +234,51 @@ export function filterListings(
   });
 }
 
+/** City names that mean a UK place when nothing says otherwise. Also the SQL pre-filter's terms. */
+export const UK_CITY_NAMES = [
+  "london", "edinburgh", "glasgow", "manchester", "cambridge", "oxford", "bristol", "leeds", "birmingham",
+  "belfast", "cardiff", "liverpool", "newcastle", "sheffield", "nottingham", "southampton", "cheltenham",
+  "reading", "brighton", "aberdeen", "dundee", "leicester", "exeter", "milton keynes",
+];
+/** Words that make a location UK on their own. Constants only: they are interpolated into a PostgREST filter. */
+export const UK_COUNTRY_WORDS = ["uk", "united kingdom", "great britain", "gb", "england", "scotland", "wales", "northern ireland"];
+
+const wordRe = (words: string[]) =>
+  new RegExp("(^|[^a-z])(" + words.map((w) => w.replace(/\./g, "\\.")).join("|") + ")($|[^a-z])", "i");
+
+// These say UK outright, even beside a place name that also exists elsewhere.
+const EXPLICIT_UK = wordRe(["uk", "u.k.", "united kingdom", "great britain", "gb", "northern ireland"]);
+const UK_NATIONS = wordRe(["england", "scotland", "wales"]);
+const UK_CITIES = wordRe(UK_CITY_NAMES);
+// Regions that contain a UK-sounding word or share a city name with a UK one.
+const NOT_UK_REGION = wordRe([
+  "new england", "new south wales",
+  "alabama", "alaska", "arizona", "arkansas", "california", "colorado", "connecticut", "delaware", "florida",
+  "georgia", "hawaii", "idaho", "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana", "maine",
+  "maryland", "massachusetts", "michigan", "minnesota", "mississippi", "missouri", "montana", "nebraska",
+  "nevada", "new hampshire", "new jersey", "new mexico", "new york", "north carolina", "north dakota", "ohio",
+  "oklahoma", "oregon", "pennsylvania", "rhode island", "south carolina", "south dakota", "tennessee", "texas",
+  "utah", "vermont", "virginia", "washington", "west virginia", "wisconsin", "wyoming",
+  "alberta", "british columbia", "manitoba", "new brunswick", "newfoundland", "nova scotia", "ontario",
+  "prince edward island", "quebec", "saskatchewan",
+]);
+// A bare US/Canadian suffix ("Cambridge, MA") also means the city is not the British one. GB and UK are exempt.
+const NOT_UK_HINT = /\b(usa|united states|canada)\b|,\s*(?!GB\b|UK\b)[A-Z]{2}\b/;
+
+/**
+ * Whether a listing location is in the UK, including "Remote (UK)". Plain "Remote"
+ * is not UK: it may be open to anywhere. Multi-location strings ("London · New
+ * York") count when any one part is UK.
+ */
+export function isUkLocation(location: string): boolean {
+  return location.split(/\s·\s|;|\|/).some((part) => {
+    if (EXPLICIT_UK.test(part)) return true;
+    if (NOT_UK_REGION.test(part)) return false;
+    if (UK_NATIONS.test(part)) return true;
+    return UK_CITIES.test(part) && !NOT_UK_HINT.test(part);
+  });
+}
+
 /** Highest known fit first; unscored listings sink below scored ones. */
 export function sortByFit(listings: JobListing[]): JobListing[] {
   return [...listings].sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1));
