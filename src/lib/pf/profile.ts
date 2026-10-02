@@ -293,7 +293,7 @@ export function deriveProfile(s: ProfileInput): CareerProfile {
     contactedCompanies,
     coffeeChatsDone: s.events.filter((e) => e.type === "CoffeeChatCompleted").length,
     contactNudges: (s.contacts ?? []).map(({ id, name, company, stage, followUpOn }) => ({ id, name, company, stage, followUpOn })),
-    referralsReceived: new Set(s.events.filter((e) => e.type === "ReferralReceived").map((e) => `${e.meta?.contact ?? ""}|${e.meta?.company ?? ""}`.toLowerCase())).size,
+    referralsReceived: new Set(s.events.filter((e) => e.type === "ReferralReceived").map((e) => (typeof e.meta?.contactId === "string" ? e.meta.contactId : `${e.meta?.contact ?? ""}|${e.meta?.company ?? ""}`.toLowerCase()))).size,
 
     leetSolved,
     weakPatterns,

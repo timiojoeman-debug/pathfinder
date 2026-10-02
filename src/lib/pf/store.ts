@@ -65,12 +65,40 @@ export interface NetDraft {
   questions: string[];
   topics: string[];
 }
+// Deleting a contact also drops the pasted profile, research and draft about them.
+const NO_WORKING_CONTACT = { netContact: { name: "", company: "", about: "", experience: "" }, netResearch: null, netDraft: null };
+
 /** Which person something belongs to, ignoring case and stray whitespace. */
 export const netContactKey = (c: { name: string; company?: string }) =>
   [c.name.trim().toLowerCase(), (c.company ?? "").trim().toLowerCase()].join("|");
 /** Which contact + persona a draft belongs to. */
 export const netDraftKey = (persona: string, c: { name: string; company: string }) =>
   [persona, netContactKey(c)].join("|");
+
+const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Erasing people: bookkeeping events about them go, and the evidence events that stay
+ *  (messages, chats, referrals) lose the name, in meta and in any label that carries it.
+ *  Company, type and contactId stay, so the counts survive without saying who. */
+export function scrubPeople(events: PfEvent[], people: Contact[]): PfEvent[] {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const byKey = new Map(people.map((p) => [netContactKey(p), p]));
+  const names = people.map((p) => p.name.trim()).filter(Boolean);
+  // Which removed person an event is about, if any.
+  const who = (e: PfEvent) =>
+    (typeof e.meta?.contactId === "string" ? byId.get(e.meta.contactId) : undefined) ??
+    byKey.get(netContactKey({ name: String(e.meta?.contact ?? ""), company: String(e.meta?.company ?? "") }));
+  return events
+    .filter((e) => !(e.type === "ContactStageChanged" && who(e)))
+    .map((e) => {
+      let label = e.label;
+      for (const n of names) label = label.replace(new RegExp(`\\b${reEscape(n)}\\b`, "gi"), "a contact");
+      const p = who(e);
+      if (!p && label === e.label) return e;
+      // An opaque contactId replaces the name, so two people at one company still count as two.
+      return { ...e, label, ...(p && e.meta ? { meta: { ...e.meta, contact: "", contactId: p.id } } : {}) };
+    });
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** A CoffeeChatCompleted for this contact (and company) in the last 24 hours. One
@@ -223,6 +251,9 @@ interface PfState {
   contacts: Contact[];
   /** Which contact's drawer is open. Not persisted. */
   contactDetail: string | null;
+  /** True once the pre-board working contact has been considered for seeding. Without it
+   *  a deleted contact would be re-seeded from `netContact` on the next load. */
+  contactsSeeded: boolean;
 
   /* interview */
   ivTab: string;
@@ -297,7 +328,7 @@ interface PfState {
   /** Log a sent message. Returns false (and logs nothing) without a real recipient and message. */
   generateOutreach: (contact: { name: string; company?: string; message: string }) => boolean;
   /** Logs a coffee chat the student actually held. Needs a named contact. */
-  completeCoffeeChat: (chat: { contact: string; company?: string; stage?: string }) => boolean;
+  completeCoffeeChat: (chat: { contact: string; company?: string; stage?: string; contactId?: string }) => boolean;
 
   /** Add a contact (stage Researched). Deduped on name + company. */
   addContact: (input: { name: string; company: string; role?: string; howWeMet: HowWeMet; link?: string }) => AddContactResult;
@@ -422,6 +453,7 @@ export const usePfStore = create<PfState>()(
       netDraft: null,
       contacts: [],
       contactDetail: null,
+      contactsSeeded: true,
 
       ivTab: "leetcode",
       ivSolved: {},
@@ -658,7 +690,8 @@ export const usePfStore = create<PfState>()(
         // The one door to Messaged that counts: a real message was marked as sent. If this
         // person is on the board and hasn't got further than Researched, they move with it.
         const key = netContactKey({ name: who, company: co });
-        const onBoard = s.contacts.find((c) => netContactKey(c) === key && (c.stage === "researched" || c.stage === "not-now"));
+        const match = s.contacts.find((c) => netContactKey(c) === key);
+        const onBoard = match && (match.stage === "researched" || match.stage === "not-now") ? match : undefined;
         set({
           netGenerated: true,
           netSent: s.netSent + 1,
@@ -667,19 +700,20 @@ export const usePfStore = create<PfState>()(
         get().emit(
           "RecruiterContacted",
           "networking",
-          `Outreach sent to ${who}${co ? ` at ${co}` : ""} (${s.netPersona})`,
-          { ...(co ? { company: co } : {}), contact: who, persona: s.netPersona, ...(onBoard ? { stage: "messaged" } : {}) },
+          // Name-free: labels travel to the mentor, and the name must be erasable from meta alone.
+          `Outreach sent${co ? ` at ${co}` : ""} (${s.netPersona})`,
+          { ...(co ? { company: co } : {}), contact: who, persona: s.netPersona, ...(match ? { contactId: match.id } : {}), ...(onBoard ? { stage: "messaged" } : {}) },
         );
         return true;
       },
 
       // Feeds `profile.coffeeChatsDone` and so networking progress: a chat with nobody
       // is not evidence of anything.
-      completeCoffeeChat: ({ contact, company, stage }) => {
+      completeCoffeeChat: ({ contact, company, stage, contactId }) => {
         const who = contact.trim();
         if (!who || recentCoffeeChat(get().events, { contact, company })) return false;
         const co = company?.trim();
-        get().emit("CoffeeChatCompleted", "networking", `Coffee chat with ${who}${co ? ` at ${co}` : ""}`, { contact: who, ...(co ? { company: co } : {}), ...(stage ? { stage } : {}) });
+        get().emit("CoffeeChatCompleted", "networking", `Coffee chat${co ? ` at ${co}` : ""}`, { contact: who, ...(co ? { company: co } : {}), ...(stage ? { stage } : {}), ...(contactId ? { contactId } : {}) });
         return true;
       },
 
@@ -726,16 +760,28 @@ export const usePfStore = create<PfState>()(
         const url = linkOk ? (linkRaw ? safeHttpUrl(linkRaw) : null) : (cur.link ?? null);
         if (url) next.link = url; else delete next.link;
         if (JSON.stringify({ ...next, updatedAt: 0 }) === JSON.stringify({ ...cur, updatedAt: 0 })) return;
-        set((st) => ({ contacts: st.contacts.map((c) => (c.id === id ? next : c)) }));
+        // A rename follows through to the working contact, so "Mark as sent" still finds the card.
+        const working = get().netContact;
+        const renamed = netContactKey(working) === netContactKey(cur);
+        set((st) => ({
+          contacts: st.contacts.map((c) => (c.id === id ? next : c)),
+          ...(renamed ? { netContact: { ...working, name: next.name, company: next.company } } : {}),
+        }));
       },
       moveContact: (id, stage) => {
         const cur = get().contacts.find((c) => c.id === id);
         if (!cur || cur.stage === stage) return;
         set((st) => ({ contacts: st.contacts.map((c) => (c.id === id ? { ...c, stage, updatedAt: Date.now() } : c)) }));
-        const meta = { contact: cur.name, company: cur.company, stage };
+        const meta = { contact: cur.name, company: cur.company, stage, contactId: id };
         if (stage === "referred") {
           get().emit("ReferralReceived", "networking", `Referral received${cur.company ? ` at ${cur.company}` : ""} (self-reported)`, meta);
-        } else if (stage === "chatted" && get().completeCoffeeChat({ contact: cur.name, company: cur.company, stage })) {
+        } else if (
+          // One chat per contact from the board, however often they are moved back and forth
+          // or renamed; the 24-hour name guard inside completeCoffeeChat still applies too.
+          stage === "chatted" &&
+          !get().events.some((e) => e.type === "CoffeeChatCompleted" && e.meta?.contactId === id) &&
+          get().completeCoffeeChat({ contact: cur.name, company: cur.company, stage, contactId: id })
+        ) {
           // CoffeeChatCompleted is this move's event.
         } else {
           // Names stay out of the label: labels travel to the mentor as recent activity.
@@ -758,15 +804,20 @@ export const usePfStore = create<PfState>()(
         if (!cur) return;
         const key = netContactKey(cur);
         set((st) => ({
+          ...(netContactKey(st.netContact) === key ? NO_WORKING_CONTACT : {}),
           contacts: st.contacts.filter((c) => c.id !== id),
           contactDetail: st.contactDetail === id ? null : st.contactDetail,
-          // The bookkeeping events name the person in their meta; the evidence events
-          // (messages sent, chats, referrals) stay so progress doesn't fall.
-          events: st.events.filter((e) => !(e.type === "ContactStageChanged" && netContactKey({ name: String(e.meta?.contact ?? ""), company: String(e.meta?.company ?? "") }) === key)),
+          // Bookkeeping events go; evidence events stay as anonymous counts (see scrubPeople).
+          events: scrubPeople(st.events, [cur]),
         }));
       },
       clearContacts: () =>
-        set((st) => ({ contacts: [], contactDetail: null, events: st.events.filter((e) => e.type !== "ContactStageChanged") })),
+        set((st) => ({
+          ...(st.contacts.some((c) => netContactKey(c) === netContactKey(st.netContact)) ? NO_WORKING_CONTACT : {}),
+          contacts: [],
+          contactDetail: null,
+          events: scrubPeople(st.events, st.contacts),
+        })),
       selectContact: (id) => {
         const c = get().contacts.find((x) => x.id === id);
         if (!c) return;
@@ -1036,6 +1087,7 @@ export const usePfStore = create<PfState>()(
         netResearch: s.netResearch,
         netDraft: s.netDraft,
         contacts: s.contacts,
+        contactsSeeded: s.contactsSeeded,
         ivTab: s.ivTab,
         ivSolved: s.ivSolved,
         ivProblems: s.ivProblems,
@@ -1070,12 +1122,12 @@ export const usePfStore = create<PfState>()(
         // nobody loses the person they were working on.
         const contacts = sanitizeContacts(p.contacts);
         const working = p.netContact;
-        if (working?.name?.trim() && !contacts.some((c) => netContactKey(c) === netContactKey(working))) {
+        if (p.contactsSeeded !== true && working?.name?.trim() && !contacts.some((c) => netContactKey(c) === netContactKey(working))) {
           const now = Date.now();
           contacts.unshift({ id: newContactId(), name: working.name.trim(), company: (working.company ?? "").trim(), howWeMet: "other", stage: "researched", notes: "", createdAt: now, updatedAt: now });
         }
         // Direction values saved before the shared taxonomy move onto the current labels.
-        return { ...current, ...p, ...migrateDirection(p), board, ivProblems, ivSolved, diags, contacts, contactDetail: null };
+        return { ...current, ...p, ...migrateDirection(p), board, ivProblems, ivSolved, diags, contacts, contactsSeeded: true, contactDetail: null };
       },
     },
   ),

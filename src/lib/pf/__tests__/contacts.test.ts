@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getProfile, getProgress, usePfStore } from "../store";
+import { makeEvent } from "../events";
 import { applicationsAtCompany, contactsAtCompany, sanitizeContacts } from "../contacts";
 
 /**
@@ -85,6 +86,30 @@ describe("contacts — add, edit, remove", () => {
     s().selectContact(c.id);
     expect(s().netContact.about).toBe("Sam's About");
   });
+
+  it("a rename follows through to the working contact, so marking outreach sent still moves the card", () => {
+    const c = addSam();
+    s().selectContact(c.id);
+    s().updateContact(c.id, { name: "Samuel Lee" });
+    expect(s().netContact.name).toBe("Samuel Lee");
+    s().generateOutreach({ name: s().netContact.name, company: "Monzo", message: "Hello Samuel" });
+    expect(s().contacts[0].stage).toBe("messaged");
+  });
+
+  it("deleting the working contact forgets them, and a reload does not bring them back", () => {
+    const c = addSam();
+    s().selectContact(c.id);
+    s().set({ netContact: { ...s().netContact, about: "Sam's About" } });
+    s().removeContact(c.id);
+    expect(s().netContact.name).toBe("");
+    const slice = usePfStore.persist.getOptions().partialize!(s());
+    const m = usePfStore.persist.getOptions().merge!(slice, PRISTINE) as ReturnType<typeof usePfStore.getState>;
+    expect(m.contacts).toEqual([]);
+    addSam();
+    s().selectContact(s().contacts[0].id);
+    s().clearContacts();
+    expect(s().netContact.name).toBe("");
+  });
 });
 
 describe("contacts — evidence rules", () => {
@@ -102,7 +127,7 @@ describe("contacts — evidence rules", () => {
     expect(getProgress()).toEqual(before);
     const ev = s().events[s().events.length - 1];
     expect(ev.type).toBe("ContactStageChanged");
-    expect(ev.meta).toEqual({ contact: "Sam Lee", company: "Monzo", stage: "messaged" });
+    expect(ev.meta).toEqual({ contact: "Sam Lee", company: "Monzo", stage: "messaged", contactId: c.id });
     // The label travels to the mentor as recent activity, so it carries no name.
     expect(ev.label).not.toMatch(/Sam/);
   });
@@ -217,5 +242,137 @@ describe("company linkage", () => {
     s().addCard({ company: "Wise", role: "Data Intern", column: "saved" });
     expect(applicationsAtCompany(s().board, "monzo")).toEqual([{ key: "monzo::backend intern", role: "Backend Intern", column: expect.any(String) }]);
     expect(applicationsAtCompany(s().board, "")).toEqual([]);
+  });
+});
+
+describe("contacts — erasure and re-seeding", () => {
+  const merge = (persisted: unknown) => usePfStore.persist.getOptions().merge!(persisted, PRISTINE) as ReturnType<typeof usePfStore.getState>;
+  const reload = () => merge(usePfStore.persist.getOptions().partialize!(s()));
+  beforeEach(reset);
+
+  it("a removed contact, and everyone after Delete all, stay gone on reload", () => {
+    const c = addSam();
+    s().selectContact(c.id);
+    s().removeContact(c.id);
+    expect(reload().contacts).toEqual([]);
+    addSam();
+    s().addContact({ name: "Ana", company: "Wise", howWeMet: "event" });
+    s().selectContact(s().contacts[0].id);
+    s().clearContacts();
+    expect(reload().contacts).toEqual([]);
+    expect(reload().netContact.name).toBe("");
+  });
+
+  it("a rename does not come back as a duplicate after a reload", () => {
+    const c = addSam();
+    s().selectContact(c.id);
+    s().updateContact(c.id, { name: "Samuel Lee" });
+    expect(reload().contacts.map((x) => x.name)).toEqual(["Samuel Lee"]);
+  });
+
+  it("seeds a pre-board working contact once, then records that it has", () => {
+    const m = merge({ netContact: { name: "Priya", company: "Stripe", about: "", experience: "" } });
+    expect(m.contacts).toHaveLength(1);
+    expect(m.contactsSeeded).toBe(true);
+    const gone = merge({ netContact: { name: "Priya", company: "Stripe", about: "", experience: "" }, contacts: [], contactsSeeded: true });
+    expect(gone.contacts).toEqual([]);
+  });
+
+  it("Delete all keeps the working contact when they are not on the board", () => {
+    addSam();
+    s().set({ netContact: { name: "Ana", company: "Wise", about: "Ana's About", experience: "" } });
+    s().clearContacts();
+    expect(s().netContact.name).toBe("Ana");
+  });
+
+  it("removing the working contact also clears research and the draft about them", () => {
+    const c = addSam();
+    s().selectContact(c.id);
+    s().set({
+      netContact: { ...s().netContact, about: "Sam's About" },
+      netResearch: { key: "sam lee|monzo", name: "Sam Lee", data: { summary: "x" } },
+      netDraft: { key: "k", paras: ["Hi Sam"], followUp: null, naturalness: null, questions: [], topics: [] },
+    });
+    s().removeContact(c.id);
+    expect(s().netContact).toEqual({ name: "", company: "", about: "", experience: "" });
+    expect(s().netResearch).toBeNull();
+    expect(s().netDraft).toBeNull();
+  });
+
+  it("scrubs the name from kept evidence events, keeps the counts, and rewrites labels that carried it", () => {
+    const c = addSam();
+    s().generateOutreach({ name: "Sam Lee", company: "Monzo", message: "Hi Sam" });
+    s().moveContact(c.id, "chatted");
+    s().moveContact(c.id, "referred");
+    s().pushEvent(makeEvent("CoffeeChatCompleted", "networking", "Coffee chat with Sam Lee at Monzo", { contact: "Sam Lee", company: "Monzo" }));
+    s().pushEvent(makeEvent("AiConsulted", "networking", "Drafted outreach to sam lee", { kind: "outreach" }));
+    const before = { chats: getProfile().coffeeChatsDone, companies: getProfile().contactedCompanies, refs: getProfile().referralsReceived };
+    s().removeContact(c.id);
+    const after = getProfile();
+    expect({ chats: after.coffeeChatsDone, companies: after.contactedCompanies, refs: after.referralsReceived }).toEqual(before);
+    expect(JSON.stringify(s().events)).not.toMatch(/Sam/i);
+    expect(s().events.filter((e) => e.type === "RecruiterContacted")[0].meta).toMatchObject({ company: "Monzo", contact: "" });
+  });
+
+  it("two referrals at one company still count as two after Delete all blanks both names", () => {
+    const a = addSam();
+    s().addContact({ name: "Ana Diaz", company: "Monzo", howWeMet: "event" });
+    const b = s().contacts.find((c) => c.name === "Ana Diaz")!;
+    s().moveContact(a.id, "referred");
+    s().moveContact(b.id, "referred");
+    expect(getProfile().referralsReceived).toBe(2);
+    s().clearContacts();
+    expect(getProfile().referralsReceived).toBe(2);
+    expect(JSON.stringify(s().events)).not.toMatch(/Sam|Ana/);
+  });
+
+  it("new evidence labels carry no name", () => {
+    const c = addSam();
+    s().generateOutreach({ name: "Sam Lee", company: "Monzo", message: "Hi" });
+    s().moveContact(c.id, "chatted");
+    s().moveContact(c.id, "referred");
+    expect(s().events.map((e) => e.label).join("|")).not.toMatch(/Sam/);
+  });
+});
+
+describe("contacts — one chat per contact", () => {
+  beforeEach(reset);
+  const ageEvents = () => s().set({ events: s().events.map((e) => ({ ...e, ts: e.ts - 3 * 864e5 })) });
+
+  it("Chatted, back, then Chatted again after a day does not count a second chat", () => {
+    const c = addSam();
+    s().moveContact(c.id, "chatted");
+    ageEvents();
+    s().moveContact(c.id, "researched");
+    s().moveContact(c.id, "chatted");
+    expect(getProfile().coffeeChatsDone).toBe(1);
+  });
+
+  it("a rename does not make the same contact's chat count again", () => {
+    const c = addSam();
+    s().moveContact(c.id, "chatted");
+    ageEvents();
+    s().updateContact(c.id, { name: "Samuel Lee" });
+    s().moveContact(c.id, "replied");
+    s().moveContact(c.id, "chatted");
+    expect(getProfile().coffeeChatsDone).toBe(1);
+  });
+
+  it("the workspace path keeps its own rule: a later chat a day on still counts", () => {
+    s().completeCoffeeChat({ contact: "Ana", company: "Wise" });
+    ageEvents();
+    expect(s().completeCoffeeChat({ contact: "Ana", company: "Wise" })).toBe(true);
+    expect(getProfile().coffeeChatsDone).toBe(2);
+  });
+});
+
+describe("sanitizeContacts — duplicate ids", () => {
+  it("keeps the newest copy of a repeated id", () => {
+    const out = sanitizeContacts([
+      { id: "a", name: "Old", updatedAt: 1 },
+      { id: "a", name: "New", updatedAt: 9 },
+      { id: "a", name: "Mid", updatedAt: 5 },
+    ]);
+    expect(out.map((c) => c.name)).toEqual(["New"]);
   });
 });

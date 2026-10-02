@@ -141,6 +141,24 @@ describe("contact drawer", () => {
     expect(s().contactDetail).toBeNull();
   });
 
+  it("reverts a rejected rename to the stored name and keeps the warning until the next edit", () => {
+    vi.useFakeTimers();
+    try {
+      s().addContact({ name: "Ana", company: "Monzo", howWeMet: "event" });
+      s().openContact(s().contacts.find((c) => c.name === "Sam Lee")!.id);
+      render(<Drawers />);
+      const name = screen.getByLabelText("Name") as HTMLInputElement;
+      fireEvent.change(name, { target: { value: "ana" } });
+      act(() => { vi.advanceTimersByTime(700); });
+      expect(name.value).toBe("Sam Lee");
+      expect(screen.getByRole("status")).toHaveTextContent(/can.t be saved/);
+      fireEvent.change(name, { target: { value: "Sam L" } });
+      expect(screen.queryByText(/can.t be saved/)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("sets a follow-up date and the stage from the drawer", () => {
     s().openContact(id());
     render(<Drawers />);

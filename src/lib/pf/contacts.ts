@@ -61,7 +61,7 @@ const clip = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(
  *  unknown stages fall back, links are re-checked, junk rows are dropped. */
 export function sanitizeContacts(raw: unknown): Contact[] {
   if (!Array.isArray(raw)) return [];
-  const out: Contact[] = [];
+  const byId = new Map<string, Contact>();
   for (const r of raw) {
     if (!r || typeof r !== "object") continue;
     const c = r as Record<string, unknown>;
@@ -70,7 +70,7 @@ export function sanitizeContacts(raw: unknown): Contact[] {
     const link = safeHttpUrl(c.link) ?? undefined;
     const role = clip(c.role, 120);
     const now = Date.now();
-    out.push({
+    const keep: Contact = {
       id: c.id,
       name,
       company: clip(c.company, 120),
@@ -82,9 +82,12 @@ export function sanitizeContacts(raw: unknown): Contact[] {
       ...(validDay(c.followUpOn) ? { followUpOn: c.followUpOn } : {}),
       createdAt: typeof c.createdAt === "number" ? c.createdAt : now,
       updatedAt: typeof c.updatedAt === "number" ? c.updatedAt : now,
-    });
+    };
+    // A duplicate id (a bad merge of two devices) keeps the newest copy.
+    const prev = byId.get(keep.id);
+    if (!prev || keep.updatedAt > prev.updatedAt) byId.set(keep.id, keep);
   }
-  return out;
+  return [...byId.values()];
 }
 
 const norm = (s: string) => s.trim().toLowerCase();

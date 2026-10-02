@@ -145,7 +145,7 @@ export function ContactsBoard() {
         <div role="alertdialog" aria-label="Confirm delete all contacts" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 14, border: "1px solid color-mix(in srgb,var(--risk) 30%,transparent)", borderRadius: 12, padding: "12px 14px" }}>
           <span style={{ fontSize: 13, flex: "1 1 260px" }}>
             Delete all {contacts.length} {contacts.length === 1 ? "contact" : "contacts"}, with their notes and dates?
-            Messages and chats you logged stay in your activity log so your progress doesn&apos;t change.
+            Only anonymous counts stay (messages sent, chats and referrals, with the company but not the name), so your progress and referrals received don&apos;t change.
           </span>
           <button
             onClick={() => { clearContacts(); setConfirmClear(false); }}

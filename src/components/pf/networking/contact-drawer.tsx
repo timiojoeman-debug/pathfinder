@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CONTACT_STAGES, CONTACT_STAGE_LABEL, HOW_WE_MET, HOW_WE_MET_LABEL, applicationsAtCompany, type ContactStage, type HowWeMet } from "@/lib/pf/contacts";
 import { formatReminder } from "@/lib/pf/logic";
-import { netContactKey, usePfStore } from "@/lib/pf/store";
+import { usePfStore } from "@/lib/pf/store";
 import { safeHttpUrl } from "@/lib/jobs/types";
 import { CloseBtn, DrawerShell } from "@/components/pf/drawer-shell";
 import { Kicker } from "@/components/pf/ui";
@@ -47,18 +47,31 @@ export function ContactDrawer({ id }: { id: string }) {
     name: c?.name ?? "", company: c?.company ?? "", role: c?.role ?? "", howWeMet: c?.howWeMet ?? "other", link: c?.link ?? "", notes: c?.notes ?? "",
   }));
   const pending = useRef<Draft | null>(null);
+  // Set when the store refused a name or company change; stays until that field is edited again.
+  const [refused, setRefused] = useState(false);
   const edit = (patch: Partial<Draft>) => {
     const next = { ...d, ...patch };
     pending.current = next;
+    if ("name" in patch || "company" in patch) setRefused(false);
     setD(next);
   };
-  const flush = () => {
-    if (pending.current) updateContact(id, pending.current);
+  const flush = (revert = false) => {
+    const draft = pending.current;
     pending.current = null;
+    if (!draft) return;
+    updateContact(id, draft);
+    if (!revert) return;
+    // The store keeps the old identity when a name is blank or taken. Show what was kept,
+    // not what was typed, so the drawer never claims a name that was not saved.
+    const stored = usePfStore.getState().contacts.find((x) => x.id === id);
+    if (stored && (stored.name !== draft.name.trim() || stored.company !== draft.company.trim())) {
+      setD((cur) => ({ ...cur, name: stored.name, company: stored.company }));
+      setRefused(true);
+    }
   };
   useEffect(() => {
     if (pending.current === null) return;
-    const t = setTimeout(flush, 600);
+    const t = setTimeout(() => flush(true), 600);
     return () => clearTimeout(t);
     // flush only reads refs and a stable store action
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,12 +81,11 @@ export function ContactDrawer({ id }: { id: string }) {
 
   if (!c) return null;
 
-  const clash = contacts.some((x) => x.id !== id && netContactKey(x) === netContactKey(d));
   const badLink = d.link.trim() !== "" && !safeHttpUrl(d.link);
   const apps = applicationsAtCompany(board, c.company);
 
   const work = () => {
-    flush();
+    flush(false);
     selectContact(id);
     closeDrawers();
     if (window.location.pathname === "/networking") document.getElementById("net-research")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -126,7 +138,7 @@ export function ContactDrawer({ id }: { id: string }) {
           </Field>
           <Field label="Profile link (optional)"><input value={d.link} onChange={(e) => edit({ link: e.target.value })} placeholder="https://" className="pf-input pf-touch" style={fieldStyle} /></Field>
         </div>
-        {clash && <div role="status" style={{ fontSize: 12, color: "var(--warnText)", marginBottom: 8 }}>Another contact already has this name and company, so that change isn&apos;t saved.</div>}
+        {refused && <div role="status" style={{ fontSize: 12, color: "var(--warnText)", marginBottom: 8 }}>That name and company can&apos;t be saved (blank, or already used by another contact), so the previous ones are kept.</div>}
         {badLink && <div role="status" style={{ fontSize: 12, color: "var(--warnText)", marginBottom: 8 }}>The link needs to start with http:// or https://, so it isn&apos;t saved.</div>}
         {c.link && !badLink && (
           <a href={c.link} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginBottom: 8, fontSize: 12.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
@@ -175,7 +187,7 @@ export function ContactDrawer({ id }: { id: string }) {
           </button>
         ) : (
           <div role="alertdialog" aria-label="Confirm removal" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", border: "1px solid color-mix(in srgb,var(--risk) 30%,transparent)", borderRadius: 12, padding: "12px 14px" }}>
-            <span style={{ fontSize: 13, flex: "1 1 200px" }}>Remove {c.name} from your contacts? Their notes and dates go with them.</span>
+            <span style={{ fontSize: 13, flex: "1 1 200px" }}>Remove {c.name} from your contacts? Their notes and dates go. Only anonymous counts stay (messages sent, chats and referrals, with the company but not the name), so your progress and referrals received don&apos;t change.</span>
             <button
               onClick={() => { pending.current = null; removeContact(id); }}
               className="pf-touch"
