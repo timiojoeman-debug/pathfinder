@@ -89,6 +89,28 @@ describe("buildUserContext", () => {
     expect(ctx.phase).toBe("applying");
   });
 
+  it("falls back to the synced client snapshot when the per-domain tables are empty", async () => {
+    vi.mocked(createAdminClient).mockReturnValue(
+      makeSupabaseMock({
+        profiles: { data: { direction_statement: null, career_preferences: {}, cv_analysis_history: [], user_phase: "applying", client_state: {
+          dirRole: "Backend", dirIndustry: "Fintech", dirStack: ["Go"],
+          board: [{ id: "applied", cards: [{ key: "m", company: "Monzo", appliedDate: Date.now() }] }],
+          events: [{ type: "CoffeeChatCompleted", meta: { contact: "Sam" } }],
+          savedStories: [{}], ivProblems: { "two-sum": true },
+        } } },
+      }).db as never,
+    );
+    const ctx = await buildUserContext("u1");
+    expect(ctx.direction.role).toBe("Backend");
+    expect(ctx.direction.techStack).toEqual(["Go"]);
+    expect(ctx.applications.total).toBe(1);
+    expect(ctx.applications.statuses.applied).toBe(1);
+    expect(ctx.applications.companies).toEqual(["Monzo"]);
+    expect(ctx.networking.coffeeChatsDone).toBe(1);
+    expect(ctx.interviewPrep.storiesCount).toBe(1);
+    expect(ctx.interviewPrep.leetcodeProgress.solved).toBe(1);
+  });
+
   it("returns safe defaults when the student has no data", async () => {
     vi.mocked(createAdminClient).mockReturnValue(makeSupabaseMock({}).db as never);
     const ctx = await buildUserContext("u1");

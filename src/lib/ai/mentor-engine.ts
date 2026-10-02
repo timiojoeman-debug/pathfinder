@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/client';
 import { AIError } from '@/lib/ai';
 import { renderKnowledgeBlock, type Domain } from '@/lib/knowledge';
 import { logger } from '@/lib/logger';
+import { LEETCODE_TOTAL } from '@/lib/pf/leetcode';
+import { factsFromClientState } from './client-state-context';
 import type {
   UserContext, MentorResponse,
   UserPhase, ApplicationStatus, CVParsedData, CVAnalysisHistoryEntry
@@ -107,6 +109,9 @@ export async function buildUserContext(userId: string): Promise<UserContext> {
 
   const prefs = (profile?.career_preferences || {}) as Record<string, unknown>;
   const parsed = cv?.parsed_data as CVParsedData | null;
+  // The app never writes the per-domain tables; its state syncs whole to
+  // profiles.client_state. Tables win when they hold rows, the snapshot fills in otherwise.
+  const snap = factsFromClientState(profile?.client_state);
 
   // Calculate this week's apps
   const weekStart = new Date();
@@ -120,11 +125,11 @@ export async function buildUserContext(userId: string): Promise<UserContext> {
   const statuses = {} as Record<ApplicationStatus, number>;
   const allStatuses: ApplicationStatus[] = ['researching', 'tailoring', 'applied', 'networking', 'interviewing', 'offer', 'rejected', 'ghosted'];
   for (const s of allStatuses) {
-    statuses[s] = apps.filter(a => a.status === s).length;
+    statuses[s] = apps.length ? apps.filter(a => a.status === s).length : (snap.applications.statuses[s] ?? 0);
   }
 
   // Skills analysis
-  const detectedSkills = parsed?.skills || [];
+  const detectedSkills = parsed?.skills?.length ? parsed.skills : snap.skills;
   const allProjectTech = (parsed?.projects || []).flatMap(p => p.tech || []);
   const strongest = [...new Set([...detectedSkills, ...allProjectTech])].slice(0, 10);
 
@@ -132,9 +137,9 @@ export async function buildUserContext(userId: string): Promise<UserContext> {
     direction: {
       statement: profile?.direction_statement || null,
       score: profile?.direction_score || null,
-      role: (prefs.role as string) || '',
-      industry: (prefs.industry as string) || '',
-      techStack: Array.isArray(prefs.techStack) ? prefs.techStack as string[] : [],
+      role: (prefs.role as string) || snap.role,
+      industry: (prefs.industry as string) || snap.industry,
+      techStack: Array.isArray(prefs.techStack) && prefs.techStack.length ? prefs.techStack as string[] : snap.techStack,
       location: (prefs.location as string) || '',
     },
     cv: {
@@ -147,29 +152,30 @@ export async function buildUserContext(userId: string): Promise<UserContext> {
       missing: [],
       strongest,
     },
-    applications: {
-      total: apps.length,
-      thisWeek: thisWeekApps,
-      statuses,
-      companies: [...new Set(apps.map(a => a.company))],
-      recentRejectionTimings: apps
-        .filter(a => a.status === 'rejected' && a.rejection_timing)
-        .slice(0, 5)
-        .map(a => a.rejection_timing!),
-    },
+    applications: apps.length
+      ? {
+          total: apps.length,
+          thisWeek: thisWeekApps,
+          statuses,
+          companies: [...new Set(apps.map(a => a.company))],
+          recentRejectionTimings: apps
+            .filter(a => a.status === 'rejected' && a.rejection_timing)
+            .slice(0, 5)
+            .map(a => a.rejection_timing!),
+        }
+      : { ...snap.applications, statuses },
     networking: {
-      contactsCount: contacts.length,
-      coffeeChatsDone: chats.length,
-      messagesSent: contacts.filter(c => c.message_text).length,
+      contactsCount: contacts.length || snap.networking.contactsCount,
+      coffeeChatsDone: chats.length || snap.networking.coffeeChatsDone,
+      messagesSent: contacts.length ? contacts.filter(c => c.message_text).length : snap.networking.messagesSent,
       activeFollowUps: contacts.filter(c => c.follow_up_due && new Date(c.follow_up_due) >= new Date()).length,
     },
     interviewPrep: {
-      storiesCount: stories.length,
+      storiesCount: stories.length || snap.interviewPrep.storiesCount,
       storiesCategories: [...new Set(stories.map(s => s.category).filter(Boolean))],
-      leetcodeProgress: {
-        total: leetcode.length,
-        solved: leetcode.filter(l => l.status === 'solved').length,
-      },
+      leetcodeProgress: leetcode.length
+        ? { total: leetcode.length, solved: leetcode.filter(l => l.status === 'solved').length }
+        : { total: LEETCODE_TOTAL, solved: snap.interviewPrep.leetcodeSolved },
     },
     phase: (profile?.user_phase || 'new') as UserPhase,
   };
