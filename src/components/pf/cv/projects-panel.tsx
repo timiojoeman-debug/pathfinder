@@ -85,7 +85,7 @@ export function ProjectsPanel() {
         </GenerateButton>
         {!hasGaps && (
           <span style={{ fontSize: 11.5, color: "var(--faint)", maxWidth: "40ch", lineHeight: 1.5 }}>
-            No skill gaps recorded yet. Set your direction and analyse your CV first — without gaps
+            No skill gaps recorded yet. Set your direction and analyse your CV first. Without gaps
             this returns generic ideas.
           </span>
         )}
@@ -159,7 +159,7 @@ export function ProjectsPanel() {
 
                     {p.qualityChecklist?.length ? (
                       <AiSection title="What makes it stand out">
-                        <AiList items={p.qualityChecklist.map((q) => `${q.quality} — ${q.howToMeet}`)} />
+                        <AiList items={p.qualityChecklist.map((q) => `${q.quality}: ${q.howToMeet}`)} />
                       </AiSection>
                     ) : null}
 
@@ -174,7 +174,7 @@ export function ProjectsPanel() {
 
           <AiCaveat>
             These are starting points, not specifications. Scope each one down to what you can
-            actually finish — a small project you built and can explain beats an ambitious one you
+            actually finish. A small project you built and can explain beats an ambitious one you
             abandoned.
           </AiCaveat>
         </div>

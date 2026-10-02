@@ -128,8 +128,9 @@ export default function CvPage() {
     <div>
       <PageHeader label="Phase 02 · Precision" title="CV Optimisation">
         <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "56ch" }}>
-          85% of employers screen with ATS, then a recruiter scans the top half of page one in{" "}
-          <span style={{ color: "var(--fg)", fontWeight: 600 }}>6–8 seconds</span>. Every line is
+          Most employers filter applications through an ATS before a person reads them, and then a
+          recruiter skims the top half of page one in{" "}
+          <span style={{ color: "var(--fg)", fontWeight: 600 }}>a few seconds</span>. Every line is
           scored against the role.
         </p>
       </PageHeader>
@@ -141,7 +142,7 @@ export default function CvPage() {
         <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "26px 28px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)" }}>
-              Paste your CV text — PDF/DOCX upload works the same way
+              Paste your CV text (PDF and DOCX upload work the same way)
             </div>
             <input
               ref={fileRef}
@@ -191,7 +192,7 @@ export default function CvPage() {
         <div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
             <a onClick={reAnalyzeCv} style={{ cursor: "pointer", fontFamily: mono, fontSize: 11, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
-              ← Edit & re-analyze
+              ← Edit & re-analyse
             </a>
           </div>
 
@@ -231,7 +232,7 @@ export default function CvPage() {
                 <span style={{ fontFamily: mono, fontSize: 10, color: hasMissing ? "var(--warn)" : "var(--strong)" }}>{analysis.missing.length} missing</span>
               </div>
               <div style={{ padding: "12px 24px", borderTop: "1px solid var(--line2)", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
-                {analysis.verdict} — {analysis.sub}
+                {analysis.verdict}: {analysis.sub}
               </div>
             </Reveal>
           </div>
@@ -298,7 +299,7 @@ export default function CvPage() {
                 ))
               ) : (
                 <div style={{ padding: "14px 24px", fontSize: 12.5, color: "var(--muted)", borderTop: "1px solid var(--line2)" }}>
-                  None found — every bullet owns its verb. Rare and good.
+                  None found. Every bullet owns its verb: rare, and good.
                 </div>
               )}
             </Reveal>

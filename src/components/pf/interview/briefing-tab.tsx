@@ -32,7 +32,7 @@ const CONFIDENCE_TONE = {
  *  "high" would do the opposite — which is the failure that actually costs a
  *  student credibility in the room. */
 const CONFIDENCE_NOTE = {
-  high: "Well documented publicly — still worth confirming on their engineering blog.",
+  high: "Well documented publicly, but still worth confirming on their engineering blog.",
   medium: "Partly inferred. Confirm the specifics on their engineering blog before quoting any of it.",
   low: "Low confidence. Verify on their engineering blog or careers page before you rely on any of this.",
 } as const;
@@ -101,7 +101,7 @@ export function BriefingTab() {
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
         <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>Company briefing</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "52ch" }}>
-          What they do, what they value, and three angles for &quot;why this company?&quot; that connect to your actual work — plus questions worth asking back.
+          What they do, what they value, and three angles for &quot;why this company?&quot; that connect to your actual work, plus questions worth asking back.
         </span>
 
         {picks.length > 0 && (

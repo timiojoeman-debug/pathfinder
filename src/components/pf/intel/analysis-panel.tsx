@@ -133,7 +133,7 @@ export function IntelAnalysisPanel() {
           }}
         >
           The analyser couldn&apos;t read your pipeline this time and returned nothing rather than
-          guessing. Your ranked pipeline below is unaffected — try again in a moment.
+          guessing. Your ranked pipeline below is unaffected. Try again in a moment.
         </div>
       )}
 
@@ -202,7 +202,7 @@ export function IntelAnalysisPanel() {
 
       {moves.length > 0 && (
         <AiCaveat>
-          Ranked from the adverts you saved and the CV text you pasted — not from any knowledge of who
+          Ranked from the adverts you saved and the CV text you pasted, not from any knowledge of who
           else applied. Treat the ordering as a prompt to think, not a verdict.
         </AiCaveat>
       )}

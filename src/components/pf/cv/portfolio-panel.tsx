@@ -62,7 +62,7 @@ export function PortfolioPanel() {
       <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>Portfolio review</h2>
       <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "54ch" }}>
         Paste your project descriptions or GitHub READMEs for an honest read against the standout-project
-        qualities recruiters look for. A link is optional — it&apos;s context only, nothing is scraped.
+        qualities recruiters look for. A link is optional: it&apos;s context only, and nothing is scraped.
       </span>
 
       <input
@@ -75,7 +75,7 @@ export function PortfolioPanel() {
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Paste your project descriptions / READMEs — what each project does, the stack, whether it's deployed, tested, documented…"
+        placeholder="Paste your project descriptions / READMEs: what each project does, the stack, whether it's deployed, tested, documented…"
         style={{
           width: "100%", minHeight: 120, marginTop: 10, padding: 14, borderRadius: 13,
           border: "1px dashed var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)",
@@ -131,7 +131,7 @@ export function PortfolioPanel() {
           ) : null}
 
           <AiCaveat>
-            Grounded only in what you pasted — it hasn&apos;t opened any link. Fix the gaps in the projects
+            Grounded only in what you pasted; it hasn&apos;t opened any link. Fix the gaps in the projects
             themselves, not just the wording.
           </AiCaveat>
         </div>

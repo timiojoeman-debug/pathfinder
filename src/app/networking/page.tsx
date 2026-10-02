@@ -134,8 +134,9 @@ export default function NetworkingPage() {
     <div>
       <PageHeader label="Phase 04 · Connections" title="Networking">
         <p style={{ fontSize: 15, color: "var(--muted)", margin: 0, maxWidth: "58ch" }}>
-          70–80% of roles are filled before they&apos;re posted. Referred candidates get{" "}
-          <span style={{ color: "var(--fg)", fontWeight: 600 }}>~4× the interview rate</span> — this is where 70% of your effort goes.
+          Many roles are filled before they&apos;re ever posted, and a{" "}
+          <span style={{ color: "var(--fg)", fontWeight: 600 }}>referral</span> is one of the strongest routes to an interview.
+          That is why most of your effort goes here.
         </p>
       </PageHeader>
 
@@ -165,7 +166,7 @@ export default function NetworkingPage() {
       {/* Who to reach, what they're called, and how to research them */}
       <Panel style={{ padding: "22px 24px", marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Who to reach — and what they&apos;re called</h2>
+          <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Who to reach, and what they&apos;re called</h2>
           <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>the titles to search on LinkedIn / Glassdoor</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginBottom: 16 }}>
@@ -196,7 +197,7 @@ export default function NetworkingPage() {
           <h2 className="pf-display-sm" style={{ fontSize: 21, margin: 0 }}>Coffee chat playbook</h2>
           <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>The four-part framework · 20–30 min</span>
           <span className="pf-mono" style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "var(--accent)", border: "1px solid color-mix(in srgb,var(--accent) 30%,transparent)", borderRadius: 6, padding: "3px 9px", whiteSpace: "nowrap" }}>
-            never ask for a job — the referral follows
+            never ask for a job; the referral follows
           </span>
         </div>
         <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, marginBottom: 14 }}>
@@ -290,11 +291,11 @@ export default function NetworkingPage() {
             ) : research ? (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--strong)", lineHeight: 1.5 }}>
                 ✓ Personalising on your research of {contact.name.trim() || "this contact"}
-                {researchBits.length ? ` — ${researchBits.length} connection point${researchBits.length > 1 ? "s" : ""} to draw on` : ""}.
+                {researchBits.length ? `, with ${researchBits.length} connection point${researchBits.length > 1 ? "s" : ""} to draw on` : ""}.
               </div>
             ) : (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5 }}>
-                Paste their profile in &ldquo;Research a contact&rdquo; above to personalise this — otherwise the AI writes from your target role alone.
+                Paste their profile in &ldquo;Research a contact&rdquo; above to personalise this. Otherwise the AI writes from your target role alone.
               </div>
             )}
           </div>
@@ -313,7 +314,7 @@ export default function NetworkingPage() {
             ) : (
               <>
                 <div className="pf-mono" style={{ fontSize: 9.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 8 }}>
-                  Structural template — fill the bracketed parts, or generate a tailored version
+                  Structural template: fill the bracketed parts, or generate a tailored version
                 </div>
                 {templateParas.map((p, i) => (
                   <p key={i} style={{ fontSize: 13.5, lineHeight: 1.7, color: i === templateParas.length - 1 ? "var(--muted)" : "var(--fg)", margin: i === templateParas.length - 1 ? "0 0 16px" : "0 0 12px" }}>{p}</p>

@@ -32,10 +32,10 @@ const CATEGORIES = [
 ] as const;
 
 const BEATS = [
-  { k: "situation", mark: "S", label: "Situation", prompt: "Set the scene in one sentence — where were you and what was at stake?" },
+  { k: "situation", mark: "S", label: "Situation", prompt: "Set the scene in one sentence: where were you and what was at stake?" },
   { k: "task", mark: "T", label: "Task", prompt: "What was your specific responsibility or goal?" },
   { k: "action", mark: "A", label: "Action", prompt: 'What did you do? Lead with "I…" verbs and be concrete.' },
-  { k: "result", mark: "R", label: "Result", prompt: "The measurable outcome — a number, or what changed because of you." },
+  { k: "result", mark: "R", label: "Result", prompt: "The measurable outcome: a number, or what changed because of you." },
 ] as const;
 
 type BeatKey = (typeof BEATS)[number]["k"];
@@ -140,7 +140,7 @@ export function StarTab() {
     const result = await run({ rawStory: story, category });
     if (result?.data?.situation) {
       const name = CATEGORIES.find((c) => c.id === category)?.name ?? category;
-      emit("AiConsulted", "interview", `Structured a STAR story — ${name}`);
+      emit("AiConsulted", "interview", `Structured a STAR story: ${name}`);
     }
   };
 
@@ -149,7 +149,7 @@ export function StarTab() {
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px" }}>
         <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 3px" }}>STAR story builder</h2>
         <span style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, display: "block", maxWidth: "52ch" }}>
-          Draft each beat roughly — messy is fine. The builder tightens it to 60–90 seconds and tells you which questions it answers.
+          Draft each beat roughly; messy is fine. The builder tightens it to 60–90 seconds and tells you which questions it answers.
         </span>
 
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap", margin: "15px 0 4px" }}>
@@ -214,7 +214,7 @@ export function StarTab() {
             <span style={{ fontSize: 12, color: "var(--faint)" }}>Sketch the situation and what you did, and this unlocks.</span>
           )}
           {hasEnough && !story.result.trim() && (
-            <span style={{ fontSize: 12, color: "var(--warn)" }}>No result yet — that&apos;s the beat interviewers remember.</span>
+            <span style={{ fontSize: 12, color: "var(--warn)" }}>No result yet, and that&apos;s the beat interviewers remember.</span>
           )}
           <button
             onClick={() => save(story, "your draft")}
@@ -291,7 +291,7 @@ export function StarTab() {
           )}
 
           <AiCaveat>
-            Say it out loud once before you accept it — if a phrase isn&apos;t yours, it will sound like it isn&apos;t yours.
+            Say it out loud once before you accept it. If a phrase isn&apos;t yours, it will sound like it isn&apos;t yours.
           </AiCaveat>
         </div>
       )}

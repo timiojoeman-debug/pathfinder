@@ -50,7 +50,7 @@ export default function SettingsPage() {
     setMsg(null);
     try {
       const res = await fetch("/api/account/export");
-      if (!res.ok) { setMsg("Export failed — please try again."); return; }
+      if (!res.ok) { setMsg("Export failed. Please try again."); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -59,7 +59,7 @@ export default function SettingsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setMsg("Export failed — please try again.");
+      setMsg("Export failed. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -80,11 +80,11 @@ export default function SettingsPage() {
       if (res.ok) {
         router.push("/");
       } else {
-        setMsg("Deletion failed — please try again.");
+        setMsg("Deletion failed. Please try again.");
         setDeleting(false);
       }
     } catch {
-      setMsg("Deletion failed — please try again.");
+      setMsg("Deletion failed. Please try again.");
       setDeleting(false);
     }
   };

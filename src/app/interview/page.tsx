@@ -26,7 +26,7 @@ function FeedbackTab() {
     <Reveal style={{ maxWidth: 720 }}>
       <div style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "22px 24px", marginBottom: 16 }}>
         <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>Log a post-interview reflection</h2>
-        <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Captured while it&apos;s fresh — patterns emerge after 3+ entries</span>
+        <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Captured while it&apos;s fresh. Patterns emerge after 3+ entries</span>
         {interviewCards.length > 0 && (
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 14 }}>
             {interviewCards.map((c) => {
@@ -92,7 +92,7 @@ function FeedbackTab() {
 
       {s.ivFeedback.length === 0 && (
         <div style={{ border: "1px dashed var(--lineStrong)", borderRadius: 14, padding: "18px 20px", fontSize: 13, color: "var(--muted)" }}>
-          No reflections yet. Your first interview is data — log it here within 24 hours while the questions are fresh.
+          No reflections yet. Your first interview is data: log it here within 24 hours while the questions are fresh.
         </div>
       )}
       {s.ivFeedback.map((f, i) => (

@@ -156,7 +156,7 @@ export function MentorAssistant() {
         {msgs.length === 0 && (
           <div>
             <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, margin: "0 0 12px" }}>
-              I can see your profile and what you&apos;ve logged. Ask me about it — I&apos;ll point you
+              I can see your profile and what you&apos;ve logged. Ask me about it and I&apos;ll point you
               at the right page, but you make the changes.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>

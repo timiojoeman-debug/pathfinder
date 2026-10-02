@@ -28,11 +28,11 @@ function ResetForm() {
         body: JSON.stringify({ token, password }),
       });
       const json: { error?: string } = await res.json().catch(() => ({}));
-      if (!res.ok) { setError(json.error || "Reset failed — request a new link."); return; }
+      if (!res.ok) { setError(json.error || "Reset failed. Request a new link."); return; }
       setDone(true);
       setTimeout(() => router.push("/login"), 1600);
     } catch {
-      setError("Reset failed — please try again.");
+      setError("Reset failed. Please try again.");
     } finally {
       setBusy(false);
     }

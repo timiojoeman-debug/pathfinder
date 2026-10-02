@@ -130,7 +130,7 @@ function JobDrawer({ jobKey }: { jobKey: string }) {
             onClick={onTrack}
             style={{ cursor: "pointer", flex: 1, height: 44, borderRadius: 11, border: "none", background: tracked ? "var(--panel3)" : "var(--accent)", color: tracked ? "var(--fg)" : "var(--onAccent)", fontSize: 13.5, fontWeight: 600 }}
           >
-            {tracked ? "Tracked ✓ — view board" : "+ Track this role"}
+            {tracked ? "Tracked ✓ · view board" : "+ Track this role"}
           </button>
           <button
             onClick={onTailor}

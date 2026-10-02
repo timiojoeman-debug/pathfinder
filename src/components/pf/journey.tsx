@@ -91,7 +91,7 @@ export function MemoryFeed() {
       </div>
       {changes.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
-          Nothing logged yet. As you work through the phases, every action lands here — and the AI mentor references it next time you ask.
+          Nothing logged yet. As you work through the phases, every action lands here, and the AI mentor references it next time you ask.
         </div>
       ) : (
         [...profile.events]
@@ -121,7 +121,7 @@ export function ProfileSummary() {
           from logged work; the mentor's retelling is the block at the end, and
           is labelled where it starts. */}
       <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>Your profile</h2>
-      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Derived from every phase — it&apos;s what the mentor reads before it answers.</span>
+      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Derived from every phase: it&apos;s what the mentor reads before it answers.</span>
 
       {profile.directionStatement && (
         <p style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5, margin: "14px 0 4px" }}>{profile.directionStatement}</p>
@@ -132,13 +132,13 @@ export function ProfileSummary() {
           <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--strong)", marginBottom: 8 }}>Strengths</div>
           {profile.strengths.length ? profile.strengths.map((s) => (
             <div key={s} style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 4 }}>· {s}</div>
-          )) : <div style={{ fontSize: 12.5, color: "var(--faint)" }}>Build some — start with direction.</div>}
+          )) : <div style={{ fontSize: 12.5, color: "var(--faint)" }}>Build some. Start with direction.</div>}
         </div>
         <div>
           <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--risk)", marginBottom: 8 }}>Gaps to close</div>
           {profile.weaknesses.length ? profile.weaknesses.map((w) => (
             <div key={w} style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 4 }}>· {w}</div>
-          )) : <div style={{ fontSize: 12.5, color: "var(--faint)" }}>None flagged — nice work.</div>}
+          )) : <div style={{ fontSize: 12.5, color: "var(--faint)" }}>None flagged. Nice work.</div>}
         </div>
       </div>
 

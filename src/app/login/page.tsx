@@ -33,13 +33,13 @@ export default function LoginPage() {
       });
       const json: { error?: string } = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error || "Something went wrong — try again.");
+        setError(json.error || "Something went wrong. Try again.");
         return;
       }
       await checkAuth();
       router.push("/intel");
     } catch {
-      setError("Could not reach the server — try again.");
+      setError("Could not reach the server. Try again.");
     } finally {
       setBusy(false);
     }

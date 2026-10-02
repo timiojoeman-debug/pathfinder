@@ -74,8 +74,8 @@ function toSavedJob(j: { title?: string; company?: string; location?: string; so
     tone: fitKnown ? fitTone(fit) : "var(--faint)",
     tags: j.atsKeywords && j.atsKeywords.length ? j.atsKeywords.slice(0, 3) : ["Not scored"],
     verdict: fitKnown
-      ? (fit >= 70 ? "Strong match" : fit >= 55 ? "Reach — tailor hard" : "Long shot")
-      : "Fit unknown — paste the full JD below to score it",
+      ? (fit >= 70 ? "Strong match" : fit >= 55 ? "Reach: tailor hard" : "Long shot")
+      : "Fit unknown: paste the full JD below to score it",
     action: "+ Save",
     jdText: (j.description ?? "").slice(0, MAX_JD_CHARS),
     ...(safeHttpUrl(j.url) ? { url: safeHttpUrl(j.url) as string } : {}),
@@ -108,7 +108,7 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
       const json = (res.ok ? await res.json() : await res.json().catch(() => null)) as { text?: string; error?: string } | null;
       if (res.ok && typeof json?.text === "string" && json.text.length >= 120) {
         s.set({ jfJD: json.text, jfResult: null, jfLetter: false });
-        setFetchNote("Pulled the description from the link — review it, then analyze.");
+        setFetchNote("Pulled the description from the link. Review it, then analyse.");
       } else {
         setFetchNote(json?.error ?? "Couldn't read that link. Paste the description below instead.");
       }
@@ -121,12 +121,12 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
 
   return (
     <Panel style={{ padding: "24px 26px", marginBottom: 18 }}>
-      <Kicker style={{ marginBottom: 14 }}>Add a role you found — save it, or analyze it against your CV</Kicker>
+      <Kicker style={{ marginBottom: 14 }}>Add a role you found: save it, or analyse it against your CV</Kicker>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
         <input
           value={s.jfTitle}
           onChange={(e) => s.set({ jfTitle: e.target.value })}
-          placeholder="Job title — e.g. Software Engineer Intern"
+          placeholder="Job title, e.g. Software Engineer Intern"
           className="pf-input"
           style={{ height: 44, padding: "0 15px" }}
         />
@@ -143,7 +143,7 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
           value={jdUrl}
           onChange={(e) => setJdUrl(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") void fetchJd(); }}
-          placeholder="Job posting URL (optional) — paste a link to pull the description"
+          placeholder="Job posting URL (optional): paste a link to pull the description"
           className="pf-input"
           style={{ flex: "1 1 260px", minWidth: 0, height: 44, padding: "0 15px", fontSize: 13 }}
         />
@@ -178,7 +178,7 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
           disabled={!canAnalyze}
           style={{ cursor: canAnalyze ? "pointer" : "default", height: 44, padding: "0 20px", borderRadius: 11, border: "none", background: canAnalyze ? "var(--accent)" : "var(--panel3)", color: canAnalyze ? "var(--onAccent)" : "var(--faint)", fontSize: 13.5, fontWeight: 600 }}
         >
-          Analyze &amp; get ATS keywords →
+          Analyse &amp; get ATS keywords →
         </button>
       </div>
     </Panel>
@@ -256,7 +256,7 @@ function AnalysisResult({ aiRead, read }: { aiRead: AiJdRead | null; read: AiTas
 
       {r.noBlockers && (
         <div style={{ padding: "11px 24px", borderBottom: "1px solid var(--line2)", fontSize: 12.5, color: "var(--muted)" }}>
-          No dealbreakers detected — no clearance, sponsorship or experience walls in this posting.
+          No dealbreakers detected: no clearance, sponsorship or experience walls in this posting.
         </div>
       )}
       {r.blockers.map((b) => (
@@ -437,7 +437,7 @@ export default function JobsPage() {
         setSearchNote(
           json?.message ??
             (json?.configured === false
-              ? "Live job search isn't connected yet — add roles manually below."
+              ? "Live job search isn't connected yet. Add roles manually below."
               : `No live results for "${q}". Try a broader title, or add the role manually below.`),
         );
       }
@@ -508,7 +508,7 @@ export default function JobsPage() {
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
-          placeholder="Location — e.g. London"
+          placeholder="Location, e.g. London"
           className="pf-input"
           style={{ height: 42, padding: "0 14px", flex: "1 1 170px", minWidth: 0, fontSize: 13 }}
         />
@@ -516,7 +516,7 @@ export default function JobsPage() {
           value={industry}
           onChange={(e) => setIndustry(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
-          placeholder="Industry — e.g. fintech"
+          placeholder="Industry, e.g. fintech"
           className="pf-input"
           style={{ height: 42, padding: "0 14px", flex: "1 1 170px", minWidth: 0, fontSize: 13 }}
         />
@@ -546,7 +546,7 @@ export default function JobsPage() {
             <Chip key={value} size="sm" label={label} on={minFit === value} onClick={() => setMinFit(value)} />
           ))}
           <span style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.45, flex: "1 1 220px" }}>
-            Filters what&apos;s shown below by score. Company size isn&apos;t filterable — no job board exposes it.
+            Filters what&apos;s shown below by score. Company size isn&apos;t filterable, because no job board exposes it.
           </span>
         </Reveal>
       )}

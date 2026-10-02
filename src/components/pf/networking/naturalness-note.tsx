@@ -58,7 +58,7 @@ export function NaturalnessBadge({ result }: { result?: Naturalness | null }): R
 export function NaturalnessNote({ result }: { result?: Naturalness | null }) {
   if (!result?.verdict) return null;
   const issues = (result.issues ?? [])
-    .map((i) => [i.description, i.suggestion].filter(Boolean).join(" — "))
+    .map((i) => [i.description, i.suggestion].filter(Boolean).join(": "))
     .filter((s) => s.length > 0);
 
   return (

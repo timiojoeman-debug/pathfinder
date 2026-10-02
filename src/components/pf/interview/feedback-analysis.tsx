@@ -171,7 +171,7 @@ export function FeedbackAnalysis() {
               title={
                 totalLogged > 1
                   ? `Patterns across ${totalLogged} interviews`
-                  : "Possible patterns — only one interview logged"
+                  : "Possible patterns (only one interview logged)"
               }
             >
               <AiList items={result.patternDetection} />

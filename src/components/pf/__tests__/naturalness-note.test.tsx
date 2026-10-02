@@ -55,7 +55,7 @@ describe('NaturalnessNote', () => {
       />,
     );
 
-    expect(screen.getByText(/Three em-dashes in four sentences — Cut two/)).toBeTruthy();
+    expect(screen.getByText(/Three em-dashes in four sentences: Cut two/)).toBeTruthy();
     expect(screen.getByText(/Opens with a formal cliche/)).toBeTruthy();
   });
 

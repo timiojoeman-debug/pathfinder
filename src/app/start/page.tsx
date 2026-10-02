@@ -57,7 +57,7 @@ export default function StartPage() {
 
   const statement =
     onb.role && onb.industry && onb.stage
-      ? `${onb.role} internships in ${onb.industry} — ${onb.stage}.`
+      ? `${onb.role} internships in ${onb.industry}, ${onb.stage}.`
       : "Choose a role, industry and stage above to build your statement.";
   const step1Ready = !!(onb.role && onb.industry && onb.stage);
   const step2Ready = !!(onb.cv && onb.projects && onb.outreach && onb.cadence);
@@ -104,7 +104,7 @@ export default function StartPage() {
         <span className="pf-mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--accent)" }}>Stage 00 · Onboarding</span>
         <h1 className="pf-display" style={{ fontSize: 44, margin: "10px 0 8px" }}>Let&apos;s find your starting point.</h1>
         <p style={{ fontSize: 15, color: "var(--muted)", margin: "0 0 16px", maxWidth: "56ch" }}>
-          Three minutes to set your direction and measure your baseline. Nothing here is graded — it just tells the AI where to point you first.
+          Three minutes to set your direction and measure your baseline. Nothing here is graded; it just tells the AI where to point you first.
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ height: 5, flex: 1, borderRadius: 3, background: stepBg(1) }} />
@@ -228,7 +228,7 @@ export default function StartPage() {
 
             <Reveal style={{ border: "1px solid var(--line)", borderRadius: 18, background: "var(--panel)", padding: "20px 24px" }}>
               <h2 className="pf-display-sm" style={{ fontSize: 22, margin: "0 0 4px" }}>Close these first</h2>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>Worst gap first — biggest leverage</span>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>Worst gap first: biggest leverage</span>
               <div style={{ marginTop: 14 }}>
                 {gaps.map((g) => (
                   <Link key={g.label} href={g.href} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderTop: "1px solid var(--line2)", cursor: "pointer", textDecoration: "none", color: "var(--fg)" }}>
@@ -238,7 +238,7 @@ export default function StartPage() {
                   </Link>
                 ))}
                 {gaps.length === 0 && (
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "8px 0" }}>No pillar below 60 — nice work. Keep the cadence up.</div>
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "8px 0" }}>No pillar below 60. Nice work. Keep the cadence up.</div>
                 )}
               </div>
             </Reveal>
