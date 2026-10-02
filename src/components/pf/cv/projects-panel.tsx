@@ -31,6 +31,16 @@ interface ProjectIdea {
   weeklyPlan?: { week: number; milestone: string; tasks?: string[] }[];
   qualityChecklist?: { quality: string; howToMeet: string }[];
   talkingPoints?: string[];
+  caseStudy?: Partial<Record<"summary" | "situation" | "task" | "action" | "result" | "learnings", string>>;
+}
+
+const CASE_STUDY_LABELS = [
+  ["summary", "Summary (2-3 lines, at the top)"], ["situation", "Situation"], ["task", "Task (your role)"],
+  ["action", "Action"], ["result", "Result"], ["learnings", "Learnings"],
+] as const;
+
+function caseStudyRows(c: NonNullable<ProjectIdea["caseStudy"]>): string[] {
+  return CASE_STUDY_LABELS.filter(([k]) => c[k]?.trim()).map(([k, label]) => `${label}: ${c[k]}`);
 }
 
 interface ProjectsData {
@@ -57,7 +67,7 @@ export function ProjectsPanel() {
       // The route destructures `skillGaps` — `missingSkills` is silently ignored.
       skillGaps: gaps,
       existingSkills: profile.currentSkills,
-      targetRole: profile.targetRole ? `${profile.targetRole} Intern` : "Software Engineering Intern",
+      targetRole: profile.targetRole ? `${profile.targetRole} Intern` : undefined,
     });
     if (result?.data?.projects?.length) {
       set({ cvProjects: true });
@@ -166,6 +176,15 @@ export function ProjectsPanel() {
                     {p.talkingPoints?.length ? (
                       <AiSection title="Interview talking points"><AiList items={p.talkingPoints} /></AiSection>
                     ) : null}
+
+                    {p.caseStudy && caseStudyRows(p.caseStudy).length > 0 && (
+                      <AiSection title="Answer-first case study (fill in once built)">
+                        <AiList items={caseStudyRows(p.caseStudy)} marker="·" />
+                        <p style={{ fontSize: 11.5, color: "var(--faint)", lineHeight: 1.55, margin: "8px 0 0" }}>
+                          Prompts, not results: write the outcome only once you have a number you measured.
+                        </p>
+                      </AiSection>
+                    )}
                   </div>
                 )}
               </div>

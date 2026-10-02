@@ -14,6 +14,7 @@ import { useAiTask, type AiTask } from "@/lib/pf/use-ai";
 import { AiCaveat, AiError } from "@/components/pf/ai-panel";
 import { Chip, Kicker, MarkDot, PageHeader, Panel, Reveal } from "@/components/pf/ui";
 import { NextStep } from "@/components/pf/next-step";
+import { JD_DECODER } from "@/lib/methodology/recruiter-signals";
 import { SchemeWindows } from "@/components/pf/scheme-windows";
 
 /** Work modes the search can genuinely narrow on. "On-site" is absent because
@@ -168,6 +169,16 @@ function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
       <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, margin: "10px 0 0" }}>
         Read the advert yourself first and note the must-haves; use the AI read to check what you missed.
       </p>
+      <details style={{ marginTop: 8, fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 600, color: "var(--fg)" }}>Decode the advert yourself</summary>
+        <ul style={{ margin: "8px 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5 }}>
+          {JD_DECODER.checklist.map((c) => <li key={c}>{c}</li>)}
+        </ul>
+        <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "var(--faint)" }}>
+          A TechTalk recruiter&apos;s rule of thumb, not a measured threshold. Hard requirements such as
+          visa or minimum years are a separate check.
+        </p>
+      </details>
       <div style={{ display: "flex", gap: 10, marginTop: 13 }}>
         <button
           onClick={s.saveJfJob}

@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     const systemPrompt = buildProjectPrompt(
       skillGaps || [],
       existingSkills || [],
-      targetRole || 'Software Engineering Intern'
+      typeof targetRole === 'string' ? targetRole.trim() : ''
     );
     const result = await callAIValidated(
       {

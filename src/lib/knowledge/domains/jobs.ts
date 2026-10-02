@@ -60,6 +60,20 @@ export const JOBS_KNOWLEDGE: DomainKnowledge = {
       sourceIds: ['wiki-job-search-system', 'doc-four-pillars'],
       relatedConceptIds: ['c-application-funnel', 'c-apply-early'],
     },
+    {
+      id: 'p-must-haves-not-60',
+      domain: D,
+      statement:
+        'Decide whether to apply by the share of must-haves you meet, not the share of all listed skills.',
+      rationale:
+        'One recruiter\'s account: an advert mixes must-haves, teachable skills and nice-to-haves, and the screen is often on the few must-haves. Counting every bullet hides the ones that decide it.',
+      evidence: [
+        'Must-have signal words: required, essential, proven experience in, X years of, strong background in. Nice-to-have: preferred, a plus, bonus, ideally, familiarity with, exposure to.',
+        'Rule of thumb from the deck: a skill repeated 3 times is a must-have; apply at 70% or more of the must-haves. A TechTalk heuristic with no stated source.',
+      ],
+      sourceIds: ['deck-recruiters-looking-for'],
+      relatedConceptIds: [],
+    },
   ],
 
   // ── FRAMEWORKS ────────────────────────────────────────────────────────

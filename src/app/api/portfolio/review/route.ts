@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readLoose } from "@/lib/api";
 import { aiEnvelope, callAIValidated } from "@/lib/ai";
 import { buildPortfolioReviewPrompt } from "@/lib/prompts/cv-prompts";
+import { findGenericAbout } from "@/lib/methodology/recruiter-signals";
 
 /**
  * Reviews a student's project portfolio against the standout-project qualities.
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     const result = await callAIValidated(
       {
         systemPrompt: buildPortfolioReviewPrompt(
-          typeof targetRole === "string" && targetRole ? targetRole : "Software Engineer",
+          typeof targetRole === "string" ? targetRole.trim() : "",
           stack,
         ),
         userMessage: `${url ? `Portfolio/GitHub link (context only — do not fabricate anything from it): ${url}\n\n` : ""}Portfolio content the student pasted:\n${text.slice(0, 6000)}`,
@@ -41,7 +42,8 @@ export async function POST(req: Request) {
       "portfolio/review",
     );
 
-    return NextResponse.json(result);
+    // Deterministic, so the flag never depends on the model noticing.
+    return NextResponse.json({ ...result, genericPhrases: findGenericAbout(text) });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Portfolio review failed', retryable: true },

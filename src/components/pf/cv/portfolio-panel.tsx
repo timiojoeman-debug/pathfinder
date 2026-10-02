@@ -18,20 +18,43 @@ import { useState } from "react";
 import { usePfStore, useProfile } from "@/lib/pf/store";
 import { useAiTask, type AiEnvelope } from "@/lib/pf/use-ai";
 import { Reveal } from "@/components/pf/ui";
+import { PORTFOLIO_PAGE_ORDER } from "@/lib/methodology/recruiter-signals";
 import { AiCaveat, AiError, AiList, AiSection, AiTag, GenerateButton } from "@/components/pf/ai-panel";
 
 interface ProjectFeedback {
   name: string;
   verdict?: string;
   missing?: string[];
+  caseStudy?: { answerFirst?: boolean; ownRole?: boolean; hasNumber?: boolean; starlMissing?: string[] };
 }
+
+type Presence = "present" | "absent" | "unknown";
 
 interface PortfolioData {
   overallImpression?: string;
   strengths?: string[];
   gaps?: string[];
   projectFeedback?: ProjectFeedback[];
+  pageStructure?: { hero?: Presence; bodyOfWork?: Presence; about?: Presence; contact?: Presence };
+  aboutGeneric?: boolean;
+  aboutPhrases?: string[];
   topFixes?: string[];
+}
+
+/** `genericPhrases` is added by the route (a deterministic scan), beside the envelope. */
+type PortfolioEnvelope = AiEnvelope<PortfolioData> & { genericPhrases?: string[] };
+
+const STRUCTURE_LABELS: [keyof NonNullable<PortfolioData["pageStructure"]>, string][] = [
+  ["hero", "Hero"], ["bodyOfWork", "Body of work"], ["about", "About"], ["contact", "Contact"],
+];
+const PRESENCE_TONE: Record<Presence, string> = { present: "var(--strong)", absent: "var(--risk)", unknown: "var(--faint)" };
+
+function caseStudyChecks(c: NonNullable<ProjectFeedback["caseStudy"]>): { label: string; ok: boolean }[] {
+  return [
+    { label: "Answer-first summary", ok: c.answerFirst === true },
+    { label: "Your own role", ok: c.ownRole === true },
+    { label: "A number in the result", ok: c.hasNumber === true },
+  ];
 }
 
 export function PortfolioPanel() {
@@ -41,8 +64,10 @@ export function PortfolioPanel() {
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
 
-  const { data, loading, error, needsAuth, run } = useAiTask<AiEnvelope<PortfolioData>>("/api/portfolio/review");
+  const { data, loading, error, needsAuth, run } = useAiTask<PortfolioEnvelope>("/api/portfolio/review");
   const review = data?.data;
+  const genericPhrases = Array.from(new Set([...(data?.genericPhrases ?? []), ...(review?.aboutPhrases ?? [])]));
+  const structure = review?.pageStructure;
 
   const ready = text.trim().length >= 40;
 
@@ -51,7 +76,7 @@ export function PortfolioPanel() {
     const result = await run({
       portfolioText: text.trim(),
       portfolioUrl: url.trim() || undefined,
-      targetRole: profile.targetRole || "Software Engineer",
+      targetRole: profile.targetRole || undefined,
       techStack: profile.targetKeywords,
     });
     if (result?.data?.overallImpression) emit("AiConsulted", "cv", "Reviewed the project portfolio");
@@ -120,11 +145,47 @@ export function PortfolioPanel() {
                         {p.missing.map((m) => <AiTag key={m} tone="var(--warn)">{m}</AiTag>)}
                       </div>
                     ) : null}
+                    {p.caseStudy && (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                        {caseStudyChecks(p.caseStudy).map((c) => (
+                          <AiTag key={c.label} tone={c.ok ? "var(--strong)" : "var(--warn)"}>{c.ok ? "✓" : "×"} {c.label}</AiTag>
+                        ))}
+                        {p.caseStudy.starlMissing?.map((m) => <AiTag key={`starl-${m}`} tone="var(--warn)">No {m}</AiTag>)}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </AiSection>
           ) : null}
+
+          {structure && (
+            <AiSection title="Page structure">
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                {STRUCTURE_LABELS.map(([k, label]) => {
+                  const v = structure[k] ?? "unknown";
+                  return <AiTag key={k} tone={PRESENCE_TONE[v] ?? "var(--faint)"}>{label}: {v === "unknown" ? "can't tell from what you pasted" : v}</AiTag>;
+                })}
+              </div>
+              <p style={{ fontSize: 12, color: "var(--faint)", lineHeight: 1.55, margin: "8px 0 0" }}>
+                Suggested order from the TechTalk portfolio session: {PORTFOLIO_PAGE_ORDER.join(", then ").toLowerCase()}.
+              </p>
+            </AiSection>
+          )}
+
+          {(review.aboutGeneric || genericPhrases.length > 0) && (
+            <AiSection title="Generic phrasing">
+              <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6, margin: "0 0 8px" }}>
+                Some of your copy reads like what every AI-built portfolio says. Pick two or three
+                things that are genuinely true about you, such as what you do when you close the laptop.
+              </p>
+              {genericPhrases.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {genericPhrases.map((g) => <AiTag key={g} tone="var(--warn)">{g}</AiTag>)}
+                </div>
+              )}
+            </AiSection>
+          )}
 
           {review.topFixes?.length ? (
             <AiSection title="Highest-impact fixes"><AiList items={review.topFixes} /></AiSection>

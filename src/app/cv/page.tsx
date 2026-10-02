@@ -18,6 +18,7 @@ import { TailorPanel } from "@/components/pf/cv/tailor-panel";
 import { ProjectsPanel } from "@/components/pf/cv/projects-panel";
 import { LinkedInPanel } from "@/components/pf/cv/linkedin-panel";
 import { PortfolioPanel } from "@/components/pf/cv/portfolio-panel";
+import { CareerGapCard } from "@/components/pf/cv/career-gap-card";
 
 const mono = "'JetBrains Mono',monospace";
 const MIN_CV = 60;
@@ -346,6 +347,7 @@ export default function CvPage() {
 
           {/* Portfolio review — the "GitHub, portfolio" half of Positioning */}
           <PortfolioPanel />
+          <CareerGapCard />
 
         </div>
       )}

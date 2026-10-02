@@ -87,6 +87,11 @@ const PENALTY: Record<NaturalnessIssue['type'], number> = {
   too_long: 10,
 };
 
+/** Buzzwords found in `text`, for callers that only want the phrase list. */
+export function findGenericPhrases(text: string): string[] {
+  return BUZZWORDS.flatMap((re) => text.match(re) ?? []);
+}
+
 function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
 }

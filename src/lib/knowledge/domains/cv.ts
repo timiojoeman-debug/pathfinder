@@ -34,6 +34,32 @@ export const CV_KNOWLEDGE: DomainKnowledge = {
       relatedConceptIds: ['c-proof-of-work', 'c-quantified-impact'],
     },
     {
+      id: 'p-cv-linkedin-one-story',
+      domain: D,
+      statement:
+        'A recruiter reads your CV and LinkedIn as one story, so titles, roles and dates should agree.',
+      rationale:
+        'One recruiter\'s account: if the CV is interesting they cross-check the LinkedIn summary, roles and past companies, and do not move forward when the two cannot be reconciled or the profile is stale.',
+      evidence: [
+        'Recruiter deck slides 020-021: a strong CV stalled because the LinkedIn had not been updated in years and the companies could not be verified.',
+      ],
+      sourceIds: ['deck-recruiters-looking-for'],
+      relatedConceptIds: [],
+    },
+    {
+      id: 'p-case-study-answer-first',
+      domain: D,
+      statement:
+        'Open each portfolio case study with a 2-3 line answer, then your role, what you did and a number for the result.',
+      rationale:
+        'Per the portfolio deck, hiring managers want to know whether you can identify a problem, make decisions and deliver something that worked; a list of deliverables does not answer that.',
+      evidence: [
+        'Portfolio deck slides 010-014: summary first, then STAR with your own role (not the team\'s); a number is stronger than description.',
+      ],
+      sourceIds: ['deck-portfolio'],
+      relatedConceptIds: [],
+    },
+    {
       id: 'p-cv-screening-gates',
       domain: D,
       statement:

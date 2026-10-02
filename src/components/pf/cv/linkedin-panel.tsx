@@ -78,6 +78,10 @@ export function LinkedInPanel() {
 
   const [headline, setHeadline] = useState("");
   const [about, setAbout] = useState("");
+  // Prefilled from the stored CV until the student edits it; null means "use the store's".
+  const storedCv = usePfStore((s) => s.cvText);
+  const [cvEdit, setCvEdit] = useState<string | null>(null);
+  const cvSummary = cvEdit ?? storedCv.slice(0, 1500);
 
   const { data, loading, error, needsAuth, run } = useAiTask<LinkedInEnvelope>("/api/linkedin/check");
   const review = data?.data;
@@ -93,6 +97,7 @@ export function LinkedInPanel() {
       targetRole: profile.targetRole || "Software Engineer",
       techStack: profile.targetKeywords,
       industry: profile.targetIndustry || "Technology",
+      cvSummary: cvSummary.trim() || undefined,
     });
     if (result?.data) emit("AiConsulted", "cv", "Reviewed the LinkedIn headline and About section");
   };
@@ -118,6 +123,25 @@ export function LinkedInPanel() {
         placeholder="Your current About section…"
         style={{
           width: "100%", minHeight: 110, marginTop: 10, padding: 14, borderRadius: 13,
+          border: "1px dashed var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)",
+          fontSize: 13, lineHeight: 1.6, fontFamily: "'Manrope',sans-serif", outline: "none", resize: "vertical",
+        }}
+      />
+
+      <label style={{ display: "block", marginTop: 14, fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>
+        CV summary (optional)
+        <span style={{ display: "block", fontWeight: 400, color: "var(--faint)", lineHeight: 1.55, marginTop: 2 }}>
+          A recruiter who likes your CV checks it against your LinkedIn. Paste your CV summary or
+          experience and the review will flag mismatched titles, roles and dates.
+        </span>
+      </label>
+      <textarea
+        value={cvSummary}
+        onChange={(e) => setCvEdit(e.target.value)}
+        aria-label="CV summary for the consistency check"
+        placeholder="Paste your CV summary or experience section…"
+        style={{
+          width: "100%", minHeight: 90, marginTop: 8, padding: 14, borderRadius: 13,
           border: "1px dashed var(--lineStrong)", background: "var(--panelSolid)", color: "var(--fg)",
           fontSize: 13, lineHeight: 1.6, fontFamily: "'Manrope',sans-serif", outline: "none", resize: "vertical",
         }}
