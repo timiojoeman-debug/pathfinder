@@ -60,9 +60,10 @@ export default function LoginPage() {
         </Link>
 
         <div className="pf-panel" style={{ padding: "26px 28px", background: "var(--panelSolid)" }}>
-          <div className="pf-kicker" style={{ marginBottom: 16 }}>
+          {/* The page's one heading: screen readers navigate by it. Styled as the kicker it replaced. */}
+          <h1 className="pf-kicker" style={{ margin: "0 0 16px", fontWeight: 400 }}>
             {mode === "login" ? "Welcome back" : "Create your account"}
-          </div>
+          </h1>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
             <button onClick={() => { setMode("login"); setError(null); }} style={tab(mode === "login")}>Sign in</button>
