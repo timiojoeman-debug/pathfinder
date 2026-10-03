@@ -69,7 +69,7 @@ export function computeMatchScore(cv: string, jobDescription: string): { score: 
   return { score, keywords: keywords.slice(0, 5) };
 }
 
-const flat = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 /** Employer feeds label their rows "{Employer} careers" (see ats.ts). */
 const isEmployerFeed = (j: JobListing) => j.source.endsWith(" careers");
@@ -77,26 +77,90 @@ const isEmployerFeed = (j: JobListing) => j.source.endsWith(" careers");
 /** Higher is the better row to keep when two collide: dated first, then employer-feed. */
 const rank = (j: JobListing) => (j.postedAt ? 2 : 0) + (isEmployerFeed(j) ? 1 : 0);
 
+const LEGAL_SUFFIX = /\s(ltd|limited|plc|llp|inc|llc|gmbh|group)$/;
+const TRAILING_ACRONYM = /\(([^()]{2,8})\)\s*$/;
+
+/** Lower-case, punctuation out, trailing legal suffixes off: "Acme Group Ltd." -> "acme". */
+function companyBase(name: string): string {
+  let c = flat(name.replace(TRAILING_ACRONYM, ""));
+  for (let prev = ""; prev !== c; ) {
+    prev = c;
+    c = c.replace(LEGAL_SUFFIX, "");
+  }
+  return c;
+}
+
+/** Locations of collapsed rows as one string, unique values only. A value that sits inside a
+ *  longer one ("London" in "London, UK") is the same place and is dropped. */
+function mergeLocations(locations: string[]): string {
+  const uniq = [...new Set(locations.map((l) => l.trim()).filter(Boolean))];
+  const kept = uniq.filter((l) => !uniq.some((o) => flat(o) !== flat(l) && flat(o).includes(flat(l))));
+  const seen = new Set<string>();
+  return kept.filter((l) => !seen.has(flat(l)) && seen.add(flat(l))).join("; ");
+}
+
 /**
- * One card per role. Keyed on company + title + location, not the URL: one list
- * can carry the same requisition under two links (Workday /EXTEU-AC-CareerSite/
- * vs /externalcareersite/, or a TikTok role under two requisition IDs). On a
- * collision the row with a posted date wins, then an employer-feed row, then the
- * first seen; the survivor keeps the first row's position.
+ * One card per role. Keyed on normalised company + normalised title, not the URL or the
+ * location: sources spell places differently ("London" / "London, UK") and one list can
+ * carry a requisition under two links. Company names are normalised (legal suffixes
+ * stripped), and "Hewlett Packard (HP)" also answers to the bare acronym "HP".
+ * On a collision the row with a posted date wins, then an employer-feed row, then the
+ * first seen; the survivor keeps the first row's position and gains every row's location.
  */
 export function dedupeListings(listings: JobListing[]): JobListing[] {
+  // ponytail: the acronym alias is global to the batch; a bare "HP" joins "(HP)" whenever both appear.
+  const alias = new Map<string, string>();
+  for (const j of listings) {
+    const acr = TRAILING_ACRONYM.exec(j.company)?.[1];
+    if (acr) alias.set(companyBase(acr), companyBase(j.company));
+  }
   const at = new Map<string, number>();
   const out: JobListing[] = [];
+  const locs: string[][] = [];
   for (const j of listings) {
-    const key = `${flat(j.company)}|${flat(j.title)}|${flat(j.location)}`;
+    const co = companyBase(j.company);
+    const key = `${alias.get(co) ?? co}|${flat(j.title)}`;
     const i = at.get(key);
     if (i === undefined) {
       at.set(key, out.push(j) - 1);
-    } else if (rank(j) > rank(out[i])) {
-      out[i] = j;
+      locs.push([j.location]);
+    } else {
+      locs[i].push(j.location);
+      if (rank(j) > rank(out[i])) out[i] = j;
     }
   }
-  return out;
+  return out.map((j, i) => (locs[i].length > 1 ? { ...j, location: mergeLocations(locs[i]) || j.location } : j));
+}
+
+export const STALE_AFTER_DAYS = 90;
+
+/** Drops listings whose posted date is known and older than 90 days. Undated ones stay. */
+export function dropStale(listings: JobListing[], now: number = Date.now()): JobListing[] {
+  return listings.filter((j) => {
+    const t = j.postedAt ? Date.parse(j.postedAt) : NaN;
+    return Number.isNaN(t) || now - t <= STALE_AFTER_DAYS * 86_400_000;
+  });
+}
+
+export type RoleType = "Internship" | "Graduate" | "Placement" | "Apprenticeship" | "Other";
+
+const wordsRe = (alts: string[]) => new RegExp("(^|[^a-z0-9])(" + alts.join("|") + ")($|[^a-z0-9])");
+const INTERNSHIP_RE = wordsRe([
+  "interns?", "internships?", "summer analysts?", "spring (?:weeks?|insight)",
+  "insight (?:weeks?|programmes?|programs?|days?)",
+]);
+const PLACEMENT_RE = wordsRe(["placements?", "industrial year", "year in industry"]);
+const APPRENTICE_RE = wordsRe(["apprentice(?:ship)?s?"]);
+const GRADUATE_RE = wordsRe(["graduates?(?![ -]level)", "new[ -]grads?", "grad schemes?"]);
+
+/** Role type from the title alone, whole words only (same rules as ats.ts: "Internal" is not "intern"). */
+export function classifyRoleType(title: string): RoleType {
+  const t = title.toLowerCase();
+  if (INTERNSHIP_RE.test(t)) return "Internship";
+  if (PLACEMENT_RE.test(t)) return "Placement";
+  if (APPRENTICE_RE.test(t)) return "Apprenticeship";
+  if (GRADUATE_RE.test(t)) return "Graduate";
+  return "Other";
 }
 
 /**

@@ -7,7 +7,9 @@ vi.mock('@/lib/logger', () => ({
 
 import {
   computeMatchScore,
+  classifyRoleType,
   dedupeListings,
+  dropStale,
   expandRoleQuery,
   filterListings,
   safeHttpUrl,
@@ -82,9 +84,29 @@ describe('dedupeListings', () => {
     expect(out).toHaveLength(1);
   });
 
-  it('keeps the same title in a different location', () => {
-    const out = dedupeListings([job({ location: 'London' }), job({ location: 'Edinburgh' })]);
-    expect(out).toHaveLength(2);
+  it('merges the locations of collapsed rows, dropping variants of the same place', () => {
+    const out = dedupeListings([job({ location: 'London' }), job({ location: 'New York' }), job({ location: 'London, UK' })]);
+    expect(out).toHaveLength(1);
+    expect(out[0].location).toBe('New York; London, UK');
+  });
+
+  it('collapses one role across sources with different location spellings', () => {
+    const t = 'Campus Software Engineer (Intern)';
+    const out = dedupeListings([
+      job({ company: 'Jump Trading', title: t, location: 'London' }),
+      job({ company: 'Jump Trading', title: 'Campus Software Engineer Intern', location: 'London, UK' }),
+      job({ company: 'Jump Trading Group', title: t, location: 'London, England, United Kingdom' }),
+    ]);
+    expect(out).toHaveLength(1);
+  });
+
+  it('treats "Hewlett Packard (HP)" and "HP" as one company', () => {
+    expect(dedupeListings([job({ company: 'HP' }), job({ company: 'Hewlett Packard (HP)' })])).toHaveLength(1);
+    expect(dedupeListings([job({ company: 'HP Inc.' }), job({ company: 'Hewlett Packard (HP)' })])).toHaveLength(1);
+  });
+
+  it('keeps two different titles at the same company apart', () => {
+    expect(dedupeListings([job(), job({ title: 'Data Intern' })])).toHaveLength(2);
   });
 
   it('prefers a dated row, then an employer-feed row, then the first seen', () => {
@@ -282,4 +304,31 @@ describe('fetchGithubListings', () => {
     const out = await fetchGithubListings();
     expect(out).toEqual([]);
   });
+});
+
+describe('dropStale', () => {
+  const now = Date.parse('2026-10-03T00:00:00Z');
+  it('hides listings dated over 90 days ago and keeps undated and recent ones', () => {
+    const rows = [
+      job({ id: 'old', postedAt: '2026-06-01T00:00:00Z' }),
+      job({ id: 'new', postedAt: '2026-09-01T00:00:00Z' }),
+      job({ id: 'none', postedAt: null }),
+      job({ id: 'junk', postedAt: 'not a date' }),
+    ];
+    expect(dropStale(rows, now).map((j) => j.id)).toEqual(['new', 'none', 'junk']);
+  });
+});
+
+describe('classifyRoleType', () => {
+  it.each([
+    ['Software Engineer Intern', 'Internship'],
+    ['Summer Analyst', 'Internship'],
+    ['Spring Insight Programme', 'Internship'],
+    ['New Grad Software Engineer', 'Graduate'],
+    ['Graduate Scheme: Engineering', 'Graduate'],
+    ['Software Engineer Apprentice', 'Apprenticeship'],
+    ['Industrial Placement', 'Placement'],
+    ['Internal Tools Engineer', 'Other'],
+    ['Graduate-level Analyst', 'Other'],
+  ])('%s -> %s', (title, type) => expect(classifyRoleType(title)).toBe(type));
 });
