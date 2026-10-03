@@ -7,7 +7,9 @@ vi.mock('@/lib/logger', () => ({
 
 import {
   computeMatchScore,
+  classifyRoleType,
   dedupeListings,
+  dropStale,
   expandRoleQuery,
   filterListings,
   safeHttpUrl,
@@ -82,9 +84,54 @@ describe('dedupeListings', () => {
     expect(out).toHaveLength(1);
   });
 
-  it('keeps the same title in a different location', () => {
-    const out = dedupeListings([job({ location: 'London' }), job({ location: 'Edinburgh' })]);
-    expect(out).toHaveLength(2);
+  it('keeps the same title in different places as separate cards', () => {
+    const out = dedupeListings([
+      job({ location: 'London', url: 'https://x/l' }),
+      job({ location: 'New York', url: 'https://x/ny' }),
+      job({ location: 'London, Ontario', url: 'https://x/lo' }),
+      job({ location: 'Bath', url: 'https://x/b' }),
+      job({ location: 'Bathgate', url: 'https://x/bg' }),
+      job({ location: 'York', url: 'https://x/y' }),
+    ]);
+    expect(out.map((j) => j.url)).toEqual(['https://x/l', 'https://x/ny', 'https://x/lo', 'https://x/b', 'https://x/bg', 'https://x/y']);
+  });
+
+  it('shows the longer location when two spellings are the same place', () => {
+    const out = dedupeListings([job({ location: 'London' }), job({ location: 'London, England, United Kingdom' })]);
+    expect(out).toHaveLength(1);
+    expect(out[0].location).toBe('London, England, United Kingdom');
+  });
+
+  it('collapses one role across sources with different location spellings', () => {
+    const t = 'Campus Software Engineer (Intern)';
+    const out = dedupeListings([
+      job({ company: 'Jump Trading', title: t, location: 'London' }),
+      job({ company: 'Jump Trading', title: 'Campus Software Engineer Intern', location: 'London, UK' }),
+      job({ company: 'Jump Trading Group', title: t, location: 'London, England, United Kingdom' }),
+    ]);
+    expect(out).toHaveLength(1);
+  });
+
+  it('treats "Hewlett Packard (HP)" and "HP" as one company', () => {
+    expect(dedupeListings([job({ company: 'HP' }), job({ company: 'Hewlett Packard (HP)' })])).toHaveLength(1);
+    expect(dedupeListings([job({ company: 'HP Inc.' }), job({ company: 'Hewlett Packard (HP)' })])).toHaveLength(1);
+  });
+
+  it('only aliases an acronym that is the initials of the name', () => {
+    expect(dedupeListings([job({ company: 'AWS' }), job({ company: 'Amazon (AWS)' })])).toHaveLength(2);
+    expect(dedupeListings([job({ company: 'Google' }), job({ company: 'Google (UK)' })])).toHaveLength(1);
+    // two companies claiming one acronym: alias neither
+    expect(dedupeListings([job({ company: 'HP' }), job({ company: 'Hewlett Packard (HP)' }), job({ company: 'Harper Parker (HP)' })])).toHaveLength(3);
+  });
+
+  it('keeps C++, C# and C titles apart, and does not collapse non-Latin titles or parenthetical-only companies', () => {
+    expect(dedupeListings([job({ title: 'C++ Intern' }), job({ title: 'C# Intern' }), job({ title: 'C Intern' })])).toHaveLength(3);
+    expect(dedupeListings([job({ title: 'ソフトウェア' }), job({ title: 'エンジニア' })])).toHaveLength(2);
+    expect(dedupeListings([job({ company: '(Stealth)' }), job({ company: '(Other)' })])).toHaveLength(2);
+  });
+
+  it('keeps two different titles at the same company apart', () => {
+    expect(dedupeListings([job(), job({ title: 'Data Intern' })])).toHaveLength(2);
   });
 
   it('prefers a dated row, then an employer-feed row, then the first seen', () => {
@@ -282,4 +329,35 @@ describe('fetchGithubListings', () => {
     const out = await fetchGithubListings();
     expect(out).toEqual([]);
   });
+});
+
+describe('dropStale', () => {
+  const now = Date.parse('2026-10-03T00:00:00Z');
+  it('hides listings dated over 90 days ago and keeps undated and recent ones', () => {
+    const rows = [
+      job({ id: 'old', postedAt: '2026-06-01T00:00:00Z' }),
+      job({ id: 'new', postedAt: '2026-09-01T00:00:00Z' }),
+      job({ id: 'none', postedAt: null }),
+      job({ id: 'junk', postedAt: 'not a date' }),
+    ];
+    expect(dropStale(rows, now).map((j) => j.id)).toEqual(['new', 'none', 'junk']);
+  });
+});
+
+describe('classifyRoleType', () => {
+  it.each([
+    ['Software Engineer Intern', 'Internship'],
+    ['Summer Analyst', 'Internship'],
+    ['Spring Insight Programme', 'Insight'],
+    ['Insight Day', 'Insight'],
+    ['Software Engineering Co-op', 'Internship'],
+    ['Trainee Analyst', 'Graduate'],
+    ['Early Careers Engineer', 'Graduate'],
+    ['New Grad Software Engineer', 'Graduate'],
+    ['Graduate Scheme: Engineering', 'Graduate'],
+    ['Software Engineer Apprentice', 'Apprenticeship'],
+    ['Industrial Placement', 'Placement'],
+    ['Internal Tools Engineer', 'Other'],
+    ['Graduate-level Analyst', 'Other'],
+  ])('%s -> %s', (title, type) => expect(classifyRoleType(title)).toBe(type));
 });

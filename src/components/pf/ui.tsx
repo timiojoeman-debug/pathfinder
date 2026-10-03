@@ -188,25 +188,29 @@ export function PageHeader({ label, title, children }: { label: string; title: s
 
 /* ── Selectable chip ───────────────────────────────────────────────── */
 
-export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent)" }: {
+export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent)", disabled = false, describedBy }: {
   label: string;
   on: boolean;
   onClick: () => void;
   size?: "sm" | "md";
   activeBg?: string;
+  disabled?: boolean;
+  describedBy?: string;
 }) {
   const pad = size === "sm" ? "7px 12px" : "8px 14px";
   const fs = size === "sm" ? 12 : 13;
   return (
     <span
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       role="button"
       className="pf-tap"
       aria-pressed={on}
+      aria-disabled={disabled || undefined}
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      aria-describedby={describedBy}
+      onKeyDown={(e) => { if (!disabled && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onClick(); } }}
       style={{
-        cursor: "pointer", whiteSpace: "nowrap", fontSize: fs, fontWeight: 600, padding: pad,
+        cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1, whiteSpace: "nowrap", fontSize: fs, fontWeight: 600, padding: pad,
         borderRadius: size === "sm" ? 9 : 10,
         border: `1px solid ${on ? activeBg : "var(--line)"}`,
         background: on ? activeBg : "var(--panel2)",

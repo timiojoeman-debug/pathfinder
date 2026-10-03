@@ -9,7 +9,8 @@
 import { useEffect, useState } from "react";
 import { buildCoverLetter, fitTone, jobPassesFit, MAX_JD_CHARS, postingKey, targetKeywords } from "@/lib/pf/logic";
 import { getProfile, usePfStore, type SavedJob } from "@/lib/pf/store";
-import { isUkLocation, safeHttpUrl } from "@/lib/jobs/types";
+import Link from "next/link";
+import { classifyRoleType, isUkLocation, safeHttpUrl } from "@/lib/jobs/types";
 import { ukByDefault } from "@/lib/jobs/display";
 import { useRoleFreshness } from "@/lib/pf/use-freshness";
 import { FreshnessNote, JobMeta } from "@/components/pf/job-meta";
@@ -85,6 +86,15 @@ function toSavedJob(j: { title?: string; company?: string; location?: string; so
     ...(safeHttpUrl(j.url) ? { url: safeHttpUrl(j.url) as string } : {}),
     ...(j.postedAt ? { postedAt: j.postedAt } : {}),
   };
+}
+
+/** Role-type tag from the title. "Other" is the absence of a signal, so it shows nothing. */
+function RoleTag({ role }: { role: string }) {
+  const type = classifyRoleType(role);
+  if (type === "Other") return null;
+  return (
+    <span className="pf-mono" style={{ fontSize: 10, fontWeight: 600, color: "var(--accentText)", border: "1px solid var(--accent)", borderRadius: 6, padding: "3px 8px" }}>{type}</span>
+  );
 }
 
 function AddRolePanel({ onAnalyze }: { onAnalyze: () => void }) {
@@ -395,6 +405,7 @@ export default function JobsPage() {
   const [liveJobs, setLiveJobs] = useState<SavedJob[]>([]);
   const [searchNote, setSearchNote] = useState<string | null>(null);
   const [minFit, setMinFit] = useState(0);
+  const [internOnly, setInternOnly] = useState(false);
   // UK by default. The direction's location wins when set: a UK place turns the filter on, any
   // other place prefills the location box instead. With none stored, the browser locale decides.
   // The pill makes the default visible and removable.
@@ -494,8 +505,14 @@ export default function JobsPage() {
 
   // Fit filter applies to already-scored results (jobPassesFit hides unknown-fit
   // roles once a threshold is set, since they have no score to compare).
-  const passesFit = (j: SavedJob) => jobPassesFit(j, minFit);
-  const shownLive = liveJobs.filter(passesFit);
+  // With fewer than 3 scored results a threshold means nothing, so the chips switch off
+  // (and a threshold set earlier stops applying) until a CV gives the roles scores.
+  const liveInScope = internOnly ? liveJobs.filter((j) => ["Internship", "Placement"].includes(classifyRoleType(j.role))) : liveJobs;
+  const scoredCount = liveInScope.filter((j) => j.fitKnown !== false).length;
+  const fitDisabled = scoredCount < 3;
+  const effMinFit = fitDisabled ? 0 : minFit;
+  const passesFit = (j: SavedJob) => jobPassesFit(j, effMinFit);
+  const shownLive = liveInScope.filter(passesFit);
   const shownSaved = jobsAll.filter(passesFit);
 
   return (
@@ -590,10 +607,17 @@ export default function JobsPage() {
         <Reveal style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
           <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)" }}>Show</span>
           {FIT_FILTERS.map(([value, label]) => (
-            <Chip key={value} size="sm" label={label} on={minFit === value} onClick={() => setMinFit(value)} />
+            <Chip key={value} size="sm" label={label} on={effMinFit === value} disabled={fitDisabled && value > 0} describedBy={fitDisabled && value > 0 ? "fit-hint" : undefined} onClick={() => setMinFit(value)} />
           ))}
+          <Chip size="sm" label="Internships & placements" on={internOnly} onClick={() => setInternOnly((v) => !v)} />
           <span style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.45, flex: "1 1 220px" }}>
-            Filters what&apos;s shown below by score. Company size isn&apos;t filterable, because no job board exposes it.
+            {fitDisabled ? (
+              <span id="fit-hint">
+                Not enough scored roles to filter by fit.{" "}
+                <Link href="/cv" style={{ color: "var(--accentText)", textDecoration: "underline" }}>Add your CV to score fit</Link>.{" "}
+              </span>
+            ) : null}
+            Filters what&apos;s shown below. Company size isn&apos;t filterable, because no job board exposes it.
           </span>
         </Reveal>
       )}
@@ -633,6 +657,7 @@ export default function JobsPage() {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                  <RoleTag role={j.role} />
                   {j.tags.map((tg) => (
                     <span key={tg} className="pf-mono" style={{ fontSize: 10, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel2)", borderRadius: 6, padding: "3px 8px" }}>{tg}</span>
                   ))}
@@ -661,7 +686,7 @@ export default function JobsPage() {
 
       {jobsAll.length > 0 && (
         <div className="pf-mono" style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--faint)", margin: "0 0 10px" }}>
-          Your saved roles · {minFit ? `${shownSaved.length} of ${jobsAll.length}` : jobsAll.length}
+          Your saved roles · {effMinFit ? `${shownSaved.length} of ${jobsAll.length}` : jobsAll.length}
         </div>
       )}
 
@@ -675,7 +700,7 @@ export default function JobsPage() {
       ) : shownSaved.length === 0 ? (
         <Reveal style={{ border: "1px dashed var(--lineStrong)", borderRadius: 16, background: "var(--panel)", padding: "30px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: 12 }}>
-            None of your {jobsAll.length} saved roles are at {minFit}+ fit.
+            None of your {jobsAll.length} saved roles are at {effMinFit}+ fit.
           </div>
           <Chip size="sm" label="Show all fits" on={false} onClick={() => setMinFit(0)} />
         </Reveal>
@@ -708,6 +733,7 @@ export default function JobsPage() {
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                <RoleTag role={j.role} />
                 {j.tags.map((tg) => (
                   <span key={tg} className="pf-mono" style={{ fontSize: 10, color: "var(--muted)", border: "1px solid var(--line)", background: "var(--panel2)", borderRadius: 6, padding: "3px 8px" }}>{tg}</span>
                 ))}

@@ -257,6 +257,23 @@ describe('POST /api/jobs/search', () => {
       expect(body.jobs.filter((j: { url: string }) => j.url === 'https://careers.skyscanner.net/1')).toHaveLength(1);
     });
 
+    it('hides roles posted over 90 days ago from every source, keeps undated ones', async () => {
+      getActiveListings.mockResolvedValue([
+        CACHED({ id: 's1', title: 'Old Intern', url: 'https://e/old', postedAt: '2020-01-01T00:00:00.000Z' }),
+        CACHED({ id: 's2', title: 'Undated Intern', url: 'https://e/undated', postedAt: null }),
+      ]);
+      stubFetch({ github: [] });
+      const body = await (await POST(post({ roleType: 'intern' }))).json();
+      expect(body.jobs.map((j: { url: string }) => j.url)).toEqual(['https://e/undated']);
+    });
+
+    it('drops a stale dated duplicate before deduping, so the live undated one survives', async () => {
+      getActiveListings.mockResolvedValue([CACHED({ company: 'Skyscanner', location: 'Edinburgh, UK', url: 'https://old/1', postedAt: '2020-01-01T00:00:00.000Z' })]);
+      stubFetch({ github: [GH()] });
+      const body = await (await POST(post({ roleType: 'software engineer intern' }))).json();
+      expect(body.jobs.map((j: { url: string }) => j.url)).toEqual(['https://careers.skyscanner.net/1']);
+    });
+
     it('falls through to GitHub when the cache throws', async () => {
       getActiveListings.mockRejectedValue(new Error('db down'));
       stubFetch({ github: [GH()] });
