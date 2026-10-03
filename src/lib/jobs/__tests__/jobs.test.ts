@@ -84,10 +84,22 @@ describe('dedupeListings', () => {
     expect(out).toHaveLength(1);
   });
 
-  it('merges the locations of collapsed rows, dropping variants of the same place', () => {
-    const out = dedupeListings([job({ location: 'London' }), job({ location: 'New York' }), job({ location: 'London, UK' })]);
+  it('keeps the same title in different places as separate cards', () => {
+    const out = dedupeListings([
+      job({ location: 'London', url: 'https://x/l' }),
+      job({ location: 'New York', url: 'https://x/ny' }),
+      job({ location: 'London, Ontario', url: 'https://x/lo' }),
+      job({ location: 'Bath', url: 'https://x/b' }),
+      job({ location: 'Bathgate', url: 'https://x/bg' }),
+      job({ location: 'York', url: 'https://x/y' }),
+    ]);
+    expect(out.map((j) => j.url)).toEqual(['https://x/l', 'https://x/ny', 'https://x/lo', 'https://x/b', 'https://x/bg', 'https://x/y']);
+  });
+
+  it('shows the longer location when two spellings are the same place', () => {
+    const out = dedupeListings([job({ location: 'London' }), job({ location: 'London, England, United Kingdom' })]);
     expect(out).toHaveLength(1);
-    expect(out[0].location).toBe('New York; London, UK');
+    expect(out[0].location).toBe('London, England, United Kingdom');
   });
 
   it('collapses one role across sources with different location spellings', () => {
@@ -103,6 +115,19 @@ describe('dedupeListings', () => {
   it('treats "Hewlett Packard (HP)" and "HP" as one company', () => {
     expect(dedupeListings([job({ company: 'HP' }), job({ company: 'Hewlett Packard (HP)' })])).toHaveLength(1);
     expect(dedupeListings([job({ company: 'HP Inc.' }), job({ company: 'Hewlett Packard (HP)' })])).toHaveLength(1);
+  });
+
+  it('only aliases an acronym that is the initials of the name', () => {
+    expect(dedupeListings([job({ company: 'AWS' }), job({ company: 'Amazon (AWS)' })])).toHaveLength(2);
+    expect(dedupeListings([job({ company: 'Google' }), job({ company: 'Google (UK)' })])).toHaveLength(1);
+    // two companies claiming one acronym: alias neither
+    expect(dedupeListings([job({ company: 'HP' }), job({ company: 'Hewlett Packard (HP)' }), job({ company: 'Harper Parker (HP)' })])).toHaveLength(3);
+  });
+
+  it('keeps C++, C# and C titles apart, and does not collapse non-Latin titles or parenthetical-only companies', () => {
+    expect(dedupeListings([job({ title: 'C++ Intern' }), job({ title: 'C# Intern' }), job({ title: 'C Intern' })])).toHaveLength(3);
+    expect(dedupeListings([job({ title: 'ソフトウェア' }), job({ title: 'エンジニア' })])).toHaveLength(2);
+    expect(dedupeListings([job({ company: '(Stealth)' }), job({ company: '(Other)' })])).toHaveLength(2);
   });
 
   it('keeps two different titles at the same company apart', () => {
@@ -323,7 +348,11 @@ describe('classifyRoleType', () => {
   it.each([
     ['Software Engineer Intern', 'Internship'],
     ['Summer Analyst', 'Internship'],
-    ['Spring Insight Programme', 'Internship'],
+    ['Spring Insight Programme', 'Insight'],
+    ['Insight Day', 'Insight'],
+    ['Software Engineering Co-op', 'Internship'],
+    ['Trainee Analyst', 'Graduate'],
+    ['Early Careers Engineer', 'Graduate'],
     ['New Grad Software Engineer', 'Graduate'],
     ['Graduate Scheme: Engineering', 'Graduate'],
     ['Software Engineer Apprentice', 'Apprenticeship'],

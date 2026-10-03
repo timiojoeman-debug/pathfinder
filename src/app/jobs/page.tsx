@@ -507,8 +507,8 @@ export default function JobsPage() {
   // roles once a threshold is set, since they have no score to compare).
   // With fewer than 3 scored results a threshold means nothing, so the chips switch off
   // (and a threshold set earlier stops applying) until a CV gives the roles scores.
-  const liveInScope = internOnly ? liveJobs.filter((j) => classifyRoleType(j.role) === "Internship") : liveJobs;
-  const scoredCount = [...liveInScope, ...jobsAll].filter((j) => j.fitKnown !== false).length;
+  const liveInScope = internOnly ? liveJobs.filter((j) => ["Internship", "Placement"].includes(classifyRoleType(j.role))) : liveJobs;
+  const scoredCount = liveInScope.filter((j) => j.fitKnown !== false).length;
   const fitDisabled = scoredCount < 3;
   const effMinFit = fitDisabled ? 0 : minFit;
   const passesFit = (j: SavedJob) => jobPassesFit(j, effMinFit);
@@ -607,15 +607,15 @@ export default function JobsPage() {
         <Reveal style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
           <span className="pf-mono" style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--faint)" }}>Show</span>
           {FIT_FILTERS.map(([value, label]) => (
-            <Chip key={value} size="sm" label={label} on={effMinFit === value} disabled={fitDisabled && value > 0} onClick={() => setMinFit(value)} />
+            <Chip key={value} size="sm" label={label} on={effMinFit === value} disabled={fitDisabled && value > 0} describedBy={fitDisabled && value > 0 ? "fit-hint" : undefined} onClick={() => setMinFit(value)} />
           ))}
-          <Chip size="sm" label="Internships only" on={internOnly} onClick={() => setInternOnly((v) => !v)} />
+          <Chip size="sm" label="Internships & placements" on={internOnly} onClick={() => setInternOnly((v) => !v)} />
           <span style={{ fontSize: 11, color: "var(--faint)", lineHeight: 1.45, flex: "1 1 220px" }}>
             {fitDisabled ? (
-              <>
+              <span id="fit-hint">
                 Not enough scored roles to filter by fit.{" "}
                 <Link href="/cv" style={{ color: "var(--accentText)", textDecoration: "underline" }}>Add your CV to score fit</Link>.{" "}
-              </>
+              </span>
             ) : null}
             Filters what&apos;s shown below. Company size isn&apos;t filterable, because no job board exposes it.
           </span>

@@ -188,13 +188,14 @@ export function PageHeader({ label, title, children }: { label: string; title: s
 
 /* ── Selectable chip ───────────────────────────────────────────────── */
 
-export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent)", disabled = false }: {
+export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent)", disabled = false, describedBy }: {
   label: string;
   on: boolean;
   onClick: () => void;
   size?: "sm" | "md";
   activeBg?: string;
   disabled?: boolean;
+  describedBy?: string;
 }) {
   const pad = size === "sm" ? "7px 12px" : "8px 14px";
   const fs = size === "sm" ? 12 : 13;
@@ -205,7 +206,8 @@ export function Chip({ label, on, onClick, size = "md", activeBg = "var(--accent
       className="pf-tap"
       aria-pressed={on}
       aria-disabled={disabled || undefined}
-      tabIndex={disabled ? -1 : 0}
+      tabIndex={0}
+      aria-describedby={describedBy}
       onKeyDown={(e) => { if (!disabled && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onClick(); } }}
       style={{
         cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1, whiteSpace: "nowrap", fontSize: fs, fontWeight: 600, padding: pad,

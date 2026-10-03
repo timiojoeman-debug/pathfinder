@@ -69,7 +69,9 @@ export function computeMatchScore(cv: string, jobDescription: string): { score: 
   return { score, keywords: keywords.slice(0, 5) };
 }
 
-const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+/** Lower-case, punctuation to spaces ("+" and "#" kept so C++ / C# / C stay apart). Non-Latin text
+ *  flattens to nothing, so it falls back to the raw lower-cased string rather than an empty key. */
+const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").trim() || s.toLowerCase().trim();
 
 /** Employer feeds label their rows "{Employer} careers" (see ats.ts). */
 const isEmployerFeed = (j: JobListing) => j.source.endsWith(" careers");
@@ -78,58 +80,77 @@ const isEmployerFeed = (j: JobListing) => j.source.endsWith(" careers");
 const rank = (j: JobListing) => (j.postedAt ? 2 : 0) + (isEmployerFeed(j) ? 1 : 0);
 
 const LEGAL_SUFFIX = /\s(ltd|limited|plc|llp|inc|llc|gmbh|group)$/;
-const TRAILING_ACRONYM = /\(([^()]{2,8})\)\s*$/;
+const TRAILING_PAREN = /\(([^()]*)\)\s*$/;
+const INITIAL_SKIP = new Set(["of", "and", "the", "&"]);
 
-/** Lower-case, punctuation out, trailing legal suffixes off: "Acme Group Ltd." -> "acme". */
+/** Company minus any trailing parenthetical, punctuation out, legal suffixes off: "Acme Group Ltd." -> "acme".
+ *  A name that is only a parenthetical keeps its text rather than collapsing to an empty key. */
 function companyBase(name: string): string {
-  let c = flat(name.replace(TRAILING_ACRONYM, ""));
+  const stripped = name.replace(TRAILING_PAREN, "");
+  let c = flat(stripped.trim() ? stripped : name);
   for (let prev = ""; prev !== c; ) {
     prev = c;
-    c = c.replace(LEGAL_SUFFIX, "");
+    c = c.replace(LEGAL_SUFFIX, "") || c;
   }
   return c;
 }
 
-/** Locations of collapsed rows as one string, unique values only. A value that sits inside a
- *  longer one ("London" in "London, UK") is the same place and is dropped. */
-function mergeLocations(locations: string[]): string {
-  const uniq = [...new Set(locations.map((l) => l.trim()).filter(Boolean))];
-  const kept = uniq.filter((l) => !uniq.some((o) => flat(o) !== flat(l) && flat(o).includes(flat(l))));
-  const seen = new Set<string>();
-  return kept.filter((l) => !seen.has(flat(l)) && seen.add(flat(l))).join("; ");
+/** "Hewlett Packard (HP)" -> ["hp", "hewlett packard"] when the bracket is the initials of the words before it. */
+function acronymClaim(name: string): [string, string] | null {
+  const acr = TRAILING_PAREN.exec(name)?.[1]?.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const base = companyBase(name);
+  if (!acr || acr.length < 2 || !base) return null;
+  const words = base.split(" ");
+  const all = words.map((w) => w[0]).join("");
+  const sig = words.filter((w) => !INITIAL_SKIP.has(w)).map((w) => w[0]).join("");
+  return acr === all || acr === sig ? [acr, base] : null;
+}
+
+const UK_SUFFIX = new Set(["uk", "u.k.", "united kingdom", "great britain", "gb", "england", "scotland", "wales", "northern ireland"]);
+
+/** A location reduced to its place: trailing UK-ish parts dropped, so "London", "London, UK" and
+ *  "London, England, United Kingdom" are one place, while "London, Ontario" is another. */
+function placeKey(location: string): string {
+  const parts = location.split(",").map((p) => flat(p)).filter(Boolean);
+  while (parts.length > 1 && UK_SUFFIX.has(parts[parts.length - 1])) parts.pop();
+  return parts.join(" ");
 }
 
 /**
- * One card per role. Keyed on normalised company + normalised title, not the URL or the
- * location: sources spell places differently ("London" / "London, UK") and one list can
- * carry a requisition under two links. Company names are normalised (legal suffixes
- * stripped), and "Hewlett Packard (HP)" also answers to the bare acronym "HP".
- * On a collision the row with a posted date wins, then an employer-feed row, then the
- * first seen; the survivor keeps the first row's position and gains every row's location.
+ * One card per role. Two rows collapse when the normalised company, the normalised title and
+ * the place all match. The URL is not compared: one list can carry a requisition under two
+ * links. The place is compared after dropping UK-ish suffixes, so sources that spell one city
+ * differently still collapse, but the same title in two cities stays as two cards.
+ * Company names lose legal suffixes, and "Hewlett Packard (HP)" also answers to a bare "HP"
+ * (only when the bracket is the initials, and only when no other company claims that acronym).
+ * On a collision the row with a posted date wins, then an employer-feed row, then the first
+ * seen; the survivor keeps the first row's position and shows the longer location string.
  */
 export function dedupeListings(listings: JobListing[]): JobListing[] {
-  // ponytail: the acronym alias is global to the batch; a bare "HP" joins "(HP)" whenever both appear.
-  const alias = new Map<string, string>();
+  const claims = new Map<string, Set<string>>();
   for (const j of listings) {
-    const acr = TRAILING_ACRONYM.exec(j.company)?.[1];
-    if (acr) alias.set(companyBase(acr), companyBase(j.company));
+    const c = acronymClaim(j.company);
+    if (c) claims.set(c[0], (claims.get(c[0]) ?? new Set()).add(c[1]));
   }
+  const alias = new Map<string, string>();
+  for (const [acr, bases] of claims) if (bases.size === 1) alias.set(acr, [...bases][0]);
+
   const at = new Map<string, number>();
   const out: JobListing[] = [];
-  const locs: string[][] = [];
+  const longest: string[] = [];
   for (const j of listings) {
     const co = companyBase(j.company);
-    const key = `${alias.get(co) ?? co}|${flat(j.title)}`;
+    const key = `${alias.get(co) ?? co}|${flat(j.title)}|${placeKey(j.location)}`;
     const i = at.get(key);
     if (i === undefined) {
       at.set(key, out.push(j) - 1);
-      locs.push([j.location]);
+      longest.push(j.location);
     } else {
-      locs[i].push(j.location);
+      if (j.location.length > longest[i].length) longest[i] = j.location;
       if (rank(j) > rank(out[i])) out[i] = j;
     }
   }
-  return out.map((j, i) => (locs[i].length > 1 ? { ...j, location: mergeLocations(locs[i]) || j.location } : j));
+  return out.map((j, i) => (j.location === longest[i] ? j : { ...j, location: longest[i] }));
 }
 
 export const STALE_AFTER_DAYS = 90;
@@ -142,21 +163,20 @@ export function dropStale(listings: JobListing[], now: number = Date.now()): Job
   });
 }
 
-export type RoleType = "Internship" | "Graduate" | "Placement" | "Apprenticeship" | "Other";
+export type RoleType = "Internship" | "Graduate" | "Placement" | "Apprenticeship" | "Insight" | "Other";
 
 const wordsRe = (alts: string[]) => new RegExp("(^|[^a-z0-9])(" + alts.join("|") + ")($|[^a-z0-9])");
-const INTERNSHIP_RE = wordsRe([
-  "interns?", "internships?", "summer analysts?", "spring (?:weeks?|insight)",
-  "insight (?:weeks?|programmes?|programs?|days?)",
-]);
+const INTERNSHIP_RE = wordsRe(["interns?", "internships?", "summer analysts?", "co-?ops?"]);
+const INSIGHT_RE = wordsRe(["spring (?:weeks?|insight)", "insight (?:weeks?|programmes?|programs?|days?)"]);
 const PLACEMENT_RE = wordsRe(["placements?", "industrial year", "year in industry"]);
 const APPRENTICE_RE = wordsRe(["apprentice(?:ship)?s?"]);
-const GRADUATE_RE = wordsRe(["graduates?(?![ -]level)", "new[ -]grads?", "grad schemes?"]);
+const GRADUATE_RE = wordsRe(["graduates?(?![ -]level)", "new[ -]grads?", "grad schemes?", "trainees?", "early[ -]careers?"]);
 
 /** Role type from the title alone, whole words only (same rules as ats.ts: "Internal" is not "intern"). */
 export function classifyRoleType(title: string): RoleType {
   const t = title.toLowerCase();
   if (INTERNSHIP_RE.test(t)) return "Internship";
+  if (INSIGHT_RE.test(t)) return "Insight";
   if (PLACEMENT_RE.test(t)) return "Placement";
   if (APPRENTICE_RE.test(t)) return "Apprenticeship";
   if (GRADUATE_RE.test(t)) return "Graduate";

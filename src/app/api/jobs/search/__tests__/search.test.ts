@@ -267,6 +267,13 @@ describe('POST /api/jobs/search', () => {
       expect(body.jobs.map((j: { url: string }) => j.url)).toEqual(['https://e/undated']);
     });
 
+    it('drops a stale dated duplicate before deduping, so the live undated one survives', async () => {
+      getActiveListings.mockResolvedValue([CACHED({ company: 'Skyscanner', location: 'Edinburgh, UK', url: 'https://old/1', postedAt: '2020-01-01T00:00:00.000Z' })]);
+      stubFetch({ github: [GH()] });
+      const body = await (await POST(post({ roleType: 'software engineer intern' }))).json();
+      expect(body.jobs.map((j: { url: string }) => j.url)).toEqual(['https://careers.skyscanner.net/1']);
+    });
+
     it('falls through to GitHub when the cache throws', async () => {
       getActiveListings.mockRejectedValue(new Error('db down'));
       stubFetch({ github: [GH()] });

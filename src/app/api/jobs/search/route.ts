@@ -193,7 +193,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const jobs = sortByFit(dropStale(dedupeListings(interleave([employers, adzuna, github])))).slice(0, MAX_RESULTS);
+  const jobs = sortByFit(dedupeListings(dropStale(interleave([employers, adzuna, github])))).slice(0, MAX_RESULTS);
 
   const message = jobs.length ? undefined : adzunaError ? UNAVAILABLE_MESSAGE : NO_MATCHES_MESSAGE;
 
