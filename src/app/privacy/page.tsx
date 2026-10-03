@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="2 Oct 2026">
+    <LegalPage title="Privacy Policy" updated="3 Oct 2026">
       <p>
         PathFinder helps university students navigate internship applications. This policy explains what
         we collect, why, and the rights you have over your data. It is written to be readable; where a term
@@ -68,13 +68,18 @@ export default function PrivacyPage() {
 
       <LegalH2>Third parties we rely on</LegalH2>
       <ul>
-        <li><strong>Supabase</strong>: database and storage hosting.</li>
-        <li><strong>OpenAI</strong>: AI text generation for the features above.</li>
+        <li><strong>Supabase</strong>: database hosting. It stores your account, career data and contacts described above.</li>
+        <li><strong>OpenAI</strong>: AI text generation. It receives only the text a feature needs, as described under &ldquo;AI processing&rdquo;.</li>
+        <li><strong>Resend</strong>: email delivery. It receives your email address and the content of the verification and password-reset emails we send you.</li>
+        <li><strong>Vercel</strong>: hosting for the app. It handles your requests to the site and so processes request logs, including your IP address.</li>
         <li><strong>Job data providers</strong>: when you search for live opportunities, PathFinder queries
           <strong> Adzuna</strong> (a job-search API) and pulls from open, community-maintained internship lists
           published on <strong>GitHub</strong> (e.g. the Summer-internship repos). We only send your search terms
           (role, location) to these sources; every listing links out to the original posting, and we do not
           re-host or claim ownership of it.</li>
+        <li><strong>Employers&apos; public careers pages</strong>: once a day the server fetches public job boards hosted on
+          <strong> Greenhouse</strong>, <strong>Lever</strong> and <strong>Ashby</strong>. These are fetched by our
+          server, not by you, and receive no student data.</li>
       </ul>
 
       <LegalH2>Retention</LegalH2>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="11 Jul 2026">
+    <LegalPage title="Terms of Service" updated="3 Oct 2026">
       <p>
         These terms govern your use of PathFinder. By creating an account or using the product, you agree to
         them. If you don&apos;t, please don&apos;t use the service.
