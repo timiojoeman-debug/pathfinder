@@ -16,7 +16,7 @@ import { createAdminClient } from "@/lib/supabase/client";
 
 /**
  * The mentor engine builds a UserContext from Supabase, composes a methodology
- * prompt, calls gpt-4o, normalises the response and stores the interaction.
+ * prompt, calls the mentor model, normalises the response and stores the interaction.
  * These tests drive buildUserContext against populated and empty data, and the
  * two entry points (runMentorEngine, runMentorLocal) across success, missing
  * fields, parse failure and the no-key error.

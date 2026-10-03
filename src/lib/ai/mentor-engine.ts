@@ -12,6 +12,9 @@ import type {
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
+/** Model every mentor-engine call uses. See docs/mentor-model-trial-2026-10-03.md. */
+export const MENTOR_MODEL = 'gpt-4.1-mini';
+
 /**
  * Service-role client for every engine query.
  *
@@ -29,7 +32,7 @@ function engineDb() {
 
 // Maps a mentor feature to a knowledge domain so the educational layer can
 // inject relevant, citation-bearing TechTalk knowledge into the prompt.
-const FEATURE_DOMAIN: Record<string, Domain> = {
+export const FEATURE_DOMAIN: Record<string, Domain> = {
   'direction-builder': 'direction',
   'direction-explore': 'direction',
   'direction-score': 'direction',
@@ -54,7 +57,7 @@ const FEATURE_DOMAIN: Record<string, Domain> = {
 };
 
 // Feature configurations
-const FEATURE_CONFIG: Record<string, { temperature: number; methodologyType: 'static' | 'rag' }> = {
+export const FEATURE_CONFIG: Record<string, { temperature: number; methodologyType: 'static' | 'rag' }> = {
   'cv-analysis': { temperature: 0.3, methodologyType: 'static' },
   'ats-audit': { temperature: 0.3, methodologyType: 'static' },
   'match-score': { temperature: 0.3, methodologyType: 'static' },
@@ -248,7 +251,7 @@ Your response depth MUST match the input quality tier.`;
 }
 
 // Step 4: Build the full prompt
-function buildMentorPrompt(params: {
+export function buildMentorPrompt(params: {
   feature: string;
   featureSystemPrompt: string;
   methodology: string;
@@ -341,7 +344,7 @@ async function callOpenAI(systemPrompt: string, userMessage: string, temperature
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: MENTOR_MODEL,
       temperature,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -530,7 +533,7 @@ export async function runMentorEngine(params: {
 }
 
 // Helper for unauthenticated / no-database scenarios
-function getEmptyContext(): UserContext {
+export function getEmptyContext(): UserContext {
   return {
     direction: { statement: null, score: null, role: '', industry: '', techStack: [], location: '' },
     cv: { parsed: null, score: null, analysisHistory: [] },
