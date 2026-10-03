@@ -66,8 +66,35 @@ jobs:
       - name: Install
         run: npm ci
 
+      # The Supabase images come from public.ecr.aws, which throttles anonymous
+      # pulls from shared runners ("toomanyrequests: Rate exceeded"). Cache them
+      # so most runs never touch the registry, keyed on the CLI version (lockfile)
+      # and the service set (config + the db:start exclusions in package.json).
+      - name: Restore Supabase images
+        id: sb-images
+        uses: actions/cache@v4
+        with:
+          path: /tmp/supabase-images.tar
+          key: supabase-images-${{ runner.os }}-${{ hashFiles('package-lock.json', 'package.json', 'supabase/config.toml') }}
+
+      - name: Load Supabase images
+        if: steps.sb-images.outputs.cache-hit == 'true'
+        run: docker load -i /tmp/supabase-images.tar
+
+      # On a cache miss the pull can still be throttled; back off and retry.
       - name: Start local Supabase
-        run: npm run db:start
+        run: |
+          for i in 1 2 3 4; do
+            npm run db:start && exit 0
+            echo "db:start attempt $i failed; retrying in $((i * 45))s"
+            npx supabase stop --no-backup || true
+            sleep $((i * 45))
+          done
+          exit 1
+
+      - name: Save Supabase images
+        if: steps.sb-images.outputs.cache-hit != 'true'
+        run: docker save -o /tmp/supabase-images.tar $(docker images --format '{{.Repository}}:{{.Tag}}' | grep supabase)
 
       - name: Write e2e env
         run: npm run e2e:env
